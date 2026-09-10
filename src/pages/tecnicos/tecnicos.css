@@ -1,0 +1,64 @@
+/* Tecnicos page */
+.tec-page { display: flex; flex-direction: column; gap: 20px; }
+
+.tec-tabs { display: flex; border-bottom: 2px solid var(--border-light); gap: 0; }
+.tec-tab {
+  padding: 10px 20px; font-family: inherit; font-size: 11px; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted);
+  background: none; border: none; border-bottom: 2px solid transparent;
+  margin-bottom: -2px; cursor: pointer; display: flex; align-items: center; gap: 8px;
+  transition: color var(--transition);
+}
+.tec-tab:hover { color: var(--text-dark); }
+.tec-tab--active { color: var(--text-dark); border-bottom-color: var(--accent); }
+
+.tec-tab-count {
+  background: var(--bg-input); border: 1px solid var(--border-light);
+  border-radius: 99px; padding: 1px 7px; font-size: 9px;
+}
+
+.tec-select {
+  padding: 9px 14px; border-radius: var(--radius-md);
+  background: #fff; border: 1px solid var(--border-light);
+  font-family: inherit; font-size: 12px; color: var(--text-mid);
+  cursor: pointer; box-shadow: var(--shadow-sm);
+}
+
+.tec-table thead th { padding: 12px 16px; background: #f8fafc; }
+.tec-table tbody td { padding: 14px 16px; }
+
+.tec-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(135deg, #e8f4ff, #dbeafe);
+  border: 1px solid #bfdbfe;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; color: var(--info); flex-shrink: 0;
+}
+
+.tec-rating { display: flex; align-items: center; gap: 5px; color: var(--warning); font-size: 12px; }
+.tec-rating strong { color: var(--text-dark); font-size: 13px; }
+.tec-rating span   { color: var(--text-muted); font-size: 11px; }
+
+.tec-action-btn {
+  padding: 7px 14px; border-radius: var(--radius-sm);
+  background: none; border: 1px solid var(--border-light);
+  font-family: inherit; font-size: 10px; font-weight: 700;
+  letter-spacing: .05em; text-transform: uppercase; cursor: pointer;
+  color: var(--text-mid); transition: all var(--transition);
+}
+.tec-action-btn:hover { background: var(--text-dark); color: #fff; border-color: var(--text-dark); }
+
+.tec-pagination {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 16px; border-top: 1px solid var(--border-light);
+}
+.tec-page-info { font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+.tec-page-controls { display: flex; gap: 4px; }
+.tec-page-btn {
+  min-width: 30px; height: 30px; padding: 0 4px; border-radius: var(--radius-sm);
+  background: #fff; border: 1px solid var(--border-light);
+  font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all var(--transition);
+}
+.tec-page-btn:hover { background: var(--bg-input); }
+.tec-page-btn--active { background: var(--accent); border-color: var(--accent); color: #fff; }

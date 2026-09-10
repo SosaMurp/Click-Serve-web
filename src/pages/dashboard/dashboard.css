@@ -1,0 +1,85 @@
+/* ── Page header ── */
+.dash-page { display: flex; flex-direction: column; gap: 24px; }
+.dash-page-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.dash-page-title  { font-size: 26px; font-weight: 800; color: var(--text-dark); letter-spacing: -.02em; }
+.dash-page-sub    { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin-top: 2px; }
+
+.dash-export-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 9px 16px; border-radius: var(--radius-md);
+  background: #fff; border: 1px solid var(--border-light);
+  font-family: inherit; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--text-mid); cursor: pointer; box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition), background var(--transition);
+}
+.dash-export-btn:hover { box-shadow: var(--shadow-md); background: var(--bg-input); }
+
+/* ── Stat grid ── */
+.dash-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+/* ── Lower grid ── */
+.dash-lower-grid { display: grid; grid-template-columns: 1fr 300px; gap: 16px; }
+
+/* ── Card ── */
+.dash-card {
+  background: #fff; border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg); padding: 20px;
+  box-shadow: var(--shadow-sm);
+}
+.dash-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
+.dash-card-title  { font-size: 14px; font-weight: 700; color: var(--text-dark); }
+.dash-card-sub    { font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin-top: 2px; }
+
+.dash-link-btn {
+  display: flex; align-items: center; gap: 4px;
+  background: none; border: none; cursor: pointer;
+  font-family: inherit; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--text-muted); transition: color var(--transition);
+}
+.dash-link-btn:hover { color: var(--text-dark); }
+
+/* ── Table ── */
+.dash-table { width: 100%; border-collapse: collapse; }
+.dash-table th {
+  text-align: left; font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--text-muted); padding: 8px 10px; border-bottom: 1px solid var(--border-light);
+}
+.dash-table td { padding: 14px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+.dash-table tr:last-child td { border-bottom: none; }
+
+.dash-table-name { font-size: 13px; font-weight: 600; color: var(--text-dark); }
+.dash-table-id   { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+.dash-table-spec { font-size: 12px; color: var(--text-mid); }
+
+.dash-match { font-size: 11px; font-weight: 700; }
+.dash-match--warning { color: var(--warning); }
+.dash-match--success { color: var(--accent-dim); }
+
+.dash-action-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 7px 14px; border-radius: var(--radius-sm);
+  background: var(--text-dark); border: none;
+  font-family: inherit; font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: #fff; cursor: pointer; transition: all var(--transition);
+}
+.dash-action-btn:hover { opacity: .85; transform: translateY(-1px); }
+.dash-action-btn--outline { background: none; border: 1px solid var(--border-light); color: var(--text-dark); }
+
+/* ── Activity Feed ── */
+.dash-feed { display: flex; flex-direction: column; gap: 0; }
+.dash-feed-item {
+  display: flex; gap: 12px; padding: 12px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+.dash-feed-item:last-child { border-bottom: none; }
+
+.dash-feed-dot {
+  width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0;
+}
+.dash-feed-dot--accent  { background: var(--accent); }
+.dash-feed-dot--warning { background: var(--warning); }
+.dash-feed-dot--danger  { background: var(--danger); }
+
+.dash-feed-time { font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 3px; }
+.dash-feed-text { font-size: 12px; color: var(--text-dark); font-weight: 500; line-height: 1.4; }
+.dash-feed-sub  { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
