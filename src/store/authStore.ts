@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+import { logoutAdmin } from '@api/auth'
+
 interface AdminUser {
   id_usuario: number
   nombre: string
@@ -16,7 +18,8 @@ interface AuthState {
   token: string | null
   isAuthenticated: boolean
   login: (user: AdminUser, token: string) => void
-  logout: () => void
+  setToken: (token: string) => void
+  logout: () => Promise<void>
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -31,7 +34,13 @@ export const useAuthStore = create<AuthState>()(
         set({ user, token, isAuthenticated: true })
       },
 
-      logout: () => {
+      setToken: (token) => {
+        localStorage.setItem('admin_token', token)
+        set({ token })
+      },
+
+      logout: async () => {
+        await logoutAdmin()
         localStorage.removeItem('admin_token')
         set({ user: null, token: null, isAuthenticated: false })
       },

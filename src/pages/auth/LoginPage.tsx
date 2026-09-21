@@ -7,12 +7,8 @@ import { loginAdmin } from '@api/auth'
 import { useAuthStore } from '@store/authStore'
 import './auth.css'
 
-// Rol de administrador en la BD (id_rol = 3)
-const ADMIN_ROL_ID = 3
-
 export default function LoginPage() {
   const navigate = useNavigate()
-  const login = useAuthStore(s => s.login)
 
   const [showPass, setShowPass] = useState(false)
   const [email, setEmail] = useState('')
@@ -28,6 +24,7 @@ export default function LoginPage() {
    try {
       // Tu api/auth.ts debe apuntar ahora a '/api/login-admin'
    const data = await loginAdmin({ email, password })
+    setLoading(false)
 
       // Si el backend nos indica que las credenciales son correctas y mandó el código:
       if (data.requiere2FA) {
@@ -36,14 +33,24 @@ export default function LoginPage() {
           state: { emailIngresado: email },
           replace: true 
         })
+        return
       }
 
+      if (data.usuario && data.token) {
+        useAuthStore.getState().login(data.usuario, data.token)
+        navigate(data.usuario.id_rol === 3 ? '/dashboard' : '/biometria', { replace: true })
+        return
+      }
+
+      setError('El servidor no devolvió una sesión válida.')
       } catch (err: unknown) {
       setLoading(false)
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
    
       if (msg?.includes('Contraseña') || msg?.includes('contraseña')) {
      setError('Contraseña incorrecta. Verifica tus credenciales.')
+      } else if (msg?.includes('PENDIENTE') || msg?.includes('pendiente')) {
+        setError('Tu cuenta está pendiente de validación. Completa la verificación antes de iniciar sesión.')
       } else if (msg?.includes('denegado')) {
         setError(msg) // Muestra el error de "Exclusivo para panel web"
       } else {

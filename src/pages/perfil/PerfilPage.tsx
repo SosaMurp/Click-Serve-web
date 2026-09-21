@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, Shield, Key, Monitor, Smartphone, Globe, X } from 'lucide-react'
-import { Badge } from '@components/ui'
-import { getActiveSessions, revokeSession, revokeAllSessions } from '@api/auth'
+import { LogOut, Shield, Key, Monitor, Smartphone, Globe, X, Eye, EyeOff, CheckCircle } from 'lucide-react'
+import { Badge, Button } from '@components/ui'
+import { getActiveSessions, revokeSession, revokeAllSessions, updateAdminPassword } from '@api/auth'
+import { useAuthStore } from '@store/authStore'
 import './perfil.css'
 
 // Interfaz para mapear lo que devuelve tu backend
@@ -27,10 +28,21 @@ const parseDevice = (userAgent: string) => {
 
 export default function PerfilPage() {
   const navigate = useNavigate()
+  const { user, logout, setToken } = useAuthStore()
   
   // Estados para manejar las sesiones reales
   const [sessions, setSessions] = useState<SesionActiva[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Estados para modal de cambio de contraseña
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPass, setShowPass] = useState(false)
+  const [passError, setPassError] = useState('')
+  const [passSuccess, setPassSuccess] = useState('')
+  const [passLoading, setPassLoading] = useState(false)
 
   // Cargar las sesiones al montar el componente
   useEffect(() => {
@@ -52,7 +64,6 @@ export default function PerfilPage() {
   const handleRevoke = async (sessionId: number) => {
     try {
       await revokeSession(sessionId.toString())
-      // Si la API responde con éxito, quitamos la sesión de la vista localmente
       setSessions(prev => prev.filter(s => s.id_sesion !== sessionId))
     } catch (error) {
       console.error('Error al intentar desvincular el dispositivo:', error)
@@ -62,12 +73,10 @@ export default function PerfilPage() {
 
   // Función para cerrar todas las demás sesiones
   const handleRevokeAll = async () => {
-    // Es buena práctica pedir confirmación para acciones destructivas masivas
     if (!window.confirm('¿Estás seguro de que deseas desconectar todos los demás dispositivos?')) return
 
     try {
       await revokeAllSessions()
-      // Filtramos el estado local para dejar únicamente la sesión actual en la pantalla
       setSessions(prev => prev.filter(s => s.es_sesion_actual))
     } catch (error) {
       console.error('Error al cerrar todas las sesiones:', error)
@@ -75,12 +84,68 @@ export default function PerfilPage() {
     }
   }
 
-  // Cerrar sesión general (limpia localstorage y redirige)
-  const handleLogout = () => {
-    localStorage.removeItem('admin_token')
-    localStorage.removeItem('admin_user')
-    navigate('/login')
+  // Cerrar sesión general en el servidor
+  const handleLogout = async () => {
+    await logout()
+    navigate('/login', { replace: true })
   }
+
+  // Manejador para actualizar contraseña
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPassError('')
+    setPassSuccess('')
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPassError('Por favor completa todos los campos.')
+      return
+    }
+    if (newPassword.length < 8) {
+      setPassError('La nueva contraseña debe tener al menos 8 caracteres.')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPassError('La nueva contraseña y su confirmación no coinciden.')
+      return
+    }
+
+    setPassLoading(true)
+    try {
+      const email = user?.correo || ''
+      const res = await updateAdminPassword({ email, currentPassword, newPassword })
+
+      if (res.token) {
+        setToken(res.token)
+      }
+      setPassSuccess('¡Contraseña actualizada exitosamente! Las demás sesiones han sido revocadas.')
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+
+      // Refrescar sesiones activas
+      const data = await getActiveSessions()
+      setSessions(data.sesiones)
+
+      setTimeout(() => {
+        setShowPasswordModal(false)
+        setPassSuccess('')
+      }, 2000)
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+      if (msg?.includes('incorrecta')) {
+        setPassError('La contraseña actual es incorrecta.')
+      } else {
+        setPassError(msg || 'Error al intentar actualizar la contraseña.')
+      }
+    } finally {
+      setPassLoading(false)
+    }
+  }
+
+  const initials = user ? `${user.nombre?.[0] || 'A'}${user.apellido?.[0] || 'R'}`.toUpperCase() : 'AR'
+  const fullName = user ? `${user.nombre} ${user.apellido || ''}`.trim() : 'Alejandro Ramírez'
+  const userEmail = user?.correo || 'admin.lzc@clickserve.com'
+  const userId = user ? `ADM-LZC-${String(user.id_usuario).padStart(3, '0')}` : 'ADM-LZC-001'
 
   return (
     <div className="perfil-page fade-in">
@@ -106,9 +171,9 @@ export default function PerfilPage() {
             </div>
 
             <div className="perfil-identity-row">
-              <div className="perfil-avatar">AR</div>
+              <div className="perfil-avatar">{initials}</div>
               <div>
-                <p className="perfil-name">Alejandro Ramírez</p>
+                <p className="perfil-name">{fullName}</p>
                 <span className="perfil-role-badge">SUPERADMINISTRADOR</span>
               </div>
             </div>
@@ -116,11 +181,11 @@ export default function PerfilPage() {
             <div className="perfil-fields-row">
               <div className="perfil-field">
                 <label className="cfg-label">ID INSTITUCIONAL</label>
-                <input className="perfil-input" value="ADM-LZC-001" readOnly />
+                <input className="perfil-input" value={userId} readOnly />
               </div>
               <div className="perfil-field">
                 <label className="cfg-label">CORREO DE ACCESO</label>
-                <input className="perfil-input" value="admin.lzc@clickserve.com" readOnly />
+                <input className="perfil-input" value={userEmail} readOnly />
               </div>
             </div>
           </div>
@@ -137,18 +202,20 @@ export default function PerfilPage() {
                 <Shield size={18} className="perfil-shield-icon" />
                 <div>
                   <p className="perfil-security-title">Autenticación en 2 Pasos (Activa)</p>
-                  <p className="perfil-security-sub">Protegido mediante Verificación por Correo</p>
+                  <p className="perfil-security-sub">Protegido mediante Verificación por Correo al Iniciar Sesión</p>
                 </div>
               </div>
-              <button className="perfil-action-btn">RECONFIGURAR</button>
+              <Badge variant="success">ACTIVO</Badge>
             </div>
 
             <div className="perfil-security-row">
               <div>
                 <p className="perfil-security-title">CONTRASEÑA PRINCIPAL</p>
-                <p className="perfil-security-sub">Última actualización: hace 49 días</p>
+                <p className="perfil-security-sub">Actualiza tu clave periódicamente para mantener tu cuenta protegida</p>
               </div>
-              <button className="perfil-action-btn">ACTUALIZAR CLAVE</button>
+              <button className="perfil-action-btn" onClick={() => setShowPasswordModal(true)}>
+                ACTUALIZAR CLAVE
+              </button>
             </div>
           </div>
         </div>
@@ -220,6 +287,110 @@ export default function PerfilPage() {
 
         </div>
       </div>
+
+      {/* Modal de Cambio de Contraseña */}
+      {showPasswordModal && (
+        <div className="modal-overlay" onClick={() => !passLoading && setShowPasswordModal(false)}>
+          <div className="modal-card" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title">Actualizar Clave Maestra</h3>
+              <button className="modal-close" onClick={() => !passLoading && setShowPasswordModal(false)}>
+                <X size={16} />
+              </button>
+            </div>
+
+            <p className="cfg-hint" style={{ marginTop: -8 }}>
+              Por seguridad, debes ingresar tu contraseña actual para confirmar tu identidad. Al actualizar la clave, se cerrarán todas las demás sesiones activas.
+            </p>
+
+            {passSuccess ? (
+              <div className="auth-success-wrap" style={{ textAlign: 'center', padding: '16px 0' }}>
+                <CheckCircle size={32} color="var(--accent-teal)" style={{ margin: '0 auto 12px' }} />
+                <p style={{ fontSize: '13px', color: 'var(--text-dark)', fontWeight: '600' }}>{passSuccess}</p>
+              </div>
+            ) : (
+              <form className="modal-form" onSubmit={handleUpdatePassword}>
+                <div className="field">
+                  <label className="field-label">Contraseña Actual</label>
+                  <div className="field-wrap">
+                    <input
+                      className="field-input pr-icon"
+                      type={showPass ? 'text' : 'password'}
+                      placeholder="Tu clave actual"
+                      value={currentPassword}
+                      onChange={e => { setCurrentPassword(e.target.value); setPassError('') }}
+                      required
+                      autoFocus
+                    />
+                    <span className="field-icon field-icon--right" onClick={() => setShowPass(!showPass)}>
+                      {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="field">
+                  <label className="field-label">Nueva Contraseña</label>
+                  <div className="field-wrap">
+                    <input
+                      className="field-input pr-icon"
+                      type={showPass ? 'text' : 'password'}
+                      placeholder="Mínimo 8 caracteres"
+                      value={newPassword}
+                      onChange={e => { setNewPassword(e.target.value); setPassError('') }}
+                      required
+                    />
+                    <span className="field-icon field-icon--right" onClick={() => setShowPass(!showPass)}>
+                      {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="field">
+                  <label className="field-label">Confirmar Nueva Contraseña</label>
+                  <div className="field-wrap">
+                    <input
+                      className="field-input pr-icon"
+                      type={showPass ? 'text' : 'password'}
+                      placeholder="Repite la nueva clave"
+                      value={confirmPassword}
+                      onChange={e => { setConfirmPassword(e.target.value); setPassError('') }}
+                      required
+                    />
+                    <span className="field-icon field-icon--right" onClick={() => setShowPass(!showPass)}>
+                      {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </span>
+                  </div>
+                </div>
+
+                {passError && (
+                  <div className="auth-error-box">
+                    <span>⚠</span> {passError}
+                  </div>
+                )}
+
+                <div className="modal-actions">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="md"
+                    onClick={() => setShowPasswordModal(false)}
+                    disabled={passLoading}
+                  >
+                    CANCELAR
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="md"
+                    loading={passLoading}
+                  >
+                    GUARDAR NUEVA CLAVE
+                  </Button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

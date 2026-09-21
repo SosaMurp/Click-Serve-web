@@ -108,3 +108,47 @@
   color: var(--text-muted); cursor: pointer; transition: all var(--transition);
 }
 .perfil-revoke-all:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
+
+/* Password Modal */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(10, 25, 47, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; padding: 20px;
+}
+
+.modal-card {
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  max-width: 440px; width: 100%;
+  padding: 28px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-light);
+  display: flex; flex-direction: column; gap: 16px;
+}
+
+.modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+}
+
+.modal-title {
+  font-size: 16px; font-weight: 700; color: var(--text-dark);
+}
+
+.modal-close {
+  background: none; border: none; cursor: pointer; color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center;
+  padding: 4px; border-radius: var(--radius-sm);
+  transition: all var(--transition);
+}
+.modal-close:hover { background: var(--bg-input); color: var(--text-dark); }
+
+.modal-form {
+  display: flex; flex-direction: column; gap: 14px;
+}
+
+.modal-actions {
+  display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px;
+}
+

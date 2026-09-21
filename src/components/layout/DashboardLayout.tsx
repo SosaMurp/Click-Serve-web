@@ -24,9 +24,9 @@ export default function DashboardLayout() {
   const { user, logout } = useAuthStore()
   const [collapsed, setCollapsed] = useState(false)
 
-  const handleLogout = (e: React.MouseEvent) => {
+  const handleLogout = async (e: React.MouseEvent) => {
     e.preventDefault()
-    logout()
+    await logout()
     navigate('/login', { replace: true })
   }
 
