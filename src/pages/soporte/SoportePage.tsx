@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Filter, ChevronLeft, ChevronRight, MessageSquare, AlertCircle } from 'lucide-react'
 import { Badge } from '@components/ui'
+import DisputeResolutionModal from '@components/modals/DisputeResolutionModal'
 import './soporte.css'
 
 const STATS = [
@@ -22,11 +23,11 @@ const STATUS_MAP: Record<TicketStatus, StatusVariant> = {
 const TICKETS = [
   {
     id: 'ICS-399', date: 'May, 22:15',
-    user: 'José López', userId: null, role: 'Técnico',
+    user: 'José López', userId: null, role: 'Cliente',
     subject: 'Cancelación en Guacamayas',
-    desc: 'Cliente canceló servicio; cobro ya fue...',
+    desc: 'Cliente canceló servicio; cobro ya fue procesado en cuenta.',
     status: 'PENDIENTE DE RESOLUCIÓN' as TicketStatus,
-    time: 'SIN ACCIÓN',
+    time: 'SIN ACCIÓN', techName: 'Roberto García'
   },
   {
     id: 'ICS-001', date: 'Abril, 10:20',
@@ -34,32 +35,39 @@ const TICKETS = [
     subject: 'Consulta de Facturación',
     desc: 'Necesita factura del mes de Abril.',
     status: 'SANS ACCIONES' as TicketStatus,
-    time: 'SIN CASO',
+    time: 'SIN CASO', techName: 'N/A'
   },
   {
     id: 'ICS-002', date: 'Abr, 09:46',
-    user: 'Andrea López', userId: null, role: null,
+    user: 'Andrea López', userId: null, role: 'Cliente',
     subject: 'Error al cargar tarjeta No.',
-    desc: 'Cuando intenta agregar tarjeta de créd...',
+    desc: 'Cuando intenta agregar tarjeta de crédito en pasarela.',
     status: 'ESCALADO A TI URGENTE' as TicketStatus,
-    time: 'SIN DETALLE',
+    time: 'SIN DETALLE', techName: 'Carlos V.'
   },
 ]
 
 export default function SoportePage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
+  const [selectedTicket, setSelectedTicket] = useState<typeof TICKETS[0] | null>(null)
+  const [isDisputeOpen, setIsDisputeOpen] = useState(false)
 
   const filtered = TICKETS.filter(t =>
     (!search || t.subject.toLowerCase().includes(search.toLowerCase()) || t.user.toLowerCase().includes(search.toLowerCase())) &&
     (statusFilter === 'ALL' || t.status === statusFilter)
   )
 
+  const handleOpenDispute = (ticket: typeof TICKETS[0]) => {
+    setSelectedTicket(ticket)
+    setIsDisputeOpen(true)
+  }
+
   return (
     <div className="sop-page fade-in">
       <div className="dash-page-header">
         <div>
-          <h1 className="dash-page-title">Centro de Soporte</h1>
+          <h1 className="dash-page-title">Centro de Soporte & Disputas (RF-107 A RF-121)</h1>
           <p className="dash-page-sub">GESTIÓN DE DISPUTAS Y ATENCIÓN AL CLIENTE</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -89,7 +97,7 @@ export default function SoportePage() {
           <input placeholder="Buscar usuario, caso o # de resolución..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <select className="tec-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-          <option value="ALL">Act. Canal: Todos</option>
+          <option value="ALL">Canal: Todos</option>
           <option value="PENDIENTE DE RESOLUCIÓN">Pendiente</option>
           <option value="ESCALADO A TI URGENTE">Urgente</option>
         </select>
@@ -134,7 +142,9 @@ export default function SoportePage() {
                 </td>
                 <td><span className="dash-table-id">{row.time}</span></td>
                 <td>
-                  <button className="sop-view-btn">VER CASO</button>
+                  <button className="sop-view-btn" onClick={() => handleOpenDispute(row)}>
+                    VER CASO (RF-109)
+                  </button>
                 </td>
               </tr>
             ))}
@@ -143,7 +153,7 @@ export default function SoportePage() {
 
         {/* Pagination */}
         <div className="tec-pagination">
-          <p className="tec-page-info">MOSTRANDO 3 DE 4 TICKETS TOTAL ABIERTOS</p>
+          <p className="tec-page-info">MOSTRANDO {filtered.length} TICKETS TOTAL ABIERTOS</p>
           <div className="tec-page-controls">
             <button className="tec-page-btn"><ChevronLeft size={13} /></button>
             {[1,2,3,4].map(n => (
@@ -153,6 +163,15 @@ export default function SoportePage() {
           </div>
         </div>
       </div>
+
+      {/* Modal Disputa */}
+      <DisputeResolutionModal
+        isOpen={isDisputeOpen}
+        onClose={() => setIsDisputeOpen(false)}
+        ticketId={selectedTicket?.id}
+        userName={selectedTicket?.user}
+        techName={selectedTicket?.techName}
+      />
     </div>
   )
 }

@@ -1,25 +1,37 @@
 import api from './axios'
 
-/* ── Tipos ── */
+/* ── Tipos de Usuario y Sesión ── */
+export interface AdminUser {
+  id_usuario: number
+  nombre: string
+  apellido: string
+  correo: string
+  id_rol: number
+  estado_cuenta?: string // Opcional porque verifyLoginAdmin no lo incluye en el SELECT
+  version_sesion: number
+}
+
+/* ── Tipos de Autenticación ── */
 export interface LoginPayload {
   email: string
   password: string
 }
 
-export interface LoginResponse {
+// Respuesta del Paso 1 (/login-admin)
+export interface LoginAdminStep1Response {
   mensaje: string
-  requiere2FA?: boolean
-  token: string
-  usuario: {
-    id_usuario: number
-    nombre: string
-    apellido: string
-    correo: string
-    id_rol: number
-    estado_cuenta: string
-    version_sesion: number
-  }
+  requiere2FA: boolean
 }
+
+// Respuesta del Paso 2 (/verify-login-admin) y Login general
+export interface AuthSuccessResponse {
+  mensaje: string
+  token: string
+  usuario: AdminUser
+}
+
+// Para compatibilidad con referencias previas
+export type LoginResponse = AuthSuccessResponse
 
 export interface RegisterAdminPayload {
   nombre: string
@@ -28,25 +40,44 @@ export interface RegisterAdminPayload {
   email: string
   fechaNacimiento: string
   password: string
-  perfil: number   // id_rol — 1 para admin
+  perfil?: number // id_rol — 3 para Administrador
+}
+
+export interface SesionActivaResponse {
+  id_sesion: string // UUID en PostgreSQL
+  dispositivo: string
+  fecha_creacion: string
+  es_sesion_actual: boolean
 }
 
 /* ── API calls ── */
 
-/** Login — espera id_rol === 3 (Administrador) */
-export async function loginAdmin(payload: LoginPayload): Promise<LoginResponse> {
-  const { data } = await api.post<LoginResponse>('/login-admin', payload)
-  return data
-}
-/** * PASO 2: Verificar código 2FA y obtener token de sesión */
-export async function verifyAdminLogin(email: string, token: string): Promise<LoginResponse> {
-  const { data } = await api.post<LoginResponse>('/verify-login-admin', { email, token })
+/** 
+ * Paso 1: Valida credenciales y genera código 2FA al correo institucional 
+ * Esta función es llamada desde LoginPage. Envía el email y password al backend.
+ * El backend (y la base de datos) verifican si existe. Si es así, envían un correo con el 2FA.
+ */
+export async function loginAdmin(payload: LoginPayload): Promise<LoginAdminStep1Response> {
+  const { data } = await api.post<LoginAdminStep1Response>('/login-admin', payload)
   return data
 }
 
-/** Registro de nuevo operador admin */
+/** 
+ * Paso 2: Verificar código 2FA y obtener token de sesión 
+ * Llamada desde la vista /verify-2fa. Envía el código ingresado por el usuario.
+ * Si el backend lo aprueba, devuelve un JSON Web Token (JWT) y los datos del usuario.
+ */
+export async function verifyAdminLogin(email: string, token: string): Promise<AuthSuccessResponse> {
+  const { data } = await api.post<AuthSuccessResponse>('/verify-login-admin', { email, token })
+  return data
+}
+
+/** Registro de nuevo operador admin (fuerza id_rol = 3 en el backend) */
 export async function registerAdmin(payload: RegisterAdminPayload) {
-  const { data } = await api.post('/register', payload)
+  const { data } = await api.post('/register', {
+    ...payload,
+    perfil: payload.perfil ?? 3,
+  })
   return data
 }
 
@@ -68,9 +99,18 @@ export async function resendCode(email: string) {
   return data
 }
 
+/** Cambiar contraseña desde el perfil */
+export async function updatePassword(currentPassword: string, newPassword: string) {
+  const { data } = await api.post<{ mensaje: string; token: string }>('/update-password', {
+    currentPassword,
+    newPassword,
+  })
+  return data
+}
+
 /** Sesiones activas del usuario autenticado */
 export async function getActiveSessions() {
-  const { data } = await api.get('/auth/sessions')
+  const { data } = await api.get<{ sesiones: SesionActivaResponse[] }>('/auth/sessions')
   return data
 }
 

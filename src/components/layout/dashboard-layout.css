@@ -106,6 +106,81 @@
 }
 .dash-logout:hover { color: var(--danger); }
 
+/* ━━━━━━━━━━━━━━━━━━ COLLAPSED SIDEBAR RULES ━━━━━━━━━━━━━━━━━━ */
+.dash-root--collapsed .dash-sidebar {
+  width: 64px;
+}
+
+.dash-root--collapsed .dash-sidebar-brand {
+  padding: 16px 0;
+  justify-content: center;
+  gap: 0;
+  position: relative;
+  width: 100%;
+}
+
+.dash-root--collapsed .dash-brand-info {
+  display: none;
+}
+
+/* Ocultar completamente el botón de la hamburguesa en modo colapsado para dejar solo el logo verde */
+.dash-root--collapsed .dash-collapse-btn {
+  display: none !important;
+}
+
+.dash-root--collapsed .dash-logo {
+  cursor: pointer;
+  transition: transform var(--transition);
+}
+.dash-root--collapsed .dash-logo:hover {
+  transform: scale(1.1);
+}
+
+.dash-root--collapsed .dash-nav {
+  padding: 14px 6px;
+  width: 100%;
+  align-items: center;
+}
+
+.dash-root--collapsed .dash-nav-section {
+  display: none;
+}
+
+.dash-root--collapsed .dash-nav-link {
+  justify-content: center;
+  padding: 10px 0;
+  width: 44px;
+  height: 44px;
+  margin: 3px 0;
+  border-radius: var(--radius-md);
+}
+
+.dash-root--collapsed .dash-nav-link span:not(.dash-badge) {
+  display: none;
+}
+
+.dash-root--collapsed .dash-nav-link .dash-badge {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  min-width: 15px;
+  height: 15px;
+  font-size: 8px;
+  padding: 0 4px;
+  margin-left: 0;
+}
+
+.dash-root--collapsed .dash-sidebar-user {
+  justify-content: center;
+  padding: 14px 0;
+  width: 100%;
+}
+
+.dash-root--collapsed .dash-user-info,
+.dash-root--collapsed .dash-logout {
+  display: none;
+}
+
 /* ── Main area ── */
 .dash-main { display: flex; flex-direction: column; min-height: 100vh; overflow: hidden; }
 

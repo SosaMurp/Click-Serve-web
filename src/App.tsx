@@ -1,4 +1,6 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { useEffect } from 'react'
+import { setNavigate } from './lib/navigation'
 import { ProtectedRoute, GuestRoute } from '@components/layout/ProtectedRoute'
 import LoginPage        from '@pages/auth/LoginPage'
 import RegisterPage     from '@pages/auth/RegisterPage'
@@ -14,9 +16,19 @@ import ConfiguracionPage from '@pages/configuracion/ConfiguracionPage'
 import PerfilPage       from '@pages/perfil/PerfilPage'
 import SoportePage      from '@pages/soporte/SoportePage'
 
+import RecoverPasswordPage from '@pages/auth/RecoverPasswordPage'
+
+/** Registra useNavigate en el helper imperativo para que Axios pueda redirigir */
+function NavigationRegistrar() {
+  const navigate = useNavigate()
+  useEffect(() => { setNavigate(navigate) }, [navigate])
+  return null
+}
+
 export default function App() {
   return (
     <BrowserRouter>
+      <NavigationRegistrar />
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
 
@@ -26,6 +38,7 @@ export default function App() {
           <Route path="/register"      element={<RegisterPage />} />
           <Route path="/register/sent" element={<RequestSentPage />} />
           <Route path="/verify-2fa"    element={<TwoFactorPage />} />
+          <Route path="/recover"       element={<RecoverPasswordPage />} />
         </Route>
 
         {/* ── Rutas protegidas (requieren JWT válido) ── */}

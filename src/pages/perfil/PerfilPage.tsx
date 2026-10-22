@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, Shield, Key, Monitor, Smartphone, Globe, X } from 'lucide-react'
-import { Badge } from '@components/ui'
-import { getActiveSessions, revokeSession, revokeAllSessions } from '@api/auth'
+import { LogOut, Shield, Key, Monitor, Smartphone, Globe, X, Lock, CheckCircle, AlertCircle } from 'lucide-react'
+import { Badge, Button } from '@components/ui'
+import { getActiveSessions, revokeSession, revokeAllSessions, updatePassword } from '@api/auth'
+import { useAuthStore } from '@store/authStore'
 import './perfil.css'
 
 // Interfaz para mapear lo que devuelve tu backend
 interface SesionActiva {
-  id_sesion: number
+  id_sesion: string
   dispositivo: string
   fecha_creacion: string
   es_sesion_actual: boolean
@@ -27,12 +28,23 @@ const parseDevice = (userAgent: string) => {
 
 export default function PerfilPage() {
   const navigate = useNavigate()
+  const user = useAuthStore(s => s.user)
   
   // Estados para manejar las sesiones reales
   const [sessions, setSessions] = useState<SesionActiva[]>([])
   const [loading, setLoading] = useState(true)
 
   // Cargar las sesiones al montar el componente
+  // Estados para Modal de Cambio de Contraseña
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Cargar sesiones al montar
   useEffect(() => {
     const fetchSessions = async () => {
       try {
@@ -49,9 +61,9 @@ export default function PerfilPage() {
   }, [])
 
   // Función para desconectar un dispositivo consumiendo tu API (Ruta 11)
-  const handleRevoke = async (sessionId: number) => {
+  const handleRevoke = async (sessionId: string) => {
     try {
-      await revokeSession(sessionId.toString())
+      await revokeSession(sessionId)
       // Si la API responde con éxito, quitamos la sesión de la vista localmente
       setSessions(prev => prev.filter(s => s.id_sesion !== sessionId))
     } catch (error) {
@@ -75,11 +87,55 @@ export default function PerfilPage() {
     }
   }
 
-  // Cerrar sesión general (limpia localstorage y redirige)
   const handleLogout = () => {
-    localStorage.removeItem('admin_token')
-    localStorage.removeItem('admin_user')
+    useAuthStore.getState().logout()
     navigate('/login')
+  }
+
+  // Manejador del cambio de contraseña
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPasswordError(null)
+    setPasswordSuccess(null)
+
+    if (!currentPassword) {
+      setPasswordError('Ingresa tu contraseña actual.')
+      return
+    }
+    if (!newPassword || newPassword.length < 6) {
+      setPasswordError('La nueva contraseña debe tener al menos 6 caracteres.')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Las contraseñas no coinciden.')
+      return
+    }
+
+    try {
+      setIsSubmitting(true)
+      const res = await updatePassword(currentPassword, newPassword)
+      
+      if (res.token) {
+        localStorage.setItem('admin_token', res.token)
+      }
+
+      setPasswordSuccess(res.mensaje || 'Contraseña actualizada exitosamente.')
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+
+      setTimeout(() => {
+        setIsPasswordModalOpen(false)
+        setPasswordSuccess(null)
+      }, 2000)
+
+    } catch (error: any) {
+      console.error('Error al cambiar contraseña:', error)
+      const msg = error.response?.data?.error || 'Error al intentar cambiar la contraseña. Verifica tus datos.'
+      setPasswordError(msg)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -106,23 +162,38 @@ export default function PerfilPage() {
             </div>
 
             <div className="perfil-identity-row">
-              <div className="perfil-avatar">AR</div>
+              <div className="perfil-avatar">
+                {user ? `${user.nombre?.[0] ?? ''}${user.apellido?.[0] ?? ''}`.toUpperCase() : 'AD'}
+              </div>
               <div>
-                <p className="perfil-name">Alejandro Ramírez</p>
-                <span className="perfil-role-badge">SUPERADMINISTRADOR</span>
+                <p className="perfil-name">
+                  {user ? `${user.nombre} ${user.apellido}` : 'Administrador'}
+                </p>
+                <span className="perfil-role-badge">
+                  {user?.id_rol === 1 ? 'SUPERADMINISTRADOR' : 'ADMINISTRADOR'}
+                </span>
               </div>
             </div>
 
             <div className="perfil-fields-row">
               <div className="perfil-field">
-                <label className="cfg-label">ID INSTITUCIONAL</label>
-                <input className="perfil-input" value="ADM-LZC-001" readOnly />
+                <label className="cfg-label">ID</label>
+                <input
+                  className="perfil-input"
+                  value={user?.id_usuario ? `ADM-LZC-${String(user.id_usuario).padStart(3, '0')}` : ''}
+                  readOnly
+                />
               </div>
               <div className="perfil-field">
                 <label className="cfg-label">CORREO DE ACCESO</label>
-                <input className="perfil-input" value="admin.lzc@clickserve.com" readOnly />
+                <input
+                  className="perfil-input"
+                  value={user?.correo ?? ''}
+                  readOnly
+                />
               </div>
             </div>
+
           </div>
 
           {/* Security */}
@@ -137,7 +208,7 @@ export default function PerfilPage() {
                 <Shield size={18} className="perfil-shield-icon" />
                 <div>
                   <p className="perfil-security-title">Autenticación en 2 Pasos (Activa)</p>
-                  <p className="perfil-security-sub">Protegido mediante Verificación por Correo</p>
+                  <p className="perfil-security-sub">Protegido mediante Verificación por Correo (RF-11)</p>
                 </div>
               </div>
               <button className="perfil-action-btn">RECONFIGURAR</button>
@@ -145,10 +216,19 @@ export default function PerfilPage() {
 
             <div className="perfil-security-row">
               <div>
-                <p className="perfil-security-title">CONTRASEÑA PRINCIPAL</p>
-                <p className="perfil-security-sub">Última actualización: hace 49 días</p>
+                <p className="perfil-security-title">CONTRASEÑA PRINCIPAL (RF-09, RF-15)</p>
+                <p className="perfil-security-sub">Actualiza tu clave de acceso de forma segura</p>
               </div>
-              <button className="perfil-action-btn">ACTUALIZAR CLAVE</button>
+              <button 
+                className="perfil-action-btn"
+                onClick={() => {
+                  setPasswordError(null)
+                  setPasswordSuccess(null)
+                  setIsPasswordModalOpen(true)
+                }}
+              >
+                ACTUALIZAR CLAVE
+              </button>
             </div>
           </div>
         </div>
@@ -157,7 +237,7 @@ export default function PerfilPage() {
         <div className="dash-card perfil-devices-card">
           <div className="perfil-section-head">
             <Monitor size={14} />
-            <p className="perfil-section-title">DISPOSITIVOS ACTIVOS</p>
+            <p className="perfil-section-title">DISPOSITIVOS ACTIVOS (RF-12, RF-13)</p>
           </div>
           <p className="cfg-hint" style={{ marginTop: -6, marginBottom: 16 }}>
             Monitorea tus conexiones recientes y revoca accesos sospechosos.
@@ -207,19 +287,114 @@ export default function PerfilPage() {
             })
           )}
 
-          {/* 👇 MODIFICACIÓN DEL INCISO C 👇 */}
           {sessions.length > 1 && (
             <button 
               className="perfil-revoke-all" 
               onClick={handleRevokeAll}
             >
-              CERRAR TODAS LAS DEMÁS SESIONES
+              CERRAR TODAS LAS DEMÁS SESIONES (RF-14)
             </button>
           )}
           {/* 👆 -------------------------- 👆 */}
-
         </div>
       </div>
+
+      {/* MODAL PARA CAMBIO DE CONTRASEÑA */}
+      {isPasswordModalOpen && (
+        <div className="modal-backdrop">
+          <div className="modal-container modal-container--sm fade-in" style={{ maxWidth: 420 }}>
+            <div className="modal-header">
+              <div className="modal-title-wrap">
+                <h3 className="modal-title">Cambio de Contraseña Maestra (RF-09, RF-15)</h3>
+                <p className="modal-subtitle">ACTUALIZACIÓN DE SEGURIDAD</p>
+              </div>
+              <button className="modal-close-btn" onClick={() => setIsPasswordModalOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdatePassword}>
+              <div className="modal-body" style={{ gap: 14 }}>
+                {passwordError && (
+                  <div style={{ background: '#fef2f2', border: '1px solid #fecaca', padding: '10px 12px', borderRadius: 6, fontSize: 13, color: '#dc2626', display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                    <span>{passwordError}</span>
+                  </div>
+                )}
+
+                {passwordSuccess && (
+                  <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '10px 12px', borderRadius: 6, fontSize: 13, color: '#16a34a', display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <CheckCircle size={16} style={{ flexShrink: 0 }} />
+                    <span>{passwordSuccess}</span>
+                  </div>
+                )}
+
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-mid)', display: 'block', marginBottom: 6 }}>
+                    Contraseña Actual *
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="••••••••"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13 }}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-mid)', display: 'block', marginBottom: 6 }}>
+                    Nueva Contraseña *
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Mínimo 6 caracteres"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13 }}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-mid)', display: 'block', marginBottom: 6 }}>
+                    Confirmar Nueva Contraseña *
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Repite la nueva contraseña"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13 }}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="modal-footer" style={{ justifyContent: 'flex-end', gap: 8 }}>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setIsPasswordModalOpen(false)}
+                  disabled={isSubmitting}
+                >
+                  CANCELAR
+                </Button>
+                <Button 
+                  type="submit" 
+                  variant="primary" 
+                  size="sm"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'GUARDANDO...' : 'GUARDAR NUEVA CLAVE'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

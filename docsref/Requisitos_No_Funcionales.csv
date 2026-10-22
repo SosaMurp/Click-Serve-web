@@ -1,0 +1,44 @@
+﻿ID,Atributo de Calidad,Nombre del Requerimiento,Descripción Completa
+RNF-01,1. Seguridad,Seguridad de Acceso y Anti-Enumeración,Las credenciales deben viajar obligatoriamente bajo HTTPS/SSL y almacenarse con hashing robusto. Los mensajes de error serán genéricos y el servidor aplicará un Rate Limiting estricto para mitigar ataques de fuerza bruta.
+RNF-02,1. Seguridad,Blindaje Financiero (PCI Compliance),Prohibición de almacenamiento local de CVV o PAN; solo se permite el uso de tokens de autorización obtenidos de la pasarela de pagos. Se ejecutará una purga inmediata de la memoria RAM tras la tokenización.
+RNF-03,1. Seguridad,Privacidad en Tránsito,La ubicación y datos PII deben viajar bajo TLS 1.3. El acceso a esta información por parte del técnico solo se habilitará mediante una validación en tiempo real en el servidor tras la confirmación del servicio.
+RNF-04,1. Seguridad,Autenticación de Misión Crítica (MFA),Implementación de TOTP ($RFC\ 6238$) con validación en el servidor y ventana de holgura de $\pm30s$. Destrucción de sesiones tras 3 intentos fallidos o 3 minutos de inactividad.
+RNF-05,1. Seguridad,Criptografía y Hardening de Red,Comunicación exclusiva bajo TLS 1.3 con cifrado $AES-256$. Procesamiento de contraseñas con $Argon2id$ en el backend para mitigar ataques de fuerza bruta.
+RNF-06,1. Seguridad,Protección de Capa de Red (WAF),Bloqueo automático de IPs mediante Rate Limiting y saneamiento estricto de entradas ($DOMPurify$) para prevenir inyecciones SQL y ataques $XSS$.
+RNF-07,1. Seguridad,Kill Switch de Emergencia,Capacidad de invalidar todos los tokens de acceso en nodos distribuidos (Redis Blacklist) en menos de 100ms ante brechas detectadas.
+RNF-08,1. Seguridad,Criptografía y Hardening,Procesamiento de contraseñas con Argon2 o Bcrypt en backend. Protección de documentos y sesiones con cifrado AES-256 en tránsito.
+RNF-09,1. Seguridad,Protección de Datos PII y Financieros,Enmascaramiento de CLABE estrictamente en el servidor. Prohibición total de almacenamiento local de datos financieros tras cerrar la sesión.
+RNF-10,1. Seguridad,Invalidación de Sesión Global,Inactivación de tokens JWT en $< 2s$ ante cambios de credenciales y destrucción total de tokens en servidor al cerrar sesión.
+RNF-11,2. Desempeño,Tiempos de Respuesta del Servidor,La carga de técnicos disponibles y la búsqueda de servicios deben completarse en menos de 2 a 5 segundos mediante peticiones optimizadas a la API.
+RNF-12,2. Desempeño,Comunicación de Baja Latencia,"El intercambio de mensajes y actualizaciones de estado deben realizarse vía WebSockets (wss://), garantizando que los cambios se reflejen en menos de 200ms a 500ms."
+RNF-13,2. Desempeño,Eficiencia de Transferencia,Implementación de Lazy Loading y compresión de imágenes en el servidor para minimizar el consumo de datos móviles y acelerar la visualización en red.
+RNF-14,2. Desempeño,Arquitectura de Cómputo Distribuido,"Uso de réplicas de lectura para consultas SQL pesadas y capas de caché (Redis) para KPIs, garantizando cargas del Dashboard en menos de 1.5s."
+RNF-15,2. Desempeño,Streaming de Datos,Generación de reportes masivos mediante Chunked Transfer desde el servidor para procesar datos sin saturar la RAM local del administrador.
+RNF-16,2. Desempeño,Comunicación Full-Duplex,Uso de WebSockets para el feed de actividad con latencias menores a 500ms y priorización de alertas SOS sobre el tráfico estándar.
+RNF-17,2. Desempeño,Latencia Crítica y Sincronización,Garantiza entrega de asignaciones en $< 2s$. Comunicación Full-Duplex (WSS) con latencia $< 200ms$; cierre de socket inmediato ante pérdida de red.
+RNF-18,2. Desempeño,Automatización de Flujo Online,Autoverificación de 2FA contra servidor al completar el último dígito y saltos de foco automáticos en $< 100ms$.
+RNF-19,3. Disponibilidad,Disponibilidad de Infraestructura,"El servicio debe garantizar un Uptime del 99.9%. En caso de caída del servidor, la aplicación informará inmediatamente al usuario que el servicio no está disponible, bloqueando cualquier acción local."
+RNF-20,4. Integridad,Atomicidad Transaccional (ACID),"Las operaciones críticas (pagos, cancelaciones) deben ser atómicas en el servidor. Si la conexión se interrumpe durante el proceso, la transacción debe fallar y revertirse completamente para evitar estados inconsistentes."
+RNF-21,4. Integridad,Coherencia de Estado en la Nube,El sistema debe normalizar los datos en el backend antes de la persistencia para asegurar la unicidad y coherencia entre lo que muestra el mapa y la base de datos central.
+RNF-22,4. Integridad,Atomicidad Transaccional (ACID),Resoluciones financieras encapsuladas en bloques $BEGIN/COMMIT$. Cualquier interrupción de conexión dispara un Rollback automático en el servidor.
+RNF-23,4. Integridad,Prevención de Colisiones Online,Mecanismos de bloqueo de registros (Pessimistic Locking) en el servidor para evitar que dos administradores editen el mismo ticket simultáneamente.
+RNF-24,4. Integridad,Atomicidad en el Backend (ACID),Operaciones financieras ejecutadas bajo transacciones ACID con Row Locks en la base de datos central para prevenir condiciones de carrera.
+RNF-25,5. Trazabilidad,Trazabilidad Centralizada (ELK Stack),"Registro en tiempo real de acciones administrativas incluyendo IP, User-Agent y marcas de tiempo $UTC$ del servidor con retención de 12 meses."
+RNF-26,5. Trazabilidad,Evidencia Inmutable,"Almacenamiento de documentos mediante URLs firmadas ($Presigned\ URLs$) con $TTL$ de 5 minutos, garantizando acceso mediante validación online."
+RNF-27,5. Trazabilidad,Inmutabilidad de Logs de Red,Registro síncrono de eventos con IP y ID de dispositivo enviado a un servidor de logs inalterable (WORM).
+RNF-28,6. Usabilidad,Feedback Visual de Conexión,"La interfaz debe mostrar indicadores claros de carga y estado de conexión. Si la señal se debilita, se debe notificar al usuario que la funcionalidad está limitada."
+RNF-29,6. Usabilidad,Validación de Formato en Tiempo Real,"Las validaciones (como el algoritmo de Luhn) se realizan en la interfaz para dar feedback instantáneo ($< 100ms$), pero el envío final siempre requerirá una validación de éxito del servidor."
+RNF-30,6. Usabilidad,Estándares de Interacción Táctica,Componentes de UI de $48 \times 48dp$ con respuesta háptica supeditada a la confirmación de recepción del servidor.
+RNF-31,6. Usabilidad,Jerarquía Visual y Carga Cognitiva,Uso de codificación cromática para estados del servidor y priorización de alertas críticas (SOS) mediante manejo de Z-index.
+RNF-32,7. Fiabilidad,Diseño Defensivo en Red,Los botones de pago y SOS deben incluir validaciones en el servidor para prevenir ejecuciones dobles causadas por latencia o múltiples clics.
+RNF-33,7. Fiabilidad,Idempotencia en Red,Uso obligatorio de Tokens de Idempotencia ($UUID\ v4$) válidos por 24 horas para evitar duplicados causados por latencia o reintentos del administrador.
+RNF-34,7. Fiabilidad,Mantenimiento de Estado y Heartbeat,"Validación de estado ""ONLINE"" mediante Heartbeat (MQTT/WSS). Detección de desconexión en $< 5s$ para remover al técnico de la asignación."
+RNF-35,7. Fiabilidad,Idempotencia de Red,Implementación de Tokens de Idempotencia para ignorar peticiones duplicadas generadas por latencia de red o reintentos del usuario.
+RNF-36,7. Fiabilidad,Tolerancia a Fallos (Circuit Breaker),"Timeouts de 5s en APIs externas (SEP/Bancos). Respuesta ""Servicio no disponible"" en tiempo real sin guardado local para procesamiento posterior."
+RNF-37,8. Exactitud,Precisión Matemática Centralizada,"Prohibición de aritmética de punto flotante en el cliente. Todos los cálculos se ejecutan en el backend con precisión $DECIMAL(19,4)$ y lógica de ""Suma Cero""."
+RNF-38,8. Exactitud,Optimización Geoespacial,Uso de índices $GIN/GiST$ en PostGIS para que las búsquedas geoespaciales y el radio de servicio no excedan los 200ms de respuesta.
+RNF-39,8. Exactitud,Precisión Matemática Centralizada,"Prohibición de cálculos financieros en dispositivos móviles. Uso de aritmética de punto fijo $DECIMAL(19,4)$ en el backend con respuesta $< 100ms$."
+RNF-40,9. Auditabilidad,Gestión de Sesiones y No Repudio,Limpieza de datos sensibles del historial mediante $history.replaceState()$ y validación de acciones críticas mediante mecanismos de Challenge-Response.
+RNF-41,9. Auditabilidad,Almacenamiento WORM,Logs administrativos inalterables en servicios de almacenamiento de objetos con políticas de retención legal que impiden cualquier edición o borrado.
+RNF-42,10. Mantenibilidad,Mantenimiento a Nivel de Red,Interruptor de mantenimiento en el balanceador de carga que corta el tráfico en $< 50ms$ y responde con un estado 503 Service Unavailable.
+RNF-43,11. Portabilidad,Telemetría y Precisión Geoespacial,Captura GPS con error de $\pm 5$ metros y transmisión cada 3s. Cálculos de ETA mediante consultas activas a APIs de tráfico en tiempo real.

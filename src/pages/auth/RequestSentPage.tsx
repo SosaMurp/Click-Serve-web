@@ -57,7 +57,7 @@ export default function RequestSentPage() {
         <div className="auth-form-header" style={{ textAlign: 'center' }}>
           <h2 className="auth-form-title">Solicitud Enviada</h2>
           <p className="auth-form-subtitle" style={{ marginTop: 8 }}>
-            Hemos enviado un código de activación de 4 dígitos a tu correo institucional.
+            Hemos enviado un código de activación de 4 dígitos a la dirección ingresada.
           </p>
         </div>
 

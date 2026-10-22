@@ -1,0 +1,126 @@
+﻿ID del Requisito,Modulo,Requisitos,Descripción
+RF-01,Autenticación,Cierre de Sesión Global,"El sistema debe proporcionar un botón de ""Cerrar Sesión"" accesible de forma transversal que destruya la sesión activa de forma segura y redirija al usuario a la pantalla principal de autenticación."
+RF-02,Autenticación,Gestión de Sesión,"El sistema debe iniciar una sesión segura y redirigir al usuario al Dashboard correspondiente (Administrador, Técnico o Cliente)."
+RF-03,Autenticación,Acceso a Registro,"El sistema debe permitir a los usuarios nuevos navegar hacia el flujo de creación de cuenta mediante el enlace ""¿No tienes cuenta? Crea una aquí""."
+RF-04,Autenticación,"Recuperación de Acceso (""Olvidaste tu contraseña"")","El sistema debe proporcionar un mecanismo seguro y automatizado para que los usuarios (Administradores, Técnicos y Clientes) puedan restablecer su clave de acceso en caso de pérdida, sin intervención manual directa del soporte técnico."
+RF-05,Autenticación,Usuarios Existentes,"El sistema debe proporcionar una función de redirección rápida a la vista de ""Inicio de Sesión"" para evitar la duplicidad de registros si el usuario ya cuenta con credenciales en el nodo LZC."
+RF-06,Autenticación,Confirmación y Redirección de Flujo,El sistema debe procesar la solicitud de creación de cuenta e inmediatamente redirigir al usuario.
+RF-07,Autenticación,Ejecución de Validación,El sistema debe activar el proceso de comprobación del código ingresado y redireccionar.
+RF-08,Autenticación,Solicitud de Reemisión de Código,El sistema debe proporcionar una función para generar y enviar un nuevo token de seguridad.
+RF-09,Autenticación,Cambio de Credenciales,El sistema debe procesar la actualización de la clave de acceso y cerrar las sesiones en otros dispositivos.
+RF-10,Autenticación,Recuperación y Verificación,El sistema debe permitir al usuario elegir el canal de recepción del código de seguridad (Email).
+RF-11,Autenticación,Ejecución de Autenticación,El sistema debe validar las credenciales y el segundo factor antes de redirigir al Dashboard Administrativo.
+RF-12,Autenticación,Sesiones Activas,"El sistema debe permitir la terminación remota de accesos no autorizados mediante la opción ""Desvincular""."
+RF-13,Autenticación,Gestión de Seguridad de Cuenta,El sistema debe permitir al usuario entrar a los flujos de robustecimiento de identidad.
+RF-14,Autenticación,Control de Sesiones Masivo,El sistema debe permitir al administrador ejecutar el cierre de todos los accesos secundarios de forma simultánea.
+RF-15,Autenticación,Actualización de Clave Maestra,"El sistema debe validar la ""CONTRASEÑA ACTUAL"" antes de permitir el registro de una nueva."
+RF-16,Gestión de Usuario,Eliminación de Cuenta,"El sistema debe proveer un flujo estandarizado para la baja definitiva de cuentas, exigiendo la validación de credenciales (protocolo de seguridad) antes de proceder con la eliminación o anonimización de los datos del usuario."
+RF-17,Gestión de Usuario,Generación de Respaldos,El administrador debe poder ejecutar la descarga del expediente técnico completo.
+RF-18,Gestión de Usuario,Selección de Perfil Operativo,"El sistema debe permitir al usuario definir su rol mediante un selector (""CLIENTE"" o ""TÉCNICO"")."
+RF-19,Gestión de Usuario,Herramienta de Selección de Fecha,"El sistema debe proporcionar un widget de calendario para capturar la ""FECHA DE NACIMIENTO""."
+RF-20,Gestión de Usuario,Apertura de Expediente de Técnico,"El sistema debe desplegar la ventana emergente de ""Perfil del Técnico"" con sus métricas detalladas."
+RF-21,Gestión de Usuario,Estado Operativo,El sistema debe permitir al técnico conmutar su disponibilidad.
+RF-22,Gestión de Usuario,Gestión de Identidad Visual,El sistema debe permitir al técnico iniciar el proceso de actualización de su fotografía profesional.
+RF-23,Gestión de Usuario,Control de Disponibilidad por Categoría,"El sistema debe permitir al usuario activar o desactivar la recepción de alertas para áreas específicas (como ""Soporte y Hardware"" o ""Redes y Conectividad"")."
+RF-24,Gestión de Usuario,Expansión de Perfil Profesional,El sistema debe permitir al técnico iniciar el flujo para registrar nuevas habilidades técnicas y subir su portafolio de evidencias.
+RF-25,Gestión de Usuario,Identidad y Credenciales,El sistema debe permitir la carga secuencial de documentos críticos.
+RF-26,Gestión de Usuario,Solicitud de Registro,El sistema debe proporcionar una vía para registrar nuevos cooperadores (coadministrador).
+RF-27,Gestión de Usuario,Envío y Redirección de Solicitud,"El sistema debe procesar los datos del nuevo operador e inmediatamente redirigir al usuario a la pantalla de ""Solicitud en Revisión""."
+RF-28,Gestión de Usuario,Estado Operativo de Expedientes,El sistema debe permitir el acceso prioritario a la gestión de expedientes.
+RF-29,Gestión de Usuario,Gestión de Verificaciones,El sistema debe permitir la auditoría directa de nuevos técnicos (ej. Roberto García).
+RF-30,Gestión de Usuario,Trazabilidad de Auditorías,El sistema debe permitir al administrador entrar al expediente detallado de una resolución (ej. Luis Mendoza).
+RF-31,Gestión de Usuario,Chequeo de Documentos,El sistema debe permitir la inspección de los archivos.
+RF-32,Gestión de Usuario,Control de Cuenta,El sistema debe habilitar la interrupción inmediata de las facultades del técnico o permitir la comunicación oficial.
+RF-33,Gestión de Usuario,Restauración de Facultades,El sistema debe permitir al administrador devolver el estatus operativo al técnico.
+RF-34,Gestión de Usuario,Control de Solicitudes,El sistema debe permitir al usuario filtrar los expedientes.
+RF-35,Gestión de Usuario,Ejecución de Auditoría Selectiva,El sistema debe permitir al administrador iniciar el proceso de revisión profunda.
+RF-36,Gestión de Usuario,Entrada al Expediente Individual,"El sistema debe redirigir al usuario hacia la vista de ""Perfil del Técnico"" para su auditoría detallada."
+RF-37,Gestión de Usuario,Segmentación y Búsqueda,"El sistema debe permitir al administrador alternar entre los listados de ""PRESTADORES DE SERVICIO"" y ""CLIENTES (USUARIOS)""."
+RF-38,Gestión de Usuario,Filtrado Operativo,"El sistema debe permitir al administrador depurar el listado según el ""Estado de Cuenta"" (Activo, En Revisión, Suspendido) y la ""Especialidad"" técnica para realizar auditorías por categorías."
+RF-39,Gestión de Usuario,Refinamiento de Datos,"El sistema debe permitir el acceso a criterios de segmentación avanzada al presionar el botón de ""FILTROS AVANZADOS""."
+RF-40,Gestión de Usuario,Resolución de Expediente,El sistema debe permitir al administrador formalizar el estatus del documento permitiendo la entrada a sus respectivos modales de confirmación.
+RF-41,Gestión de Usuario,Protocolo de Rechazo y Protección,El sistema debe permitir al administrador seleccionar un Motivo de Rechazo predefinido (ej. Sospecha de fraude) y poder bloquear al usuario.
+RF-42,Gestión de Usuario,Protocolo de Autorización y Firma,El sistema debe permitir al administrador otorgar el acceso operativo al técnico.
+RF-43,Servicios y Recursos,Sistema de Calificación Bidireccional,El sistema debe permitir tanto al cliente como al técnico otorgarse una calificación recíproca (escala de estrellas) y comentarios sobre la experiencia.
+RF-44,Servicios y Recursos,Filtrado de Hallazgos,"El sistema debe permitir al administrador segmentar los resultados de búsqueda entre técnicos, clientes o servicios."
+RF-45,Servicios y Recursos,Inicio de Solicitud de Servicio,"El sistema debe redirigir al cliente a la pantalla de ""Detalles del Servicio""."
+RF-46,Servicios y Recursos,Procesamiento de Datos y Avance,El sistema debe registrar la necesidad técnica y redirigir al cliente a la pantalla de selección de personal.
+RF-47,Servicios y Recursos,Activación de Asignación Veloz,"El sistema debe permitir al usuario delegar la elección al algoritmo mediante la ""Búsqueda automática""."
+RF-48,Servicios y Recursos,Selección por Recomendación Inteligente,El sistema debe permitir al cliente concretar la asignación del servicio basada en las diferentes categorías recomendaciones.
+RF-49,Servicios y Recursos,Confirmación de Contratación,El sistema debe permitir al usuario finalizar la elección del especialista y proceder a la confirmación del servicio.
+RF-50,Servicios y Recursos,Consulta de Base de Conocimientos,El usuario debe poder acceder a artículos de ayuda detallados y guías de usuario.
+RF-51,Servicios y Recursos,Abortar Proceso de Enlace,El sistema debe permitir al usuario detener el rastreo de técnicos y cancelar la solicitud de servicio activa.
+RF-52,Servicios y Recursos,Gestión de Servicios en Curso,El sistema debe permitir al usuario acceder al rastreo y detalles específicos de un servicio activo.
+RF-53,Servicios y Recursos,Validación de Término de Obra,"El sistema debe redirigir al cliente a la vista de ""Confirmar Servicio"" para validar la veracidad de la atención."
+RF-54,Servicios y Recursos,Confirmación de Atención,El sistema debe permitir al usuario validar que el técnico acudió y completó el servicio y redirigirlo a el rating del servicio.
+RF-55,Servicios y Recursos,Solicitud de Reasignación Prioritaria,El sistema debe permitir al usuario buscar un especialista alternativo para su necesidad técnica.
+RF-56,Servicios y Recursos,Denegación de Servicio,El usuario debe poder informar que el prestador nunca se presentó.
+RF-57,Servicios y Recursos,Revocación Total de Solicitud,El sistema debe permitir al usuario cerrar el reporte y cancelar definitivamente el servicio sin cargos adicionales.
+RF-58,Servicios y Recursos,Resolución de Solicitudes,El sistema debe permitir al técnico formalizar el compromiso laboral o declinar/descartar la propuesta de forma inmediata.
+RF-59,Servicios y Recursos,Detalle del Servicio,"El sistema debe permitir la redirección hacia la interfaz de ""Resumen de Servicio""."
+RF-60,Servicios y Recursos,Notificación de Arribo,El sistema debe permitir al técnico informar formalmente su llegada al punto de encuentro y continuar la siguiente fase del servicio.
+RF-61,Servicios y Recursos,Abortar Labor en Ruta,El técnico debe poder cancelar el servicio activo y suspender definitivamente el traslado.
+RF-62,Servicios y Recursos,Gestión de Labores,El sistema debe permitir al usuario marcar el cumplimiento de actividades y permitir la anexión de imprevistos.
+RF-63,Servicios y Recursos,Herramientas de Agenda,El sistema debe redireccionar hacia la interfaz de reprogramación.
+RF-64,Servicios y Recursos,Solicitud de Reprogramación,El sistema debe permitir al técnico definir nuevos términos de atención.
+RF-65,Servicios y Recursos,Documentación de Trabajo,"El sistema debe permitir la incorporación de nuevas imágenes mediante el botón ""AGREGAR"" y la inspección de la evidencia existente a través del ícono de lupa."
+RF-66,Facturación y Finanzas,Administración de Método de Pago,"El sistema debe permitir el control de los activos financieros, permitiendo al usuario visualizar los datos de su ""TARJETA PRINCIPAL"", o iniciar la incorporación de un nuevo instrumento."
+RF-67,Facturación y Finanzas,Priorización de Instrumento,El sistema debe permitir al usuario definir la relevancia de la tarjeta para servicios rápidos.
+RF-68,Facturación y Finanzas,Ejecución de Almacenamiento,El sistema debe procesar el registro definitivo del método de pago en la cuenta.
+RF-69,Facturación y Finanzas,Activación de Fase de Evaluación,"El sistema debe redirigir al usuario a la interfaz de ""Servicio Finalizado"" para procesar el pago y la calificación."
+RF-70,Facturación y Finanzas,Cierre de Transacción,"El sistema debe formalizar el pago y archivar el servicio en el historial únicamente cuando el usuario accione el botón ""ENVIAR Y FINALIZAR""."
+RF-71,Facturación y Finanzas,Administración de Credenciales Bancarias,"El sistema debe permitir al técnico registrar una nueva CLABE interbancaria y vincular su institución financiera, procesando el cambio únicamente al accionar el botón ""GUARDAR NUEVA CUENTA""."
+RF-72,Facturación y Finanzas,Configuración de Recibo,"El sistema debe permitir al usuario integrar costos adicionales (como refacciones o materiales) al interactuar con la opción ""+ AGREGAR OTRO CONCEPTO""."
+RF-73,Facturación y Finanzas,Disposición de Fondos,"El sistema debe mostrar el saldo disponible en tiempo real ($1,420.00 MXN) y permitir al usuario iniciar el flujo de transferencia hacia su cuenta bancaria al presionar el botón ""RETIRAR A BANCO""."
+RF-74,Facturación y Finanzas,Destino de Depósito,"El sistema debe permitir acceder a la edición de datos bancarios al accionar la opción ""CAMBIAR"" en la sección de cuenta de depósito."
+RF-75,Facturación y Finanzas,Transacciones,"El sistema debe facilitar el rastreo de ingresos y egresos (pagos de servicios, compensaciones o retiros) permitiendo el desplazamiento hacia el registro completo mediante la opción ""VER TODOS LOS MOVIMIENTOS""."
+RF-76,Facturación y Finanzas,Configuración de Retiro,El sistema debe permitir al usuario definir el monto a transferir y formalizar la operación financiera.
+RF-77,Facturación y Finanzas,Gestión de Tesorería,El sistema debe permitir al administrador autorizar transferencias de forma individual o masiva.
+RF-78,Facturación y Finanzas,Auditoría de Movimientos,El usuario debe poder denegar solicitudes de retiro sospechosas y generar respaldos contables de la actividad del día.
+RF-79,Facturación y Finanzas,Control de Cierre Financiero,"El usuario debe poder entrar a la visualización del comprobante de transferencia, informando sobre el folio de reasignación de fondos (ej. #TRX-889-C5)."
+RF-80,Facturación y Finanzas,Gestión de Sanciones y Evidencia,"El sistema debe permitir la generación de un respaldo físico del caso al accionar el botón ""EXPORTAR PDF""."
+RF-81,Facturación y Finanzas,Ejecución de Acciones Correctivas,El sistema debe permitir al usuario iniciar los flujos de solución económica o sanción administrativa.
+RF-82,Facturación y Finanzas,Liquidación de Conflictos,El sistema debe permitir al administrador definir el monto a devolver al cliente y configurar las multas operativas (ej. $100.00 MXN por violación de T&C).
+RF-83,Facturación y Finanzas,Formalización de Transacción,El sistema debe ejecutar el movimiento contable definitivo y actualizar la billetera del técnico.
+RF-84,Configuración,Retorno y Cancelación,EL sistema debe permitir al usuario abortar la acción actual sin guardar cambios y regresar a la vista inmediatamente anterior o al Dashboard principal.
+RF-85,Configuración,Ejecución de Persistencia Explícita,"El sistema debe procesar, validar y registrar definitivamente cualquier modificación en la configuración de la cuenta, preferencias o parámetros administrativos en la base de datos."
+RF-86,Configuración,Gestión de Perfil Personal,"Al presionar el ícono de avatar en la esquina superior derecha, el sistema debe redirigir al usuario a la configuración de su cuenta y datos personales."
+RF-87,Configuración,Módulos de Gestión,"El sistema debe permitir al usuario entrar a las interfaces específicas de direcciones, métodos de pago, seguridad y soporte técnico."
+RF-88,Configuración,Ejecución de Contacto Externo,El sistema debe habilitar el flujo para abrir el cliente de correo electrónico o la interfaz de marcación telefónica del dispositivo.
+RF-89,Configuración,Preferencias de Acceso y Alertas,El sistema debe permitir al usuario gestionar su experiencia operativa.
+RF-90,Configuración,Enlace Telefónico,El sistema debe habilitar el flujo para realizar una llamada de voz directa al cliente al interactuar con el ícono de teléfono ubicado en la tarjeta informativa.
+RF-91,Configuración,Configuración de Cuenta,El usuario debe poder acceder a los ajustes avanzados y de seguridad.
+RF-92,Configuración,Base de Conocimientos,"El sistema debe permitir el flujo hacia artículos informativos sobre pagos, validaciones o penalizaciones."
+RF-93,Configuración,Exportar Reporte,"El sistema debe permitir al usuario poder entrar a la configuración de descarga de información al presionar el botón ""EXPORTAR REPORTE""."
+RF-94,Configuración,Acciones de Soporte Administrativo,El sistema debe permitir generar un ticket de atención al cliente o imprimir el folio del servicio.
+RF-95,Configuración,Configuración de Reportes,"El sistema debe permitir al administrador definir el alcance temporal del archivo (Hoy, Últimos 7 días, Este mes o personalizado) y seleccionar las dimensiones de datos a incluir (Servicios, Finanzas o Auditoría de Identidad)."
+RF-96,Configuración,Ejecución de Descarga,"El sistema debe procesar la creación del documento en el formato elegido (.csv, .xlsx o .pdf)."
+RF-97,Configuración,Definición Financiera y Operativa,"El sistema debe permitir el ajuste de la ""Comisión Click&Serve"", el monto mínimo de retiro, el ""Radio Máximo de Servicio"" y el tiempo de tolerancia para técnicos."
+RF-98,Configuración,Calibración de Inteligencia Artificial,El sistema debe permitir definir la sensibilidad del motor de biometría.
+RF-99,Configuración,Contingencia,El sistema debe permitir al administrador la suspensión total de la plataforma por mantenimiento.
+RF-100,Geolocalización,Activación de Protocolo de Auxilio,El sistema debe iniciar inmediatamente el flujo de respuesta inmediata y compartir la ubicación GPS.
+RF-101,Geolocalización,Módulo de Administración de Direcciones,"El sistema debe permitir la anexión de nuevos domicilios y la ejecución de operaciones (edición, eliminación o priorización) sobre las tarjetas de ubicación."
+RF-102,Geolocalización,Actualización Geográfica,El sistema debe permitir al usuario ajustar el punto exacto de servicio y formalizar los cambios en la base de datos.
+RF-103,Geolocalización,Ejecución de Borrado,El usuario debe poder remover de forma definitiva el registro del domicilio de su cuenta.
+RF-104,Geolocalización,Asistencia Geográfica,El sistema debe permitir el flujo de guía satelital hacia la ubicación exacta del cliente.
+RF-105,Geolocalización,Ajuste de Visualización Geográfica,El sistema debe permitir al usuario recentrar la cámara sobre su posición actual en el mapa.
+RF-106,Geolocalización,Marcadores Geográficos,El sistema debe permitir al técnico elegir entre las diferentes solicitudes disponibles para desplegar sus detalles específicos.
+RF-107,Comunicación,Canal Directo de Soporte,El sistema debe permitir a cualquier usuario iniciar una sesión de mensajería en tiempo real con un asesor operativo.
+RF-108,Comunicación,Mensajería y Evidencia,"El sistema debe integrar un módulo de chat en tiempo real que permita el intercambio de mensajes de texto y la carga de archivos multimedia (fotografías, capturas de pantalla o documentos)."
+RF-109,Comunicación,Activación de Protocolo de Disputa,"El sistema debe permitir la redirección a la vista de ""Reportar Incidencia""."
+RF-110,Comunicación,Envío de Alerta a Soporte,El sistema debe registrar la queja y suspender temporalmente la orden.
+RF-111,Comunicación,Tránsito a la Gestión de Solicitudes,"El sistema debe permitir el acceso automático a la pestaña de ""NUEVAS"" dentro del panel de trabajo."
+RF-112,Comunicación,Comunicación Directa,El sistema debe permitir la apertura del canal de mensajería en tiempo real con el usuario solicitante.
+RF-113,Comunicación,Protocolo de Escalación Crítica,El sistema debe permitir al usuario elevar la prioridad de la conversación y activar una alerta de seguridad inmediata.
+RF-114,Comunicación,Clasificación de Incidencias,"El sistema debe permitir al administrador categorizar la problemática (ej. ""Cobro indebido"") y definir el Nivel de Prioridad (SLA) entre Baja, Media o Alta."
+RF-115,Comunicación,Apertura de Folio,El sistema debe procesar la creación del ticket y asignar un folio automático.
+RF-116,Comunicación,Despacho Multi-canal,"El sistema debe permitir al administrador elegir el medio de entrega entre ""APP PUSH"" o ""EMAIL"" y facilitar la redacción rápida."
+RF-117,Comunicación,Formalización de Comunicación,El sistema debe procesar el envío del mensaje personalizado.
+RF-118,Comunicación,Histórico de Soluciones,El sistema debe permitir la redirección hacia el registro de incidencias clausuradas.
+RF-119,Comunicación,Entrada al Expediente Finalizado,El administrador debe poder acceder al detalle de una resolución específica (ej. #CX-889).
+RF-120,Comunicación,Auditoría de Listado,"El sistema debe permitir al usuario segmentar los resultados por fecha o ""TIPOLOGÍA"" y el tránsito hacia diferentes dimensiones del caso."
+RF-121,Comunicación,Auditoría de Caso,"El sistema debe permitir al administrador visualizar el mensaje del cliente afectado (ej. José López), consultar el servicio vinculado (#SRV-108) y gestionar evidencias internas."
+RF-122,Gestión de Agenda,Consulta de Agenda,El sistema debe permitir al usuario redireccionarse hacia su historial o servicios pendientes.
+RF-123,Gestión de Agenda,Auditoría de Historial Pasado,El sistema debe permitir al usuario revisar los pormenores de trabajos finalizados o cancelados.
+RF-124,Gestión de Agenda,Gestión de Propuesta de Horario,El sistema debe permitir al usuario validar el nuevo horario sugerido o rechazarlo para proponer un tiempo distinto.
+RF-125,Gestión de Agenda,Resolución de Reprogramación,El sistema debe permitir al usuario formalizar el cambio total de la cita o decidir no realizar modificaciones.

@@ -10,23 +10,27 @@ import './auth.css'
 // Rol de administrador en la BD (id_rol = 3)
 const ADMIN_ROL_ID = 3
 
+// Componente principal de la página de Login
+// Este componente renderiza el formulario y maneja la interacción inicial del usuario.
 export default function LoginPage() {
-  const navigate = useNavigate()
+  const navigate = useNavigate() // Hook para redireccionar a otras páginas (ej. al paso 2FA)
   const login = useAuthStore(s => s.login)
 
-  const [showPass, setShowPass] = useState(false)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  // Estados locales para manejar los datos del formulario y la UI
+  const [showPass, setShowPass] = useState(false) // Controla si la contraseña es visible o enmascarada
+  const [email, setEmail] = useState('') // Almacena el correo ingresado
+  const [password, setPassword] = useState('') // Almacena la contraseña ingresada
+  const [loading, setLoading] = useState(false) // Estado de carga mientras se espera respuesta del servidor
+  const [error, setError] = useState('') // Almacena y muestra mensajes de error al usuario
 
+  // Función que se ejecuta al presionar el botón "AUTENTICAR EN EL SISTEMA"
   const handleSubmit = async (e: React.FormEvent) => {
-   e.preventDefault()
-   setError('')
-   setLoading(true)
+   e.preventDefault() // Evita que la página se recargue al enviar el formulario
+   setError('') // Limpiamos errores previos
+   setLoading(true) // Activamos el spinner del botón
 
    try {
-      // Tu api/auth.ts debe apuntar ahora a '/api/login-admin'
+      // Paso 1: Enviamos las credenciales al servidor a través de la función loginAdmin (definida en api/auth.ts)
    const data = await loginAdmin({ email, password })
 
       // Si el backend nos indica que las credenciales son correctas y mandó el código:

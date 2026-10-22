@@ -83,3 +83,103 @@
 .dash-feed-time { font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 3px; }
 .dash-feed-text { font-size: 12px; color: var(--text-dark); font-weight: 500; line-height: 1.4; }
 .dash-feed-sub  { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+/* ━━━━━━━━━━━━━━━━━━ DASHBOARD DYNAMIC EXTENSIONS ━━━━━━━━━━━━━━━━━━ */
+
+/* ── Chart card ── */
+.dash-chart-card { padding-bottom: 16px; }
+
+/* ── Skeleton pulse ── */
+.db-skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,.04) 25%, rgba(255,255,255,.09) 50%, rgba(255,255,255,.04) 75%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.4s infinite;
+}
+@keyframes skeletonShimmer {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+
+/* ── Error banner ── */
+.db-error-banner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 18px;
+  background: rgba(239,68,68,.08);
+  border: 1px solid rgba(239,68,68,.2);
+  border-radius: var(--radius-md);
+  font-size: 13px; color: var(--danger);
+}
+.db-retry-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin-left: auto; padding: 7px 14px;
+  background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.25);
+  border-radius: var(--radius-sm); font-family: inherit; font-size: 11px;
+  font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--danger); cursor: pointer;
+  transition: background var(--transition);
+}
+.db-retry-btn:hover { background: rgba(239,68,68,.2); }
+
+/* ── Live indicator ── */
+.db-live-indicator {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 9px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--accent);
+}
+.db-live-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent);
+  animation: dotBlink 1.2s infinite;
+}
+
+/* ── Chart legend ── */
+.db-chart-legend { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.db-legend-item  { display: flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 600; text-transform: capitalize; color: var(--text-mid); }
+.db-legend-dot   { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── Chart skeleton / empty ── */
+.db-chart-skeleton { padding: 8px 0; }
+.db-chart-empty {
+  height: 260px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 10px;
+  color: var(--text-muted); font-size: 13px;
+}
+
+/* ── Chart tooltip ── */
+.db-chart-tooltip {
+  background: var(--bg-card); border: 1px solid var(--border-dark);
+  border-radius: var(--radius-md); padding: 10px 14px;
+  box-shadow: var(--shadow-md); min-width: 140px;
+}
+.db-tooltip-label {
+  font-size: 10px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px;
+}
+.db-tooltip-item {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 500; margin-top: 3px;
+}
+.db-tooltip-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── Chart totals ── */
+.db-chart-totals { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.db-total-chip {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 99px;
+  font-size: 11px; font-weight: 700;
+}
+.db-total-chip--green { background: rgba(0,212,161,.1); color: var(--accent); border: 1px solid rgba(0,212,161,.2); }
+.db-total-chip--red   { background: rgba(239,68,68,.08); color: var(--danger); border: 1px solid rgba(239,68,68,.15); }
+
+/* ── Stat error placeholder ── */
+.db-stat-error {
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; min-height: 80px;
+}
+
+/* ── Pulse icon ── */
+.db-pulse { animation: pulse 1.8s infinite; }
+
+/* ── Recharts dark overrides ── */
+.recharts-cartesian-axis-tick text { fill: #94a3b8 !important; }
+.recharts-tooltip-cursor { stroke: rgba(255,255,255,.08) !important; }

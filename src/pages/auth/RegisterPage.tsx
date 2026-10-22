@@ -41,14 +41,14 @@ export default function RegisterPage() {
         nombre: form.nombre,
         apellidos: form.apellidos,
         telefono: form.telefono,
-        email: `${form.userEmail}@clickserve.com`,
+        email: form.userEmail,
         fechaNacimiento: form.fechaNacimiento,
         password: form.password,
-        perfil: 1, // id_rol Administrador
+        perfil: 3, // id_rol 3 = Administrador en la BD
       })
 
       // Guardar el email para usarlo en la pantalla de verificación
-      sessionStorage.setItem('pending_email', `${form.userEmail}@clickserve.com`)
+      sessionStorage.setItem('pending_email', form.userEmail)
       navigate('/register/sent')
 
     } catch (err: unknown) {
@@ -88,7 +88,7 @@ export default function RegisterPage() {
       </div>
 
       <form className="auth-form" onSubmit={handleSubmit} noValidate>
-        <Input label="Nombre Completo" placeholder="Ej. Ana Martínez Soto" value={form.nombre} onChange={set('nombre')} required />
+        <Input label="Nombres" placeholder="Ej. Ana Martínez Soto" value={form.nombre} onChange={set('nombre')} required />
 
         <div className="auth-row">
           <Input label="Apellidos" placeholder="Martínez Soto" value={form.apellidos} onChange={set('apellidos')} required />
@@ -106,20 +106,15 @@ export default function RegisterPage() {
           </div>
         </div>
 
-        {/* Email institucional */}
-        <div className="field">
-          <label className="field-label">Correo Institucional</label>
-          <div className="field-wrap">
-            <input
-              className="field-input pr-icon"
-              placeholder="usuario"
-              value={form.userEmail}
-              onChange={set('userEmail')}
-              required
-            />
-            <span className="field-suffix">@clickserve.com</span>
-          </div>
-        </div>
+        {/* Email */}
+        <Input 
+          label="Correo" 
+          type="email" 
+          placeholder="usuario@ejemplo.com" 
+          value={form.userEmail} 
+          onChange={set('userEmail')} 
+          required 
+        />
 
         <div className="auth-row">
           <Input label="Contraseña" type="password" placeholder="Min. 8 caracteres" value={form.password} onChange={set('password')} required />

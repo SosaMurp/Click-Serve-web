@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useLocation, useNavigate, Link } from 'react-router-dom'
 import { KeyRound, ArrowLeft } from 'lucide-react'
 import AuthLayout from '@components/layout/AuthLayout'
@@ -11,30 +11,23 @@ export default function TwoFactorPage() {
   const location = useLocation()
   const navigate = useNavigate()
   
-  // Traemos la función de login del store (la que quitamos del LoginPage)
   const login = useAuthStore(s => s.login)
-
-  // Recuperamos el correo que enviamos desde el LoginPage
   const email = location.state?.emailIngresado || ''
 
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const formRef = useRef<HTMLFormElement>(null)
 
-  // Efecto de seguridad: Si alguien entra a la URL directo sin pasar por el login,
-  // no tendrá un 'email' en el state, así que lo devolvemos al login.
   useEffect(() => {
     if (!email) {
       navigate('/login', { replace: true })
     }
   }, [email, navigate])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const executeVerify = async (codeToVerify: string) => {
     setError('')
-
-    // Validamos que el código tenga la longitud correcta
-    if (code.length !== 6) {
+    if (codeToVerify.length !== 6) {
       setError('El código debe tener 6 dígitos.')
       return
     }
@@ -42,15 +35,11 @@ export default function TwoFactorPage() {
     setLoading(true)
 
     try {
-      // Consumimos el endpoint que creamos en api/auth.ts
-      const data = await verifyAdminLogin(email, code)
-
-      // Verificamos que el backend nos haya enviado el usuario y el token definitivos
+      const data = await verifyAdminLogin(email, codeToVerify)
       if (data.usuario && data.token) {
-        // Guardamos la sesión en el store y localStorage
+        // Reemplazar historial para no-repudio (RNF-40)
+        window.history.replaceState(null, '', '/dashboard')
         login(data.usuario, data.token)
-        
-        // ¡Acceso concedido al Dashboard!
         navigate('/dashboard', { replace: true })
       } else {
         setError('Error al obtener los datos de la sesión.')
@@ -63,6 +52,22 @@ export default function TwoFactorPage() {
     }
   }
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    executeVerify(code)
+  }
+
+  // Auto-verificación al completar el 6º dígito en < 100ms (RNF-18)
+  const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/\D/g, '').slice(0, 6)
+    setCode(val)
+    setError('')
+
+    if (val.length === 6 && !loading) {
+      executeVerify(val)
+    }
+  }
+
   return (
     <AuthLayout
       leftTitle={<>Seguridad<br /><em>Avanzada</em></>}
@@ -70,12 +75,12 @@ export default function TwoFactorPage() {
     >
       <div className="auth-form-header">
         <h2 className="auth-form-title">Verificación 2FA</h2>
-        <p className="auth-form-subtitle">CÓDIGO DE SEGURIDAD REQUERIDO</p>
+        <p className="auth-form-subtitle">CÓDIGO DE SEGURIDAD REQUERIDO (RNF-04, RNF-18)</p>
       </div>
 
       <Badge variant="online" dot>CÓDIGO ENVIADO AL CORREO</Badge>
 
-      <form className="auth-form" onSubmit={handleSubmit} noValidate>
+      <form ref={formRef} className="auth-form" onSubmit={handleSubmit} noValidate>
         <p className="auth-hint" style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
           Hemos enviado un código de 6 dígitos a <br/><strong>{email}</strong>
         </p>
@@ -85,15 +90,11 @@ export default function TwoFactorPage() {
           type="text"
           placeholder="123456"
           value={code}
-          onChange={e => {
-            // Expresión regular para permitir SOLO NÚMEROS y máximo 6 caracteres
-            const val = e.target.value.replace(/\D/g, '').slice(0, 6)
-            setCode(val)
-            setError('')
-          }}
+          onChange={handleCodeChange}
           iconRight={<KeyRound size={15} />}
           required
-          autoFocus // Pone el cursor automáticamente en este campo
+          autoFocus
+          maxLength={6}
         />
 
         {error && (
