@@ -6,6 +6,7 @@ import LoginPage        from '@pages/auth/LoginPage'
 import RegisterPage     from '@pages/auth/RegisterPage'
 import RequestSentPage  from '@pages/auth/RequestSentPage'
 import TwoFactorPage    from '@pages/auth/TwoFactorPage'
+import RecoverPasswordPage from '@pages/auth/RecoverPasswordPage'
 import DashboardLayout  from '@components/layout/DashboardLayout'
 import DashboardPage    from '@pages/dashboard/DashboardPage'
 import ValidacionesPage from '@pages/validaciones/ValidacionesPage'
@@ -15,8 +16,8 @@ import FinanzasPage     from '@pages/finanzas/FinanzasPage'
 import ConfiguracionPage from '@pages/configuracion/ConfiguracionPage'
 import PerfilPage       from '@pages/perfil/PerfilPage'
 import SoportePage      from '@pages/soporte/SoportePage'
+import BiometriaPage    from '@pages/biometria/BiometriaPage'
 
-import RecoverPasswordPage from '@pages/auth/RecoverPasswordPage'
 
 /** Registra useNavigate en el helper imperativo para que Axios pueda redirigir */
 function NavigationRegistrar() {
@@ -52,6 +53,7 @@ export default function App() {
             <Route path="finanzas"       element={<FinanzasPage />} />
             <Route path="configuracion"  element={<ConfiguracionPage />} />
             <Route path="perfil"         element={<PerfilPage />} />
+            <Route path="biometria"      element={<BiometriaPage />} />
           </Route>
         </Route>
 

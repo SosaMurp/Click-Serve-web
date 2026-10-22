@@ -125,3 +125,24 @@ export async function revokeAllSessions() {
   const { data } = await api.delete('/auth/sessions')
   return data
 }
+
+/** Verificar código de recuperación de contraseña (4 dígitos) */
+export async function verifyRecovery(email: string, token: string) {
+  const { data } = await api.post('/verify-recovery', { email, token })
+  return data
+}
+
+/** Restablecer contraseña con código verificado */
+export async function resetPassword(email: string, newPassword: string) {
+  const { data } = await api.post('/reset-password', { email, newPassword })
+  return data
+}
+
+/** Cerrar sesión en el servidor revocando el sessionId actual */
+export async function logoutAdmin(): Promise<void> {
+  try {
+    await api.post('/logout')
+  } catch (err) {
+    console.warn('No se pudo revocar la sesión en el servidor:', err)
+  }
+}
