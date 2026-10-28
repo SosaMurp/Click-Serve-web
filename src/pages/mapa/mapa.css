@@ -256,7 +256,7 @@
 .mapa-log-type { font-size: 9px; font-weight: 700; letter-spacing: .06em; padding: 1px 7px; border-radius: 99px; }
 .mapa-log-type--danger  { background: rgba(239,68,68,.1);  color: var(--danger); }
 .mapa-log-type--info    { background: rgba(59,130,246,.1); color: var(--info); }
-.mapa-log-type--success { background: rgba(0,212,161,.1);  color: var(--accent-dim); }
+.mapa-log-type--success { background: rgba(232,89,12,.1);  color: var(--accent-dim); }
 
 .mapa-filter-btn {
   display: flex; align-items: center; justify-content: center; gap: 6px;

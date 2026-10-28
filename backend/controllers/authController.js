@@ -91,7 +91,7 @@ exports.login = async (req, res) => {
   try {
     const emailFormateado = email.trim().toLowerCase();
     const userQuery = await pool.query(
-      'SELECT id_usuario, nombre, apellido, telefono, correo, fecha_nacimiento, id_rol, estado_cuenta, contrasena, version_sesion FROM Usuarios WHERE correo = $1', 
+      'SELECT id_usuario, nombre, apellido, telefono, correo, fecha_nacimiento, id_rol, estado_cuenta, contrasena, version_sesion FROM Usuarios WHERE correo = $1',
       [emailFormateado]
     );
 
@@ -125,17 +125,17 @@ exports.login = async (req, res) => {
     const sessionId = sesionResult.rows[0].id_sesion;
 
     const token = jwt.sign(
-      { 
-        id_usuario: usuario.id_usuario, 
+      {
+        id_usuario: usuario.id_usuario,
         id_rol: usuario.id_rol,
         version_sesion: usuario.version_sesion || 1,
         sessionId: sessionId
-      }, 
+      },
       process.env.JWT_SECRET || 'fallback_secret_key',
       { expiresIn: '7d' }
     );
 
-    res.status(200).json({ 
+    res.status(200).json({
       mensaje: 'Inicio de sesión exitoso',
       usuario: usuario,
       token: token
@@ -161,7 +161,7 @@ exports.loginAdmin = async (req, res) => {
     const emailFormateado = email.trim().toLowerCase();
 
     const userQuery = await pool.query(
-      'SELECT id_usuario, nombre, id_rol, estado_cuenta, contrasena FROM Usuarios WHERE correo = $1', 
+      'SELECT id_usuario, nombre, id_rol, estado_cuenta, contrasena FROM Usuarios WHERE correo = $1',
       [emailFormateado]
     );
 
@@ -224,11 +224,18 @@ exports.loginAdmin = async (req, res) => {
       `
     };
 
-    await transporter.sendMail(mailOptions);
-    
-    res.status(200).json({ 
+    try {
+      await transporter.sendMail(mailOptions);
+    } catch (mailError) {
+      // Solo desarrollo: si el SMTP falla, el código ya quedó en tokens_temporales
+      // y se consulta con `node scripts/create-test-admin.js otp`.
+      if (process.env.DEV_SKIP_EMAIL !== 'true') throw mailError;
+      console.warn('[DEV_SKIP_EMAIL] No se envió el correo 2FA:', mailError.message);
+    }
+
+    res.status(200).json({
       mensaje: 'Credenciales correctas. Código enviado al correo.',
-      requiere2FA: true 
+      requiere2FA: true
     });
 
   } catch (error) {
@@ -249,16 +256,16 @@ exports.verifyLoginAdmin = async (req, res) => {
 
   try {
     const emailFormateado = email.trim().toLowerCase();
-    
+
     const userQuery = await pool.query(
-      'SELECT id_usuario, id_rol, version_sesion, nombre, apellido, correo, estado_cuenta FROM Usuarios WHERE correo = $1 AND id_rol = 3', 
+      'SELECT id_usuario, id_rol, version_sesion, nombre, apellido, correo, estado_cuenta FROM Usuarios WHERE correo = $1 AND id_rol = 3',
       [emailFormateado]
     );
 
     if (userQuery.rows.length === 0) {
       return res.status(400).json({ error: 'Código de seguridad incorrecto o expirado.' });
     }
-    
+
     const usuario = userQuery.rows[0];
 
     // Verificar token sin usar y que NO haya expirado (fecha_expiracion > CURRENT_TIMESTAMP)
@@ -291,17 +298,17 @@ exports.verifyLoginAdmin = async (req, res) => {
     const sessionId = sesionResult.rows[0].id_sesion;
 
     const jwtToken = jwt.sign(
-      { 
+      {
         id_usuario: usuario.id_usuario,
         id_rol: usuario.id_rol,
         version_sesion: usuario.version_sesion || 1,
         sessionId: sessionId
-      }, 
+      },
       process.env.JWT_SECRET || 'fallback_secret_key',
       { expiresIn: '8h' }
     );
 
-    res.status(200).json({ 
+    res.status(200).json({
       mensaje: 'Acceso autorizado',
       usuario: usuario,
       token: jwtToken
@@ -362,7 +369,7 @@ exports.resendCode = async (req, res) => {
   try {
     const emailFormateado = email.trim().toLowerCase();
     const userQuery = await pool.query('SELECT id_usuario, nombre FROM Usuarios WHERE correo = $1', [emailFormateado]);
-    
+
     // Anti-enumeración de usuarios: respuesta genérica
     if (userQuery.rows.length === 0) {
       return res.status(200).json({ mensaje: 'Si la cuenta está pendiente de activación, se ha enviado un nuevo código.' });
@@ -385,7 +392,7 @@ exports.resendCode = async (req, res) => {
     );
 
     const mailOptions = {
-      from: '"Click & Serve" <projectcys1@gmail.com>', 
+      from: '"Click & Serve" <projectcys1@gmail.com>',
       to: emailFormateado,
       subject: 'Nuevo código de verificación - Click & Serve',
       html: `
@@ -418,7 +425,7 @@ exports.resendCode = async (req, res) => {
 // - Generación CSPRNG de código OTP de 4 dígitos
 // - Caducidad explícita de 15 minutos en BD
 exports.requestRecovery = async (req, res) => {
-  const { email } = req.body; 
+  const { email } = req.body;
 
   if (!email || typeof email !== 'string') {
     return res.status(400).json({ error: 'El correo electrónico es requerido.' });
@@ -426,7 +433,7 @@ exports.requestRecovery = async (req, res) => {
 
   try {
     const emailFormateado = email.trim().toLowerCase();
-    
+
     // Consulta al usuario comprobando id_rol y estado_cuenta
     const userQuery = await pool.query(
       'SELECT id_usuario, nombre, id_rol, estado_cuenta FROM Usuarios WHERE correo = $1',
@@ -434,8 +441,8 @@ exports.requestRecovery = async (req, res) => {
     );
 
     // Respuesta unificada que previene el User Enumeration
-    const genericResponse = { 
-      mensaje: 'Si el correo está registrado y activo, se ha enviado un código de recuperación.' 
+    const genericResponse = {
+      mensaje: 'Si el correo está registrado y activo, se ha enviado un código de recuperación.'
     };
 
     // 1. Si no existe ningún usuario con ese correo, responder con mensaje neutro sin filtrar información
@@ -475,7 +482,7 @@ exports.requestRecovery = async (req, res) => {
     );
 
     const mailOptions = {
-      from: '"Click & Serve" <projectcys1@gmail.com>', 
+      from: '"Click & Serve" <projectcys1@gmail.com>',
       to: emailFormateado,
       subject: 'Recuperación de contraseña - Click & Serve',
       html: `
@@ -511,7 +518,7 @@ exports.verifyRecovery = async (req, res) => {
   try {
     const emailFormateado = email.trim().toLowerCase();
     const userQuery = await pool.query(
-      'SELECT id_usuario, id_rol, estado_cuenta FROM Usuarios WHERE correo = $1', 
+      'SELECT id_usuario, id_rol, estado_cuenta FROM Usuarios WHERE correo = $1',
       [emailFormateado]
     );
 
@@ -567,7 +574,7 @@ exports.resetPassword = async (req, res) => {
   try {
     const emailFormateado = email.trim().toLowerCase();
     const userQuery = await pool.query(
-      'SELECT id_usuario, id_rol FROM Usuarios WHERE correo = $1', 
+      'SELECT id_usuario, id_rol FROM Usuarios WHERE correo = $1',
       [emailFormateado]
     );
 
@@ -597,7 +604,7 @@ exports.resetPassword = async (req, res) => {
     await pool.query(
       `UPDATE Usuarios 
        SET contrasena = $1, version_sesion = COALESCE(version_sesion, 1) + 1, fecha_actualizacion_contrasena = CURRENT_TIMESTAMP 
-       WHERE id_usuario = $2`, 
+       WHERE id_usuario = $2`,
       [hashedPassword, idUsuario]
     );
 
@@ -633,10 +640,10 @@ exports.updatePassword = async (req, res) => {
 
   try {
     const userQuery = await pool.query(
-      'SELECT id_usuario, contrasena, version_sesion, id_rol FROM Usuarios WHERE id_usuario = $1', 
+      'SELECT id_usuario, contrasena, version_sesion, id_rol FROM Usuarios WHERE id_usuario = $1',
       [req.user.id_usuario]
     );
-    
+
     if (userQuery.rows.length === 0) {
       return res.status(404).json({ error: 'Usuario no encontrado.' });
     }
@@ -653,7 +660,7 @@ exports.updatePassword = async (req, res) => {
     const newVersionSesion = (usuario.version_sesion || 1) + 1;
 
     await pool.query(
-      'UPDATE Usuarios SET contrasena = $1, version_sesion = $2, fecha_actualizacion_contrasena = CURRENT_TIMESTAMP WHERE id_usuario = $3', 
+      'UPDATE Usuarios SET contrasena = $1, version_sesion = $2, fecha_actualizacion_contrasena = CURRENT_TIMESTAMP WHERE id_usuario = $3',
       [hashedPassword, newVersionSesion, usuario.id_usuario]
     );
 
@@ -666,17 +673,17 @@ exports.updatePassword = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { 
-        id_usuario: usuario.id_usuario, 
+      {
+        id_usuario: usuario.id_usuario,
         id_rol: usuario.id_rol,
         version_sesion: newVersionSesion,
         sessionId: req.user.sessionId
-      }, 
+      },
       process.env.JWT_SECRET || 'fallback_secret_key',
       { expiresIn: '7d' }
     );
 
-    res.status(200).json({ 
+    res.status(200).json({
       mensaje: 'Contraseña actualizada exitosamente.',
       token: token
     });
@@ -695,7 +702,7 @@ exports.getSessions = async (req, res) => {
       "SELECT id_sesion, dispositivo, fecha_creacion FROM sesiones_activas WHERE id_usuario = $1 AND id_rol = $2 AND estado = 'activa' ORDER BY fecha_creacion DESC",
       [userId, userRol]
     );
-    
+
     const sesiones = query.rows.map(sesion => ({
       ...sesion,
       es_sesion_actual: sesion.id_sesion === req.user.sessionId

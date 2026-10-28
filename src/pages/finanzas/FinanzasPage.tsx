@@ -1,9 +1,14 @@
 import { useState } from 'react'
-import { Download, TrendingUp, Clock, CheckCircle, X, Check } from 'lucide-react'
+import { Download, Clock, Wallet, Percent, X, Check } from 'lucide-react'
+import { StatCard } from '@components/ui'
 import WithdrawalDetailModal from '@components/modals/WithdrawalDetailModal'
 import './finanzas.css'
 
-import { useWithdrawals, useApproveWithdrawal } from '../../hooks/useAdminQueries'
+import { useWithdrawals, useApproveWithdrawal, usePlatformSettings } from '../../hooks/useAdminQueries'
+import { useDashboardStats } from '@hooks/useDashboard'
+
+const fmtMXN = (n: number) =>
+  new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n)
 
 export default function FinanzasPage() {
   const [selected, setSelected] = useState<Set<number>>(new Set())
@@ -14,6 +19,14 @@ export default function FinanzasPage() {
   const statusFilter = filter === 'pendientes' ? 'Pendiente' : undefined
   const { data: retirosData, isLoading, isError } = useWithdrawals(statusFilter)
   const approveMutation = useApproveWithdrawal()
+
+  // Datos de las tarjetas (independientes del filtro de la tabla)
+  const pendientes = useWithdrawals('Pendiente')
+  const stats = useDashboardStats()
+  const settings = usePlatformSettings()
+  const totalPendiente = (pendientes.data ?? []).reduce((acc, r) => acc + Number(r.monto || 0), 0)
+  const ingresosHoy = Number(stats.data?.ingresos_hoy ?? 0)
+  const comisionPct = Number(settings.data?.comision_porcentaje ?? 0)
 
   const WITHDRAWALS = (retirosData || []).map(r => ({
     realId: r.id_retiro,
@@ -74,56 +87,45 @@ export default function FinanzasPage() {
     <div className="fin-page fade-in">
       <div className="dash-page-header">
         <div>
-          <h1 className="dash-page-title">Centro Financiero (RF-66 A RF-83)</h1>
-          <p className="dash-page-sub">GESTIÓN DE RETIROS Y BÓVEDA</p>
+          <h1 className="dash-page-title">Finanzas</h1>
+          <p className="dash-page-sub">Retiros de técnicos e ingresos de la plataforma</p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button className="dash-export-btn" onClick={handleExportCSV}>
-            <Download size={13} /> EXPORTAR CSV (RF-78)
+            <Download size={13} /> Exportar CSV
           </button>
           <button className="fin-approve-batch" onClick={handleApproveBatch}>
-            APROBAR LOTE ({selected.size}) (RF-77)
+            Aprobar seleccionados ({selected.size})
           </button>
         </div>
       </div>
 
       {/* Stat cards */}
-      <div className="fin-stats-grid">
-        <div className="fin-stat fin-stat--warning">
-          <div className="fin-stat-body">
-            <p className="fin-stat-label">RETIROS PENDIENTES</p>
-            <p className="fin-stat-value">...</p>
-            <p className="fin-stat-sub">en {isLoading ? '...' : WITHDRAWALS.length} solicitudes activas</p>
-          </div>
-          <div className="fin-stat-icon"><Clock size={28} /></div>
-        </div>
-
-        <div className="fin-stat fin-stat--default">
-          <div className="fin-stat-body">
-            <p className="fin-stat-label">PROCESADO (HOY)</p>
-            <p className="fin-stat-value">...</p>
-            <p className="fin-stat-ok"><CheckCircle size={11} /> liquidez correctamente</p>
-          </div>
-          <div className="fin-stat-icon"><CheckCircle size={28} /></div>
-        </div>
-
-        <div className="fin-stat fin-stat--dark">
-          <div className="fin-stat-body">
-            <p className="fin-stat-label" style={{ color: 'rgba(255,255,255,.5)' }}>COMISIONES LZC (HOY)</p>
-            <p className="fin-stat-value" style={{ color: '#fff' }}>...</p>
-            <p className="fin-stat-sub" style={{ color: 'rgba(255,255,255,.4)' }}>Fondo de operación de plataforma</p>
-          </div>
-          <div className="fin-stat-icon" style={{ color: 'rgba(255,255,255,.3)' }}><TrendingUp size={28} /></div>
-        </div>
+      <div className="stat-grid">
+        <StatCard
+          label="Retiros pendientes" tone="amber" icon={<Clock size={15} />}
+          value={pendientes.isLoading ? '—' : fmtMXN(totalPendiente)}
+          note={pendientes.isLoading ? 'Cargando…' : `${pendientes.data?.length ?? 0} solicitudes por autorizar`}
+        />
+        <StatCard
+          label="Ingresos de hoy" tone="green" icon={<Wallet size={15} />}
+          value={stats.isLoading ? '—' : fmtMXN(ingresosHoy)}
+          note="Pagos confirmados"
+        />
+        <StatCard
+          label="Comisión de plataforma" tone="orange" icon={<Percent size={15} />}
+          value={stats.isLoading || settings.isLoading ? '—' : fmtMXN(ingresosHoy * comisionPct / 100)}
+          note={`Hoy · ${comisionPct}% de los ingresos`}
+        />
       </div>
 
       {/* Queue */}
       <div className="dash-card" style={{ padding: 0, overflow: 'hidden' }}>
         <div className="fin-queue-header">
-          <h2 className="dash-card-title" style={{ padding: '16px 20px 0' }}>Cola de Autorización de Retiros</h2>
+          <h2 className="dash-card-title" style={{ padding: '16px 20px 0' }}>Solicitudes de retiro</h2>
           <div className="fin-filter-tabs">
-            <button className={`fin-filter-tab ${filter === 'todos' ? 'active' : ''}`} onClick={() => setFilter('todos')}>TODOS</button>
-            <button className={`fin-filter-tab ${filter === 'pendientes' ? 'active' : ''}`} onClick={() => setFilter('pendientes')}>PENDIENTES</button>
+            <button className={`fin-filter-tab ${filter === 'todos' ? 'active' : ''}`} onClick={() => setFilter('todos')}>Todos</button>
+            <button className={`fin-filter-tab ${filter === 'pendientes' ? 'active' : ''}`} onClick={() => setFilter('pendientes')}>Pendientes</button>
           </div>
         </div>
 

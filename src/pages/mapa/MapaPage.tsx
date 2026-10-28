@@ -49,7 +49,7 @@ const NODES: TelemetriaNode[] = [
     lat: 17.9593,
     lng: -102.2006,
     status: 'online',
-    color: '#00d4a1',
+    color: '#E8590C',
     serviceId: 'SRV-108',
     techName: 'Roberto García',
     clientName: 'José López',
@@ -91,7 +91,7 @@ const NODES: TelemetriaNode[] = [
     lat: 17.9620,
     lng: -102.1860,
     status: 'online',
-    color: '#00d4a1',
+    color: '#E8590C',
     serviceId: 'SRV-404',
     techName: 'Luis Mendoza',
     clientName: 'Residencial Fideicomiso',
@@ -230,7 +230,7 @@ export default function MapaPage() {
           </div>
 
           <div className="mapa-badge-city">
-            <MapPin size={12} color="#00d4a1" />
+            <MapPin size={12} color="#E8590C" />
             <span>Lázaro Cárdenas, Michoacán (Nodo Operativo)</span>
           </div>
 

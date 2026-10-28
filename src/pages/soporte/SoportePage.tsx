@@ -1,15 +1,15 @@
 import { useState } from 'react'
-import { Search, Filter, ChevronLeft, ChevronRight, MessageSquare, AlertCircle } from 'lucide-react'
-import { Badge } from '@components/ui'
+import { Search, Filter, ChevronLeft, ChevronRight, MessageSquare, AlertCircle, Inbox, Loader, Clock, CheckCircle2 } from 'lucide-react'
+import { Badge, StatCard } from '@components/ui'
 import DisputeResolutionModal from '@components/modals/DisputeResolutionModal'
 import './soporte.css'
 
 const STATS = [
-  { label: 'TICKETS ABIERTOS',   value: '4',  icon: '✉', color: 'default' },
-  { label: 'PROGRESO (H/S)',     value: '0',  icon: '⏳', color: 'default' },
-  { label: 'TIEMPO MEDIO (DÍA)', value: '14', sub: 'hs', icon: '⏱', color: 'default' },
-  { label: 'RESUELTOS (MES)',    value: '29', icon: '✓',  color: 'accent' },
-]
+  { label: 'Tickets abiertos', value: '4',  icon: <Inbox size={15} />,        tone: 'amber', note: 'Esperando respuesta' },
+  { label: 'En progreso',      value: '0',  icon: <Loader size={15} />,       tone: 'blue',  note: 'Asignados a un agente' },
+  { label: 'Tiempo medio',     value: '14', icon: <Clock size={15} />,        tone: 'navy',  note: 'Hasta la resolución', suffix: 'h' },
+  { label: 'Resueltos',        value: '29', icon: <CheckCircle2 size={15} />, tone: 'green', note: 'En este mes' },
+] as const
 
 type TicketStatus = 'PENDIENTE DE RESOLUCIÓN' | 'SANS ACCIONES' | 'ESCALADO A TI URGENTE'
 type StatusVariant = 'warning' | 'neutral' | 'danger'
@@ -67,26 +67,21 @@ export default function SoportePage() {
     <div className="sop-page fade-in">
       <div className="dash-page-header">
         <div>
-          <h1 className="dash-page-title">Centro de Soporte & Disputas (RF-107 A RF-121)</h1>
-          <p className="dash-page-sub">GESTIÓN DE DISPUTAS Y ATENCIÓN AL CLIENTE</p>
+          <h1 className="dash-page-title">Soporte y disputas</h1>
+          <p className="dash-page-sub">Atención a clientes y técnicos</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="sop-filter-pill sop-filter-pill--active">ABIERTO (4)</button>
-          <button className="sop-filter-pill">EN PROGRESO (0)</button>
-          <button className="sop-filter-pill">RESUELTO</button>
+          <button className="sop-filter-pill sop-filter-pill--active">Abiertos (4)</button>
+          <button className="sop-filter-pill">En progreso (0)</button>
+          <button className="sop-filter-pill">Resueltos</button>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="sop-stats-grid">
+      <div className="stat-grid">
         {STATS.map(s => (
-          <div key={s.label} className={`sop-stat ${s.color === 'accent' ? 'sop-stat--accent' : ''}`}>
-            <span className="sop-stat-icon">{s.icon}</span>
-            <div>
-              <p className="sop-stat-val">{s.value}{s.sub && <span className="sop-stat-sub"> {s.sub}</span>}</p>
-              <p className="sop-stat-label">{s.label}</p>
-            </div>
-          </div>
+          <StatCard key={s.label} label={s.label} value={s.value} icon={s.icon} tone={s.tone}
+            note={s.note} suffix={'suffix' in s ? s.suffix : undefined} />
         ))}
       </div>
 

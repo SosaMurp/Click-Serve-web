@@ -106,8 +106,6 @@ export default function RecoverPasswordPage() {
             <p className="auth-form-subtitle">IDENTIFICACIÓN DE OPERADOR</p>
           </div>
 
-          <Badge variant="online" dot>PROTOCOLO DE SEGURIDAD NODO LZC</Badge>
-
           <form className="auth-form" onSubmit={handleRequest} noValidate style={{ marginTop: 20 }}>
             <p className="auth-hint" style={{ marginBottom: 16 }}>
               Ingresa el correo registrado asociado a tu cuenta de operador. Te enviaremos un código temporal de 4 dígitos.

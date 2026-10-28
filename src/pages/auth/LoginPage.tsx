@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff, User } from 'lucide-react'
 import AuthLayout from '@components/layout/AuthLayout'
-import { Button, Input, Badge } from '@components/ui'
+import { Button, Input } from '@components/ui'
 import { loginAdmin } from '@api/auth'
 import { useAuthStore } from '@store/authStore'
 import './auth.css'
@@ -65,8 +65,6 @@ export default function LoginPage() {
         <h2 className="auth-form-title">Bienvenido de nuevo</h2>
         <p className="auth-form-subtitle">AUTENTICACIÓN REQUERIDA</p>
       </div>
-
-      <Badge variant="online" dot>SISTEMAS EN LÍNEA • NODO LZC ACTIVO</Badge>
 
       <form className="auth-form" onSubmit={handleSubmit} noValidate>
         <Input

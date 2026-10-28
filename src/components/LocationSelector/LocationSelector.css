@@ -12,7 +12,7 @@
   background: var(--bg-card, #1a2235);
   border: 1.5px solid var(--border-dark, rgba(255,255,255,.08));
   border-radius: var(--radius-lg, 16px);
-  animation: fadeIn .35s ease both;
+  animation: fadeIn .35s ease backwards;
 }
 .ls-root--disabled { opacity: .55; pointer-events: none; }
 
@@ -29,7 +29,7 @@
   align-items: center;
   gap: 8px;
 }
-.ls-header-icon { color: var(--accent, #00d4a1); flex-shrink: 0; }
+.ls-header-icon { color: var(--accent, #E8590C); flex-shrink: 0; }
 .ls-header-title {
   font-size: 12px;
   font-weight: 700;
@@ -53,13 +53,13 @@
   text-transform: uppercase;
   cursor: pointer;
   transition: all .18s ease;
-  background: rgba(0, 212, 161, .12);
-  color: var(--accent, #00d4a1);
-  border: 1.5px solid rgba(0, 212, 161, .25);
+  background: rgba(232,89,12, .12);
+  color: var(--accent, #E8590C);
+  border: 1.5px solid rgba(232,89,12, .25);
 }
 .ls-geo-btn:hover:not(:disabled) {
-  background: rgba(0, 212, 161, .22);
-  box-shadow: 0 0 0 3px rgba(0, 212, 161, .12);
+  background: rgba(232,89,12, .22);
+  box-shadow: 0 0 0 3px rgba(232,89,12, .12);
   transform: translateY(-1px);
 }
 .ls-geo-btn:disabled { opacity: .5; cursor: not-allowed; }
@@ -70,9 +70,9 @@
   border-color: rgba(59, 130, 246, .25);
 }
 .ls-geo-btn--success {
-  background: rgba(0, 212, 161, .18);
-  color: var(--accent, #00d4a1);
-  border-color: rgba(0, 212, 161, .4);
+  background: rgba(232,89,12, .18);
+  color: var(--accent, #E8590C);
+  border-color: rgba(232,89,12, .4);
 }
 .ls-geo-btn--error {
   background: rgba(239, 68, 68, .12);
@@ -122,8 +122,8 @@
   position: relative;
 }
 .ls-map-wrapper:hover {
-  border-color: rgba(0, 212, 161, .3);
-  box-shadow: 0 0 0 3px rgba(0, 212, 161, .08);
+  border-color: rgba(232,89,12, .3);
+  box-shadow: 0 0 0 3px rgba(232,89,12, .08);
 }
 .ls-map-wrapper--error {
   border-color: var(--danger, #ef4444) !important;
@@ -138,25 +138,25 @@
 }
 .leaflet-control-zoom a:hover {
   background: var(--bg-panel, #0e1525) !important;
-  color: var(--accent, #00d4a1) !important;
+  color: var(--accent, #E8590C) !important;
 }
 .leaflet-control-attribution {
   background: rgba(8, 13, 24, .75) !important;
   color: var(--text-muted, #94a3b8) !important;
   font-size: 10px !important;
 }
-.leaflet-control-attribution a { color: var(--accent, #00d4a1) !important; }
+.leaflet-control-attribution a { color: var(--accent, #E8590C) !important; }
 
 /* ── Custom marker ── */
 .ls-custom-marker { background: transparent !important; border: none !important; }
 .ls-marker-pin {
   width: 36px;
   height: 48px;
-  color: var(--accent, #00d4a1);
-  filter: drop-shadow(0 2px 8px rgba(0, 212, 161, .5));
+  color: var(--accent, #E8590C);
+  filter: drop-shadow(0 2px 8px rgba(232,89,12, .5));
   transition: transform .15s ease;
 }
-.ls-marker-pin svg { width: 100%; height: 100%; fill: rgba(0, 212, 161, .15); }
+.ls-marker-pin svg { width: 100%; height: 100%; fill: rgba(232,89,12, .15); }
 .ls-marker-pin:hover { transform: scale(1.1); }
 
 /* ── Coord chips ── */
@@ -171,8 +171,8 @@
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  background: rgba(0, 212, 161, .08);
-  border: 1px solid rgba(0, 212, 161, .2);
+  background: rgba(232,89,12, .08);
+  border: 1px solid rgba(232,89,12, .2);
   border-radius: 99px;
 }
 .ls-coord-label {
@@ -180,7 +180,7 @@
   font-weight: 800;
   letter-spacing: .1em;
   text-transform: uppercase;
-  color: var(--accent, #00d4a1);
+  color: var(--accent, #E8590C);
 }
 .ls-coord-value {
   font-size: 12px;
@@ -240,8 +240,8 @@
 }
 .ls-field-input::placeholder { color: rgba(148, 163, 184, .5); }
 .ls-field-input:focus {
-  border-color: var(--accent-dim, #00a87e);
-  box-shadow: 0 0 0 3px rgba(0, 212, 161, .12);
+  border-color: var(--accent-dim, #C2410C);
+  box-shadow: 0 0 0 3px rgba(232,89,12, .12);
 }
 .ls-address-field--error .ls-field-input {
   border-color: var(--danger, #ef4444);

@@ -76,7 +76,7 @@ export default function TechProfileModal({ isOpen, onClose, techData }: TechProf
 
   return (
     <div className="modal-backdrop">
-      <div className="modal-container modal-container--lg fade-in">
+      <div className="modal-container modal-container--lg modal-container--fixed fade-in">
         {/* Header */}
         <div className="modal-header">
           <div className="modal-title-wrap">

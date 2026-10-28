@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Settings2, Shield, MapPin, AlertTriangle, Save, RotateCcw, CheckCircle } from 'lucide-react'
+import { Settings2, Shield, MapPin, AlertTriangle, Save, CheckCircle } from 'lucide-react'
 import MaintenanceOverlay from '@components/layout/MaintenanceOverlay'
 import './configuracion.css'
 
@@ -65,20 +65,16 @@ export default function ConfiguracionPage() {
       {/* Header */}
       <div className="dash-page-header">
         <div>
-          <h1 className="dash-page-title">Parámetros del Sistema (RF-84 A RF-99)</h1>
-          <p className="dash-page-sub">NIVEL SUPERADMINISTRADOR</p>
+          <h1 className="dash-page-title">Configuración</h1>
+          <p className="dash-page-sub">Parámetros globales de la plataforma</p>
         </div>
         <div className="cfg-header-right">
           {savedSuccess && (
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-dim)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <CheckCircle size={14} /> Cambios guardados en BD (RF-85)
-            </span>
+            <span className="cfg-status cfg-status--ok"><CheckCircle size={14} /> Cambios guardados</span>
           )}
-          <span className="cfg-last-save">
-            <RotateCcw size={11} /> Último cambio: hoy, 14:04
-          </span>
-          <button className="cfg-save-btn" disabled={!dirty} onClick={handleSave}>
-            <Save size={13} /> GUARDAR CAMBIOS (RF-85)
+          {dirty && <span className="cfg-status">Tienes cambios sin guardar</span>}
+          <button className="cfg-save-btn" disabled={!dirty || updateSettingsMutation.isPending} onClick={handleSave}>
+            <Save size={14} /> {updateSettingsMutation.isPending ? "Guardando…" : "Guardar cambios"}
           </button>
         </div>
       </div>
@@ -87,15 +83,15 @@ export default function ConfiguracionPage() {
         {/* ── Modelo Financiero (RF-97) ── */}
         <div className="cfg-card">
           <div className="cfg-card-head">
-            <div className="cfg-icon cfg-icon--blue"><Settings2 size={16} /></div>
+            <div className="cfg-icon cfg-icon--orange"><Settings2 size={16} /></div>
             <div>
-              <p className="cfg-card-title">MODELO FINANCIERO (RF-97)</p>
+              <p className="cfg-card-title">Modelo financiero</p>
               <p className="cfg-card-sub">Comisiones y límites de retiro para técnicos.</p>
             </div>
           </div>
           <div className="cfg-row">
             <div className="cfg-field">
-              <label className="cfg-label">COMISIÓN CLICK&amp;SERVE <span className="cfg-badge-pill">IMPACTO GLOBAL</span></label>
+              <label className="cfg-label">Comisión Click&amp;Serve <span className="cfg-badge-pill">Afecta a todos los servicios</span></label>
               <div className="cfg-input-suffix">
                 <input className="cfg-input" type="number" value={commission}
                   onChange={e => { setCommission(e.target.value); mark() }} />
@@ -104,7 +100,7 @@ export default function ConfiguracionPage() {
               <p className="cfg-hint">Porcentaje deducido automáticamente de cada servicio completado.</p>
             </div>
             <div className="cfg-field">
-              <label className="cfg-label">RETIRO MÍNIMO PERMITIDO</label>
+              <label className="cfg-label">Retiro mínimo permitido</label>
               <div className="cfg-input-suffix">
                 <span className="cfg-prefix">$</span>
                 <input className="cfg-input cfg-input--prefix" type="number" value={minWithdraw}
@@ -115,13 +111,43 @@ export default function ConfiguracionPage() {
           </div>
         </div>
 
-        {/* ── Motor de Verificación (RF-98) ── */}
+        {/* ── Región Operativa (RF-97) ── */}
         <div className="cfg-card">
           <div className="cfg-card-head">
-            <div className="cfg-icon cfg-icon--purple"><Shield size={16} /></div>
+            <div className="cfg-icon cfg-icon--blue"><MapPin size={16} /></div>
             <div>
-              <p className="cfg-card-title">MOTOR DE VERIFICACIÓN AI & SEP (RF-98)</p>
-              <p className="cfg-card-sub">Parámetros de tolerancia para biometría y scraping.</p>
+              <p className="cfg-card-title">Región operativa</p>
+              <p className="cfg-card-sub">Límites de servicio en Lázaro Cárdenas.</p>
+            </div>
+          </div>
+          <div className="cfg-row">
+            <div className="cfg-field">
+              <label className="cfg-label">Radio máximo de servicio</label>
+              <div className="cfg-input-suffix">
+                <input className="cfg-input" type="number" value={radius}
+                  onChange={e => { setRadius(e.target.value); mark() }} />
+                <span className="cfg-suffix">km</span>
+              </div>
+            </div>
+            <div className="cfg-field">
+              <label className="cfg-label">Tiempo para aceptar</label>
+              <div className="cfg-input-suffix">
+                <input className="cfg-input" type="number" value={timeoutVal}
+                  onChange={e => { setTimeoutVal(e.target.value); mark() }} />
+                <span className="cfg-suffix">min</span>
+              </div>
+              <p className="cfg-hint">Tiempo antes de reasignar el servicio a otro técnico.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Motor de Verificación (RF-98) ── */}
+        <div className="cfg-card cfg-card--wide">
+          <div className="cfg-card-head">
+            <div className="cfg-icon cfg-icon--navy"><Shield size={16} /></div>
+            <div>
+              <p className="cfg-card-title">Verificación de identidad</p>
+              <p className="cfg-card-sub">Tolerancia de la biometría y validación en SEP.</p>
             </div>
           </div>
 
@@ -129,7 +155,7 @@ export default function ConfiguracionPage() {
             {/* Slider */}
             <div className="cfg-field" style={{ flex: 2 }}>
               <div className="cfg-slider-header">
-                <label className="cfg-label">UMBRAL APROBACIÓN AUTOMÁTICA (OPENCV)</label>
+                <label className="cfg-label">Umbral de aprobación automática</label>
                 <span className="cfg-slider-val">{threshold}%</span>
               </div>
               <input
@@ -146,7 +172,7 @@ export default function ConfiguracionPage() {
 
             {/* Toggle */}
             <div className="cfg-field cfg-toggle-field">
-              <label className="cfg-label">VALIDACIÓN FORZOSA EN SEP</label>
+              <label className="cfg-label">Validación obligatoria en SEP</label>
               <label className="cfg-toggle">
                 <input type="checkbox" checked={sepValidation}
                   onChange={e => { setSepValidation(e.target.checked); mark() }} />
@@ -157,42 +183,12 @@ export default function ConfiguracionPage() {
           </div>
         </div>
 
-        {/* ── Región Operativa (RF-97) ── */}
-        <div className="cfg-card">
-          <div className="cfg-card-head">
-            <div className="cfg-icon cfg-icon--teal"><MapPin size={16} /></div>
-            <div>
-              <p className="cfg-card-title">REGIÓN OPERATIVA (RF-97)</p>
-              <p className="cfg-card-sub">Límites de servicio para el nodo Lázaro Cárdenas.</p>
-            </div>
-          </div>
-          <div className="cfg-row">
-            <div className="cfg-field">
-              <label className="cfg-label">RADIO MÁXIMO DE SERVICIO</label>
-              <div className="cfg-input-suffix">
-                <input className="cfg-input" type="number" value={radius}
-                  onChange={e => { setRadius(e.target.value); mark() }} />
-                <span className="cfg-suffix">Kilómetros</span>
-              </div>
-            </div>
-            <div className="cfg-field">
-              <label className="cfg-label">TIMEOUT DE ACEPTACIÓN</label>
-              <div className="cfg-input-suffix">
-                <input className="cfg-input" type="number" value={timeoutVal}
-                  onChange={e => { setTimeoutVal(e.target.value); mark() }} />
-                <span className="cfg-suffix">Minutos</span>
-              </div>
-              <p className="cfg-hint">Tiempo antes de reasignar el servicio a otro técnico.</p>
-            </div>
-          </div>
-        </div>
-
         {/* ── Modo Mantenimiento (RF-99) ── */}
         <div className={`cfg-card cfg-card--danger ${maintenance ? 'cfg-card--danger-active' : ''}`}>
           <div className="cfg-card-head">
             <div className="cfg-icon cfg-icon--danger"><AlertTriangle size={16} /></div>
             <div style={{ flex: 1 }}>
-              <p className="cfg-card-title">MODO DE MANTENIMIENTO DE CONTINGENCIA (RF-99)</p>
+              <p className="cfg-card-title">Modo mantenimiento</p>
               <p className="cfg-hint" style={{ marginTop: 4 }}>
                 Al activar esto, la plataforma suspenderá operaciones. Los usuarios verán la pantalla de mantenimiento.
               </p>

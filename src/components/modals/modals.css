@@ -30,6 +30,10 @@
 .modal-container--xl { max-width: 1040px; }
 .modal-container--sm { max-width: 580px; }
 
+/* Modales con pestañas: altura fija para que no "salten" al cambiar de pestaña */
+.modal-container--fixed { height: min(720px, 90vh); }
+.modal-container--fixed .modal-body { flex: 1; min-height: 0; }
+
 .modal-header {
   padding: 18px 24px;
   border-bottom: 1px solid var(--border-light, #e2e8f0);

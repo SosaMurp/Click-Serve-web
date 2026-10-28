@@ -106,6 +106,35 @@ exports.getServicios = async (req, res) => {
   }
 };
 
+// ── Detalle de un servicio (mismo formato que /admin/dashboard/recent-services) ─
+exports.getServicioById = async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'ID de servicio inválido.' });
+  }
+  try {
+    const result = await pool.query(
+      `SELECT s.id_servicio,
+              CONCAT('SRV-', LPAD(s.id_servicio::text, 3, '0')) AS codigo,
+              s.titulo, s.estatus, s.monto, s.direccion, s.fecha_creacion,
+              t.nombre AS tecnico_nombre, t.apellido AS tecnico_apellido,
+              c.nombre AS cliente_nombre, c.apellido AS cliente_apellido
+       FROM servicios s
+       LEFT JOIN Usuarios t ON s.id_tecnico = t.id_usuario
+       LEFT JOIN Usuarios c ON s.id_cliente = c.id_usuario
+       WHERE s.id_servicio = $1`,
+      [id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Servicio no encontrado.' });
+    }
+    res.status(200).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error al obtener servicio:', error);
+    res.status(500).json({ error: 'Error al obtener el servicio.' });
+  }
+};
+
 // ── Actualizar estado de servicio (RF de Auditoría y Seguimiento) ────────────
 exports.updateServicioStatus = async (req, res) => {
   try {

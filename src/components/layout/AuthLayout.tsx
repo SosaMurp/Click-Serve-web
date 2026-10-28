@@ -6,20 +6,18 @@ interface AuthLayoutProps {
   leftSubtitle?: string
   leftDescription?: string
   nodeLabel?: string
-  nodeIp?: string
   children: React.ReactNode
 }
 
 export default function AuthLayout({
   leftTitle, leftSubtitle, leftDescription,
-  nodeLabel = 'ADMIN • NODO LZC', nodeIp = '192.168.20.08 REGISTRADO EN NETWORK',
+  nodeLabel = 'Panel de administración',
   children
 }: AuthLayoutProps) {
   return (
     <div className="auth-root">
       {/* ── LEFT PANEL ── */}
       <div className="auth-left">
-        <div className="auth-left-grid" />
         <header className="auth-brand">
           <div className="auth-logo">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -39,11 +37,7 @@ export default function AuthLayout({
         </div>
 
         <footer className="auth-left-footer">
-          <p className="auth-footer-tag">ACCESO RESTRINGIDO A PERSONAL AUTORIZADO.</p>
-          <p className="auth-footer-ip">
-            <span className="auth-dot" />
-            {nodeIp}
-          </p>
+          <p className="auth-footer-tag">Acceso restringido a personal autorizado.</p>
         </footer>
       </div>
 

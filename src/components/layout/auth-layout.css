@@ -8,25 +8,12 @@
 /* ── Left Panel ── */
 .auth-left {
   position: relative;
-  background: linear-gradient(160deg, #0b1120 0%, #0e1a2e 60%, #091520 100%);
+  background: var(--navy);
   display: flex;
   flex-direction: column;
   padding: 32px 40px;
   overflow: hidden;
   color: var(--text-white);
-}
-
-/* Star-grid overlay */
-.auth-left-grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    radial-gradient(circle at 20% 30%, rgba(0,212,161,.06) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(0,100,200,.08) 0%, transparent 50%),
-    linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px;
-  pointer-events: none;
 }
 
 .auth-brand {
@@ -40,17 +27,16 @@
 .auth-logo {
   width: 40px;
   height: 40px;
-  background: rgba(255,255,255,.08);
-  border: 1px solid rgba(255,255,255,.12);
+  background: var(--accent);
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent);
+  color: #fff;
 }
 
 .auth-brand-name { font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
-.auth-brand-node { font-size: 10px; color: var(--accent); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.auth-brand-node { font-size: 12px; color: rgba(255,255,255,.55); font-weight: 500; }
 
 .auth-left-content {
   flex: 1;
@@ -78,7 +64,7 @@
 
 .auth-left-title em {
   font-style: normal;
-  color: var(--accent);
+  color: #f4a26b;
 }
 
 .auth-left-desc {
@@ -90,14 +76,7 @@
 }
 
 .auth-left-footer { position: relative; z-index: 1; }
-.auth-footer-tag { font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.2); margin-bottom: 8px; }
-.auth-footer-ip  { font-size: 10px; color: rgba(255,255,255,.3); display: flex; align-items: center; gap: 6px; }
-.auth-dot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 6px var(--accent);
-  animation: dotBlink 2s infinite;
-}
+.auth-footer-tag { font-size: 12px; color: rgba(255,255,255,.4); }
 
 /* ── Right Panel ── */
 .auth-right {

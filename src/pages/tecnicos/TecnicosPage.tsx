@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Search, Star, ChevronLeft, ChevronRight, Filter } from 'lucide-react'
 import { Badge } from '@components/ui'
 import TechProfileModal from '@components/modals/TechProfileModal'
@@ -8,8 +9,15 @@ import './tecnicos.css'
 import { useAdminUsers } from '../../hooks/useAdminQueries'
 
 export default function TecnicosPage() {
+  const location = useLocation()
   const [tab, setTab] = useState<'tecnicos' | 'clientes'>('tecnicos')
   const [search, setSearch] = useState('')
+
+  // Búsqueda enviada desde el buscador global de la barra superior
+  useEffect(() => {
+    const q = (location.state as { q?: string } | null)?.q
+    if (q) setSearch(q)
+  }, [location.key])
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [specFilter, setSpecFilter] = useState('ALL')
   const [selectedItem, setSelectedItem] = useState<any>(null)
@@ -35,7 +43,8 @@ export default function TecnicosPage() {
   }))
 
   const filtered = data.filter(r => {
-    const matchSearch = !search || r.name.toLowerCase().includes(search.toLowerCase()) || r.id.toLowerCase().includes(search.toLowerCase())
+    const s = search.toLowerCase()
+    const matchSearch = !search || r.name.toLowerCase().includes(s) || r.id.toLowerCase().includes(s) || (r.email ?? '').toLowerCase().includes(s)
     const matchStatus = statusFilter === 'ALL' || r.status === statusFilter
     const matchSpec = specFilter === 'ALL' || r.specialty === specFilter
     return matchSearch && matchStatus && matchSpec

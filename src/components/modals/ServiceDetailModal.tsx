@@ -62,11 +62,11 @@ export default function ServiceDetailModal({
 
   return (
     <div className="modal-backdrop">
-      <div className="modal-container modal-container--lg fade-in">
+      <div className="modal-container modal-container--lg modal-container--fixed fade-in">
         <div className="modal-header">
           <div className="modal-title-wrap">
             <h3 className="modal-title">Detalle del Servicio #{serviceId}</h3>
-            <p className="modal-subtitle">SEGUIMIENTO EN TIEMPO REAL • NODO LZC</p>
+            <p className="modal-subtitle">SEGUIMIENTO EN TIEMPO REAL</p>
           </div>
           <button className="modal-close-btn" onClick={onClose}>
             <X size={18} />

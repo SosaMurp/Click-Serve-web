@@ -3,6 +3,7 @@ import type {
   UpdateServiceStatusPayload,
   UpdateServiceStatusResponse,
 } from '../types/servicios'
+import type { RecentService } from '../types/dashboard'
 
 /**
  * Actualiza el estado operativo de un servicio (ej. 'En Progreso' a 'Finalizado').
@@ -24,7 +25,7 @@ export async function updateServiceStatus(
 /**
  * Obtiene los detalles completos de un servicio técnico por su ID
  */
-export async function getServicioById(idServicio: number | string) {
-  const { data } = await api.get(`/servicios/${idServicio}`)
+export async function getServicioById(idServicio: number | string): Promise<RecentService> {
+  const { data } = await api.get<RecentService>(`/servicios/${idServicio}`)
   return data
 }

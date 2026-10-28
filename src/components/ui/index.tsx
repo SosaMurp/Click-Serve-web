@@ -65,26 +65,28 @@ export function Badge({ variant = 'neutral', dot, children }: BadgeProps) {
 }
 
 /* ── StatCard ── */
+// Mismo lenguaje visual que las tarjetas KPI del dashboard
+type StatTone = 'navy' | 'blue' | 'amber' | 'orange' | 'green' | 'red'
 interface StatCardProps {
   label: string
-  value: string | number
+  value: React.ReactNode
   icon: React.ReactNode
-  change?: string
-  changePositive?: boolean
-  alert?: boolean
+  tone?: StatTone
+  suffix?: string
+  note?: React.ReactNode
 }
 
-export function StatCard({ label, value, icon, change, changePositive = true, alert }: StatCardProps) {
+export function StatCard({ label, value, icon, tone = 'navy', suffix, note }: StatCardProps) {
   return (
-    <div className={`stat-card ${alert ? 'stat-card--alert' : ''}`}>
-      <div className="stat-icon">{icon}</div>
-      <div className="stat-body">
-        <p className="stat-label">{label}</p>
-        <p className="stat-value">{value}</p>
-        {change && (
-          <p className={`stat-change ${changePositive ? 'pos' : 'neg'}`}>{change}</p>
-        )}
+    <div className="stat-card">
+      <div className="stat-head">
+        <span className={`stat-icon stat-icon--${tone}`}>{icon}</span>
+        <span className="stat-label">{label}</span>
       </div>
+      <p className="stat-value">
+        {value}{suffix && <span className="stat-suffix"> {suffix}</span>}
+      </p>
+      {note && <p className="stat-note">{note}</p>}
     </div>
   )
 }
