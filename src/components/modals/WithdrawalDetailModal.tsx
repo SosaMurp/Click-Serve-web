@@ -48,7 +48,7 @@ export default function WithdrawalDetailModal({ isOpen, onClose, withdrawalData 
       <div className="modal-container modal-container--sm fade-in">
         <div className="modal-header">
           <div className="modal-title-wrap">
-            <h3 className="modal-title">Comprobante Financiero (RF-79)</h3>
+            <h3 className="modal-title">Comprobante Financiero</h3>
             <p className="modal-subtitle">SOLICITUD {data.req}</p>
           </div>
           <button className="modal-close-btn" onClick={onClose}>
@@ -57,7 +57,7 @@ export default function WithdrawalDetailModal({ isOpen, onClose, withdrawalData 
         </div>
 
         <div className="modal-body" style={{ gap: 16 }}>
-          <div style={{ background: '#f8fafc', padding: 16, borderRadius: 8, border: '1px solid #e2e8f0', textAlign: 'center' }}>
+          <div style={{ background: '#F7F8F9', padding: 16, borderRadius: 8, border: '1px solid #E6E9EE', textAlign: 'center' }}>
             <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', margin: 0 }}>MONTO SOLICITADO</p>
             <h2 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-dark)', margin: '4px 0' }}>{data.amount} MXN</h2>
             <Badge variant={processed ? 'success' : 'warning'}>
@@ -66,23 +66,23 @@ export default function WithdrawalDetailModal({ isOpen, onClose, withdrawalData 
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: 6 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F7F8F9', paddingBottom: 6 }}>
               <span style={{ color: 'var(--text-mid)' }}>Beneficiario:</span>
               <strong style={{ color: 'var(--text-dark)' }}>{data.name} ({data.techId})</strong>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: 6 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F7F8F9', paddingBottom: 6 }}>
               <span style={{ color: 'var(--text-mid)' }}>Institución Bancaria:</span>
               <strong style={{ color: 'var(--text-dark)' }}>{data.bank}</strong>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: 6 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F7F8F9', paddingBottom: 6 }}>
               <span style={{ color: 'var(--text-mid)' }}>Cuenta CLABE:</span>
               <strong style={{ fontFamily: 'monospace', color: 'var(--text-dark)' }}>{data.clabe}</strong>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6 }}>
-              <span style={{ color: 'var(--text-mid)' }}>Folio de Reasignación (RF-79):</span>
+              <span style={{ color: 'var(--text-mid)' }}>Folio de Reasignación:</span>
               <strong style={{ color: 'var(--accent-dim)' }}>{folio}</strong>
             </div>
           </div>

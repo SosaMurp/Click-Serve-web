@@ -1,5 +1,5 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { updateServiceStatus } from '../api/servicios'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { getServicios, updateServiceStatus } from '../api/servicios'
 import { DASHBOARD_KEYS } from './useDashboard'
 import type {
   UpdateServiceStatusPayload,
@@ -49,5 +49,15 @@ export function useUpdateServiceStatus(options?: {
         options.onError(error, variables)
       }
     },
+  })
+}
+
+/** Servicios con ubicación para el mapa; se refresca cada 30 s. */
+export function useServiciosUbicados() {
+  return useQuery({
+    queryKey: ['servicios'],
+    queryFn: getServicios,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
   })
 }

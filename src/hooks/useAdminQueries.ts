@@ -8,6 +8,7 @@ import type {
   ConfiguracionPlataformaRow,
   UpdateSettingsPayload,
   RejectTechnicianPayload,
+  SettleDisputePayload,
 } from '../types/api'
 
 // ── USUARIOS Y EXPEDIENTES (RF-18, RF-37, RF-38) ──
@@ -96,6 +97,19 @@ export function useDisputes(status?: string) {
         params: { status },
       })
       return Array.isArray(data) ? data : data.disputas
+    },
+  })
+}
+
+export function useSettleDispute() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, payload }: { id: number; payload: SettleDisputePayload }) => {
+      const { data } = await api.post(`/admin/disputes/${id}/settle`, payload)
+      return data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-disputes'] })
     },
   })
 }

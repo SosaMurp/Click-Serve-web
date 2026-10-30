@@ -121,7 +121,7 @@ export default function TechProfileModal({ isOpen, onClose, techData }: TechProf
           {activeTab === 'perfil' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               {/* Header Info Card */}
-              <div style={{ display: 'flex', gap: 16, alignItems: 'center', background: '#f8fafc', padding: 16, borderRadius: 8 }}>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center', background: '#F7F8F9', padding: 16, borderRadius: 8 }}>
                 <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--text-dark)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 800 }}>
                   {techName[0]}
                 </div>
@@ -146,22 +146,22 @@ export default function TechProfileModal({ isOpen, onClose, techData }: TechProf
               {/* Categorías de Alerta (RF-23) */}
               <div>
                 <h5 style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', marginBottom: 10 }}>
-                  Recepción de Alertas por Categoría (RF-23)
+                  Recepción de Alertas por Categoría
                 </h5>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#f1f5f9', borderRadius: 6, fontSize: 13, cursor: 'pointer' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#F7F8F9', borderRadius: 6, fontSize: 13, cursor: 'pointer' }}>
                     <span>Soporte y Hardware</span>
                     <input type="checkbox" checked={categories.hardware} onChange={e => setCategories({...categories, hardware: e.target.checked})} />
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#f1f5f9', borderRadius: 6, fontSize: 13, cursor: 'pointer' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#F7F8F9', borderRadius: 6, fontSize: 13, cursor: 'pointer' }}>
                     <span>Redes y Conectividad</span>
                     <input type="checkbox" checked={categories.redes} onChange={e => setCategories({...categories, redes: e.target.checked})} />
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#f1f5f9', borderRadius: 6, fontSize: 13, cursor: 'pointer' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#F7F8F9', borderRadius: 6, fontSize: 13, cursor: 'pointer' }}>
                     <span>Desarrollo Web</span>
                     <input type="checkbox" checked={categories.desarrollo} onChange={e => setCategories({...categories, desarrollo: e.target.checked})} />
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#f1f5f9', borderRadius: 6, fontSize: 13, cursor: 'pointer' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#F7F8F9', borderRadius: 6, fontSize: 13, cursor: 'pointer' }}>
                     <span>Mantenimiento Preventivo</span>
                     <input type="checkbox" checked={categories.mantenimiento} onChange={e => setCategories({...categories, mantenimiento: e.target.checked})} />
                   </label>
@@ -173,7 +173,7 @@ export default function TechProfileModal({ isOpen, onClose, techData }: TechProf
           {activeTab === 'documentos' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <h5 style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', margin: 0 }}>
-                Expediente de Credenciales e Identidad (RF-25, RF-31)
+                Expediente de Credenciales e Identidad
               </h5>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
@@ -182,14 +182,14 @@ export default function TechProfileModal({ isOpen, onClose, techData }: TechProf
                   { name: 'Identificación INE', code: 'INE-2026', status: 'COMPLETADO', variant: 'success' as const },
                   { name: 'Antecedentes No Penales', code: 'ANP-8812', status: 'EN REVISIÓN', variant: 'warning' as const },
                 ].map((doc, idx) => (
-                  <div key={idx} style={{ border: '1px solid #e2e8f0', padding: 14, borderRadius: 8, background: '#fafafa' }}>
+                  <div key={idx} style={{ border: '1px solid #E6E9EE', padding: 14, borderRadius: 8, background: '#F7F8F9' }}>
                     <FileText size={20} color="var(--text-mid)" />
                     <p style={{ fontSize: 13, fontWeight: 700, margin: '8px 0 2px', color: 'var(--text-dark)' }}>{doc.name}</p>
                     <p style={{ fontSize: 11, color: 'var(--text-mid)', margin: '0 0 10px' }}>{doc.code}</p>
                     <Badge variant={doc.variant}>{doc.status}</Badge>
                     <button
                       onClick={() => setSelectedDoc(doc.name)}
-                      style={{ marginTop: 12, width: '100%', padding: '6px', fontSize: 11, fontWeight: 600, background: '#fff', border: '1px solid #cbd5e1', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                      style={{ marginTop: 12, width: '100%', padding: '6px', fontSize: 11, fontWeight: 600, background: '#fff', border: '1px solid #CDD3E0', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
                     >
                       <Eye size={12} /> Inspeccionar
                     </button>
@@ -203,7 +203,7 @@ export default function TechProfileModal({ isOpen, onClose, techData }: TechProf
                     <strong style={{ fontSize: 13 }}>Vista Previa de Documento: {selectedDoc}</strong>
                     <button style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12 }} onClick={() => setSelectedDoc(null)}>✕ Cerrar Visor</button>
                   </div>
-                  <div style={{ width: '100%', height: 180, background: '#e2e8f0', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: 13 }}>
+                  <div style={{ width: '100%', height: 180, background: '#E6E9EE', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#667085', fontSize: 13 }}>
                     [ Muestra de PDF / Archivo digital de {selectedDoc} ]
                   </div>
                 </div>
@@ -214,7 +214,7 @@ export default function TechProfileModal({ isOpen, onClose, techData }: TechProf
           {activeTab === 'habilidades' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <h5 style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', margin: 0 }}>
-                Acreditaciones y Habilidades Técnicas (RF-24)
+                Acreditaciones y Habilidades Técnicas
               </h5>
 
               <div style={{ display: 'flex', gap: 8 }}>
@@ -223,14 +223,14 @@ export default function TechProfileModal({ isOpen, onClose, techData }: TechProf
                   placeholder="Agregar nueva habilidad o certificación..."
                   value={newSkill}
                   onChange={e => setNewSkill(e.target.value)}
-                  style={{ flex: 1, padding: '10px 14px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13 }}
+                  style={{ flex: 1, padding: '10px 14px', borderRadius: 6, border: '1px solid #CDD3E0', fontSize: 13 }}
                 />
                 <Button size="sm" onClick={handleAddSkill}>+ AGREGAR</Button>
               </div>
 
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {skills.map((s, idx) => (
-                  <span key={idx} style={{ padding: '6px 12px', background: '#e0f2fe', color: '#0369a1', borderRadius: 20, fontSize: 12, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span key={idx} style={{ padding: '6px 12px', background: '#E8EBF2', color: '#0C1C40', borderRadius: 20, fontSize: 12, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     <Award size={12} /> {s}
                   </span>
                 ))}
@@ -241,9 +241,9 @@ export default function TechProfileModal({ isOpen, onClose, techData }: TechProf
           {activeTab === 'acciones' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {/* Exportar Expediente (RF-17) */}
-              <div style={{ padding: 16, border: '1px solid #e2e8f0', borderRadius: 8, background: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ padding: 16, border: '1px solid #E6E9EE', borderRadius: 8, background: '#F7F8F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <h5 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Descarga de Expediente Técnico (RF-17)</h5>
+                  <h5 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Descarga de Expediente Técnico</h5>
                   <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '4px 0 0' }}>Genera una copia en respaldo digital con las credenciales y métricas del operador.</p>
                 </div>
                 <Button variant="secondary" size="sm" onClick={handleExportExpediente}>
@@ -252,9 +252,9 @@ export default function TechProfileModal({ isOpen, onClose, techData }: TechProf
               </div>
 
               {/* Suspender / Restaurar facultades (RF-32, RF-33) */}
-              <div style={{ padding: 16, border: '1px solid #e2e8f0', borderRadius: 8, background: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ padding: 16, border: '1px solid #E6E9EE', borderRadius: 8, background: '#F7F8F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <h5 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Estatus Operativo del Técnico (RF-32, RF-33)</h5>
+                  <h5 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Estatus Operativo del Técnico</h5>
                   <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '4px 0 0' }}>Interrumpe o restaura los permisos para recibir servicios en la zona LZC.</p>
                 </div>
                 {statusState === 'SUSPENDIDO' ? (
@@ -269,8 +269,8 @@ export default function TechProfileModal({ isOpen, onClose, techData }: TechProf
               </div>
 
               {/* Baja Definitiva de Cuenta (RF-16) */}
-              <div style={{ padding: 16, border: '1px solid #fecaca', borderRadius: 8, background: '#fef2f2' }}>
-                <h5 style={{ fontSize: 14, fontWeight: 700, color: '#991b1b', margin: 0 }}>Baja Definitiva de Cuenta (RF-16)</h5>
+              <div style={{ padding: 16, border: '1px solid #F4C7C2', borderRadius: 8, background: '#FDE8E6' }}>
+                <h5 style={{ fontSize: 14, fontWeight: 700, color: '#A41F15', margin: 0 }}>Baja Definitiva de Cuenta</h5>
                 <p style={{ fontSize: 12, color: '#7f1d1d', margin: '4px 0 12px' }}>Eliminación o anonimización permanente del usuario. Exige validación obligatoria de clave de seguridad.</p>
 
                 {showDeleteConfirm ? (
@@ -280,10 +280,10 @@ export default function TechProfileModal({ isOpen, onClose, techData }: TechProf
                       placeholder="Ingresa tu contraseña de Administrador"
                       value={confirmPassword}
                       onChange={e => setConfirmPassword(e.target.value)}
-                      style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #f87171', fontSize: 13 }}
+                      style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #F4C7C2', fontSize: 13 }}
                     />
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <Button size="sm" style={{ background: '#dc2626', color: '#fff' }} onClick={handleDeleteAccount}>
+                      <Button size="sm" style={{ background: '#D92D20', color: '#fff' }} onClick={handleDeleteAccount}>
                         CONFIRMAR ELIMINACIÓN PERMANENTE
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => setShowDeleteConfirm(false)}>
@@ -292,7 +292,7 @@ export default function TechProfileModal({ isOpen, onClose, techData }: TechProf
                     </div>
                   </div>
                 ) : (
-                  <Button size="sm" style={{ background: '#dc2626', color: '#fff' }} onClick={() => setShowDeleteConfirm(true)}>
+                  <Button size="sm" style={{ background: '#D92D20', color: '#fff' }} onClick={() => setShowDeleteConfirm(true)}>
                     <Trash2 size={13} /> INICIAR PROTOCOLO DE BAJA
                   </Button>
                 )}

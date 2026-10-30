@@ -124,8 +124,8 @@ export default function LocationSelectorDemo() {
         {locationValue.lat !== 0 && (
           <div style={{
             padding: "12px 16px",
-            background: "rgba(232,89,12,.06)",
-            border: "1px solid rgba(232,89,12,.2)",
+            background: "rgba(226,89,0,.06)",
+            border: "1px solid rgba(226,89,0,.2)",
             borderRadius: 10,
             fontSize: 12,
             color: "var(--text-muted)",

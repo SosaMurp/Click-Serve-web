@@ -23,7 +23,7 @@ export default function MaintenanceOverlay({ isActive, onDeactivate }: Maintenan
       <div
         style={{
           width: 64, height: 64, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.2)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#D92D20',
           marginBottom: 20
         }}
       >
@@ -31,16 +31,16 @@ export default function MaintenanceOverlay({ isActive, onDeactivate }: Maintenan
       </div>
 
       <h1 style={{ fontSize: 26, fontWeight: 800, margin: '0 0 10px', color: '#fff' }}>
-        SISTEMA EN MODO MANTENIMIENTO GLOBAL (RF-99)
+        SISTEMA EN MODO MANTENIMIENTO GLOBAL
       </h1>
 
-      <p style={{ fontSize: 14, color: '#94a3b8', maxWidth: 520, lineHeight: 1.6, margin: '0 0 28px' }}>
+      <p style={{ fontSize: 14, color: '#667085', maxWidth: 520, lineHeight: 1.6, margin: '0 0 28px' }}>
         El administrador ha activado el protocolo de contingencia. El acceso para técnicos y clientes ha sido suspendido temporalmente. Las operaciones en segundo plano permanecen pausadas.
       </p>
 
       <Button
         size="lg"
-        style={{ background: '#ef4444', color: '#fff', border: 'none' }}
+        style={{ background: '#D92D20', color: '#fff', border: 'none' }}
         onClick={onDeactivate}
       >
         <Lock size={16} /> DESACTIVAR MODO MANTENIMIENTO (ADMIN)

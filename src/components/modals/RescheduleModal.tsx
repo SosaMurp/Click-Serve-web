@@ -26,7 +26,7 @@ export default function RescheduleModal({ isOpen, onClose, serviceId = 'SRV-108'
       <div className="modal-container modal-container--sm fade-in">
         <div className="modal-header">
           <div className="modal-title-wrap">
-            <h3 className="modal-title">Reprogramación de Cita (RF-63, RF-64)</h3>
+            <h3 className="modal-title">Reprogramación de Cita</h3>
             <p className="modal-subtitle">SERVICIO #{serviceId}</p>
           </div>
           <button className="modal-close-btn" onClick={onClose}>
@@ -43,7 +43,7 @@ export default function RescheduleModal({ isOpen, onClose, serviceId = 'SRV-108'
               type="date"
               value={newDate}
               onChange={e => setNewDate(e.target.value)}
-              style={{ width: '100%', padding: '10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13 }}
+              style={{ width: '100%', padding: '10px', borderRadius: 6, border: '1px solid #CDD3E0', fontSize: 13 }}
             />
           </div>
 
@@ -55,7 +55,7 @@ export default function RescheduleModal({ isOpen, onClose, serviceId = 'SRV-108'
               type="time"
               value={newTime}
               onChange={e => setNewTime(e.target.value)}
-              style={{ width: '100%', padding: '10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13 }}
+              style={{ width: '100%', padding: '10px', borderRadius: 6, border: '1px solid #CDD3E0', fontSize: 13 }}
             />
           </div>
 
@@ -66,7 +66,7 @@ export default function RescheduleModal({ isOpen, onClose, serviceId = 'SRV-108'
             <textarea
               value={reason}
               onChange={e => setReason(e.target.value)}
-              style={{ width: '100%', padding: '10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13, height: 60, fontFamily: 'inherit' }}
+              style={{ width: '100%', padding: '10px', borderRadius: 6, border: '1px solid #CDD3E0', fontSize: 13, height: 60, fontFamily: 'inherit' }}
             />
           </div>
         </div>

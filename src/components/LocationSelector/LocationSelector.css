@@ -9,7 +9,7 @@
   flex-direction: column;
   gap: 14px;
   padding: 20px;
-  background: var(--bg-card, #1a2235);
+  background: var(--bg-card, var(--bg-card));
   border: 1.5px solid var(--border-dark, rgba(255,255,255,.08));
   border-radius: var(--radius-lg, 16px);
   animation: fadeIn .35s ease backwards;
@@ -29,13 +29,13 @@
   align-items: center;
   gap: 8px;
 }
-.ls-header-icon { color: var(--accent, #E8590C); flex-shrink: 0; }
+.ls-header-icon { color: var(--accent, var(--accent)); flex-shrink: 0; }
 .ls-header-title {
   font-size: 12px;
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
-  color: var(--text-light, #e2e8f0);
+  color: var(--text-light, var(--border-light));
 }
 
 /* ── Geo button ── */
@@ -53,31 +53,31 @@
   text-transform: uppercase;
   cursor: pointer;
   transition: all .18s ease;
-  background: rgba(232,89,12, .12);
-  color: var(--accent, #E8590C);
-  border: 1.5px solid rgba(232,89,12, .25);
+  background: rgba(226,89,0, .12);
+  color: var(--accent, var(--accent));
+  border: 1.5px solid rgba(226,89,0, .25);
 }
 .ls-geo-btn:hover:not(:disabled) {
-  background: rgba(232,89,12, .22);
-  box-shadow: 0 0 0 3px rgba(232,89,12, .12);
+  background: rgba(226,89,0, .22);
+  box-shadow: 0 0 0 3px rgba(226,89,0, .12);
   transform: translateY(-1px);
 }
 .ls-geo-btn:disabled { opacity: .5; cursor: not-allowed; }
 
 .ls-geo-btn--loading {
-  background: rgba(59, 130, 246, .12);
+  background: rgba(12,28,64, .12);
   color: #60a5fa;
-  border-color: rgba(59, 130, 246, .25);
+  border-color: rgba(12,28,64, .25);
 }
 .ls-geo-btn--success {
-  background: rgba(232,89,12, .18);
-  color: var(--accent, #E8590C);
-  border-color: rgba(232,89,12, .4);
+  background: rgba(226,89,0, .18);
+  color: var(--accent, var(--accent));
+  border-color: rgba(226,89,0, .4);
 }
 .ls-geo-btn--error {
-  background: rgba(239, 68, 68, .12);
-  color: var(--danger, #ef4444);
-  border-color: rgba(239, 68, 68, .25);
+  background: rgba(217,45,32, .12);
+  color: var(--danger, var(--danger));
+  border-color: rgba(217,45,32, .25);
 }
 
 /* ── Spin animation ── */
@@ -95,9 +95,9 @@
   font-weight: 500;
 }
 .ls-alert--error {
-  background: rgba(239, 68, 68, .1);
-  color: var(--danger, #ef4444);
-  border: 1px solid rgba(239, 68, 68, .2);
+  background: rgba(217,45,32, .1);
+  color: var(--danger, var(--danger));
+  border: 1px solid rgba(217,45,32, .2);
 }
 
 /* ── Hint ── */
@@ -108,7 +108,7 @@
   padding: 10px 14px;
   border-radius: var(--radius-md, 10px);
   font-size: 12px;
-  color: var(--text-muted, #94a3b8);
+  color: var(--text-muted, var(--text-muted));
   background: rgba(148, 163, 184, .06);
   border: 1px dashed rgba(148, 163, 184, .2);
 }
@@ -122,41 +122,41 @@
   position: relative;
 }
 .ls-map-wrapper:hover {
-  border-color: rgba(232,89,12, .3);
-  box-shadow: 0 0 0 3px rgba(232,89,12, .08);
+  border-color: rgba(226,89,0, .3);
+  box-shadow: 0 0 0 3px rgba(226,89,0, .08);
 }
 .ls-map-wrapper--error {
-  border-color: var(--danger, #ef4444) !important;
+  border-color: var(--danger, var(--danger)) !important;
 }
 
 /* Leaflet overrides for dark theme */
-.leaflet-container { background: #0e1525; font-family: inherit; }
+.leaflet-container { background: var(--bg-panel); font-family: inherit; }
 .leaflet-control-zoom a {
-  background: var(--bg-card, #1a2235) !important;
-  color: var(--text-light, #e2e8f0) !important;
+  background: var(--bg-card, var(--bg-card)) !important;
+  color: var(--text-light, var(--border-light)) !important;
   border-color: var(--border-dark, rgba(255,255,255,.08)) !important;
 }
 .leaflet-control-zoom a:hover {
-  background: var(--bg-panel, #0e1525) !important;
-  color: var(--accent, #E8590C) !important;
+  background: var(--bg-panel, var(--bg-panel)) !important;
+  color: var(--accent, var(--accent)) !important;
 }
 .leaflet-control-attribution {
-  background: rgba(8, 13, 24, .75) !important;
-  color: var(--text-muted, #94a3b8) !important;
+  background: rgba(12,28,64, .75) !important;
+  color: var(--text-muted, var(--text-muted)) !important;
   font-size: 10px !important;
 }
-.leaflet-control-attribution a { color: var(--accent, #E8590C) !important; }
+.leaflet-control-attribution a { color: var(--accent, var(--accent)) !important; }
 
 /* ── Custom marker ── */
 .ls-custom-marker { background: transparent !important; border: none !important; }
 .ls-marker-pin {
   width: 36px;
   height: 48px;
-  color: var(--accent, #E8590C);
-  filter: drop-shadow(0 2px 8px rgba(232,89,12, .5));
+  color: var(--accent, var(--accent));
+  filter: drop-shadow(0 2px 8px rgba(226,89,0, .5));
   transition: transform .15s ease;
 }
-.ls-marker-pin svg { width: 100%; height: 100%; fill: rgba(232,89,12, .15); }
+.ls-marker-pin svg { width: 100%; height: 100%; fill: rgba(226,89,0, .15); }
 .ls-marker-pin:hover { transform: scale(1.1); }
 
 /* ── Coord chips ── */
@@ -171,8 +171,8 @@
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  background: rgba(232,89,12, .08);
-  border: 1px solid rgba(232,89,12, .2);
+  background: rgba(226,89,0, .08);
+  border: 1px solid rgba(226,89,0, .2);
   border-radius: 99px;
 }
 .ls-coord-label {
@@ -180,12 +180,12 @@
   font-weight: 800;
   letter-spacing: .1em;
   text-transform: uppercase;
-  color: var(--accent, #E8590C);
+  color: var(--accent, var(--accent));
 }
 .ls-coord-value {
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-light, #e2e8f0);
+  color: var(--text-light, var(--border-light));
   font-variant-numeric: tabular-nums;
 }
 
@@ -197,7 +197,7 @@
   background: rgba(148, 163, 184, .06);
   border: 1px solid rgba(148, 163, 184, .15);
   border-radius: 99px;
-  color: var(--text-muted, #94a3b8);
+  color: var(--text-muted, var(--text-muted));
   font-size: 11px;
   flex: 1;
   min-width: 0;
@@ -215,7 +215,7 @@
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
-  color: var(--text-muted, #94a3b8);
+  color: var(--text-muted, var(--text-muted));
 }
 .ls-field-wrap { position: relative; }
 .ls-field-icon {
@@ -223,7 +223,7 @@
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--text-muted, #94a3b8);
+  color: var(--text-muted, var(--text-muted));
   pointer-events: none;
 }
 .ls-field-input {
@@ -234,24 +234,24 @@
   background: rgba(255, 255, 255, .04);
   border: 1.5px solid var(--border-dark, rgba(255,255,255,.08));
   border-radius: var(--radius-md, 10px);
-  color: var(--text-light, #e2e8f0);
+  color: var(--text-light, var(--border-light));
   outline: none;
   transition: border-color .18s ease, box-shadow .18s ease;
 }
 .ls-field-input::placeholder { color: rgba(148, 163, 184, .5); }
 .ls-field-input:focus {
   border-color: var(--accent-dim, #C2410C);
-  box-shadow: 0 0 0 3px rgba(232,89,12, .12);
+  box-shadow: 0 0 0 3px rgba(226,89,0, .12);
 }
 .ls-address-field--error .ls-field-input {
-  border-color: var(--danger, #ef4444);
+  border-color: var(--danger, var(--danger));
 }
 .ls-field-error {
   display: flex;
   align-items: center;
   gap: 5px;
   font-size: 11px;
-  color: var(--danger, #ef4444);
+  color: var(--danger, var(--danger));
   margin-top: 2px;
 }
 .ls-field-error--top { margin-top: -4px; }

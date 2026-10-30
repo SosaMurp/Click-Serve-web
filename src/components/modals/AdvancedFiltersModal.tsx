@@ -38,7 +38,7 @@ export default function AdvancedFiltersModal({ isOpen, onClose, onApplyFilters }
       <div className="modal-container modal-container--sm fade-in">
         <div className="modal-header">
           <div className="modal-title-wrap">
-            <h3 className="modal-title">Filtros Avanzados (RF-39)</h3>
+            <h3 className="modal-title">Filtros Avanzados</h3>
             <p className="modal-subtitle">REFINAMIENTO DE DATOS MULTIDIMENSIONAL</p>
           </div>
           <button className="modal-close-btn" onClick={onClose}>
@@ -51,7 +51,7 @@ export default function AdvancedFiltersModal({ isOpen, onClose, onApplyFilters }
             <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-mid)', display: 'block', marginBottom: 6 }}>
               Estado de Cuenta
             </label>
-            <select value={status} onChange={e => setStatus(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13 }}>
+            <select value={status} onChange={e => setStatus(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: 6, border: '1px solid #CDD3E0', fontSize: 13 }}>
               <option value="ALL">Todos los Estados</option>
               <option value="ACTIVO">Activo</option>
               <option value="EN REVISIÓN">En Revisión</option>
@@ -63,7 +63,7 @@ export default function AdvancedFiltersModal({ isOpen, onClose, onApplyFilters }
             <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-mid)', display: 'block', marginBottom: 6 }}>
               Especialidad Técnica
             </label>
-            <select value={specialty} onChange={e => setSpecialty(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13 }}>
+            <select value={specialty} onChange={e => setSpecialty(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: 6, border: '1px solid #CDD3E0', fontSize: 13 }}>
               <option value="ALL">Todas las Especialidades</option>
               <option value="Soporte y Hardware">Soporte y Hardware</option>
               <option value="Desarrollo Web">Desarrollo Web</option>
@@ -76,7 +76,7 @@ export default function AdvancedFiltersModal({ isOpen, onClose, onApplyFilters }
             <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-mid)', display: 'block', marginBottom: 6 }}>
               Calificación Mínima
             </label>
-            <select value={minRating} onChange={e => setMinRating(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13 }}>
+            <select value={minRating} onChange={e => setMinRating(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: 6, border: '1px solid #CDD3E0', fontSize: 13 }}>
               <option value="0">Cualquier Calificación</option>
               <option value="4.5">★ 4.5 o superior</option>
               <option value="4.0">★ 4.0 o superior</option>
@@ -88,7 +88,7 @@ export default function AdvancedFiltersModal({ isOpen, onClose, onApplyFilters }
             <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-mid)', display: 'block', marginBottom: 6 }}>
               Verificación SEP / Biometría
             </label>
-            <select value={verification} onChange={e => setVerification(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13 }}>
+            <select value={verification} onChange={e => setVerification(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: 6, border: '1px solid #CDD3E0', fontSize: 13 }}>
               <option value="ALL">Sin Filtro de Verificación</option>
               <option value="VALIDADO">Cédula Validada en SEP</option>
               <option value="PENDIENTE">Pendiente de Verificación</option>

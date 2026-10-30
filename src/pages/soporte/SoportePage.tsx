@@ -1,171 +1,145 @@
-import { useState } from 'react'
-import { Search, Filter, ChevronLeft, ChevronRight, MessageSquare, AlertCircle, Inbox, Loader, Clock, CheckCircle2 } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Search, Inbox, CheckCircle2, AlertCircle, Scale } from 'lucide-react'
 import { Badge, StatCard } from '@components/ui'
 import DisputeResolutionModal from '@components/modals/DisputeResolutionModal'
+import { useDisputes, useSettleDispute } from '../../hooks/useAdminQueries'
+import type { DisputaRow } from '../../types/api'
 import './soporte.css'
 
-const STATS = [
-  { label: 'Tickets abiertos', value: '4',  icon: <Inbox size={15} />,        tone: 'amber', note: 'Esperando respuesta' },
-  { label: 'En progreso',      value: '0',  icon: <Loader size={15} />,       tone: 'blue',  note: 'Asignados a un agente' },
-  { label: 'Tiempo medio',     value: '14', icon: <Clock size={15} />,        tone: 'navy',  note: 'Hasta la resolución', suffix: 'h' },
-  { label: 'Resueltos',        value: '29', icon: <CheckCircle2 size={15} />, tone: 'green', note: 'En este mes' },
-] as const
+type Filtro = 'abiertas' | 'resueltas' | 'todas'
 
-type TicketStatus = 'PENDIENTE DE RESOLUCIÓN' | 'SANS ACCIONES' | 'ESCALADO A TI URGENTE'
-type StatusVariant = 'warning' | 'neutral' | 'danger'
-
-const STATUS_MAP: Record<TicketStatus, StatusVariant> = {
-  'PENDIENTE DE RESOLUCIÓN': 'warning',
-  'SANS ACCIONES':           'neutral',
-  'ESCALADO A TI URGENTE':  'danger',
-}
-
-const TICKETS = [
-  {
-    id: 'ICS-399', date: 'May, 22:15',
-    user: 'José López', userId: null, role: 'Cliente',
-    subject: 'Cancelación en Guacamayas',
-    desc: 'Cliente canceló servicio; cobro ya fue procesado en cuenta.',
-    status: 'PENDIENTE DE RESOLUCIÓN' as TicketStatus,
-    time: 'SIN ACCIÓN', techName: 'Roberto García'
-  },
-  {
-    id: 'ICS-001', date: 'Abril, 10:20',
-    user: 'Roberto García', userId: 'PTEC-0001', role: 'Técnico',
-    subject: 'Consulta de Facturación',
-    desc: 'Necesita factura del mes de Abril.',
-    status: 'SANS ACCIONES' as TicketStatus,
-    time: 'SIN CASO', techName: 'N/A'
-  },
-  {
-    id: 'ICS-002', date: 'Abr, 09:46',
-    user: 'Andrea López', userId: null, role: 'Cliente',
-    subject: 'Error al cargar tarjeta No.',
-    desc: 'Cuando intenta agregar tarjeta de crédito en pasarela.',
-    status: 'ESCALADO A TI URGENTE' as TicketStatus,
-    time: 'SIN DETALLE', techName: 'Carlos V.'
-  },
-]
+const folio = (id: number) => `DSP-${String(id).padStart(3, '0')}`
+const fullName = (n?: string, a?: string) => [n, a].filter(Boolean).join(' ') || '—'
+const money = (v: string | number) =>
+  Number(v || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+const fecha = (iso: string) =>
+  new Date(iso).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 
 export default function SoportePage() {
+  const { data, isLoading, isError, refetch } = useDisputes()
+  const settle = useSettleDispute()
+  const [filtro, setFiltro] = useState<Filtro>('abiertas')
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('ALL')
-  const [selectedTicket, setSelectedTicket] = useState<typeof TICKETS[0] | null>(null)
-  const [isDisputeOpen, setIsDisputeOpen] = useState(false)
+  const [selected, setSelected] = useState<DisputaRow | null>(null)
 
-  const filtered = TICKETS.filter(t =>
-    (!search || t.subject.toLowerCase().includes(search.toLowerCase()) || t.user.toLowerCase().includes(search.toLowerCase())) &&
-    (statusFilter === 'ALL' || t.status === statusFilter)
-  )
+  const disputas = data ?? []
+  const abiertas = disputas.filter(d => d.estado !== 'Resuelta')
+  const resueltas = disputas.filter(d => d.estado === 'Resuelta')
 
-  const handleOpenDispute = (ticket: typeof TICKETS[0]) => {
-    setSelectedTicket(ticket)
-    setIsDisputeOpen(true)
-  }
+  const filtered = useMemo(() => {
+    const base = filtro === 'abiertas' ? abiertas : filtro === 'resueltas' ? resueltas : disputas
+    const q = search.trim().toLowerCase()
+    if (!q) return base
+    return base.filter(d =>
+      [folio(d.id_disputa), fullName(d.cliente_nombre, d.cliente_apellido), fullName(d.tecnico_nombre, d.tecnico_apellido), d.observaciones ?? '']
+        .some(v => v.toLowerCase().includes(q)),
+    )
+  }, [filtro, search, disputas, abiertas, resueltas])
+
+  const totalReembolsos = resueltas.reduce((s, d) => s + Number(d.monto_reembolso || 0), 0)
 
   return (
     <div className="sop-page fade-in">
       <div className="dash-page-header">
         <div>
           <h1 className="dash-page-title">Soporte y disputas</h1>
-          <p className="dash-page-sub">Atención a clientes y técnicos</p>
+          <p className="dash-page-sub">Conflictos entre clientes y técnicos</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="sop-filter-pill sop-filter-pill--active">Abiertos (4)</button>
-          <button className="sop-filter-pill">En progreso (0)</button>
-          <button className="sop-filter-pill">Resueltos</button>
+          {([['abiertas', data ? `Abiertas (${abiertas.length})` : 'Abiertas'], ['resueltas', data ? `Resueltas (${resueltas.length})` : 'Resueltas'], ['todas', 'Todas']] as const).map(([k, label]) => (
+            <button key={k} className={`sop-filter-pill ${filtro === k ? 'sop-filter-pill--active' : ''}`} onClick={() => setFiltro(k)}>
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Stats */}
       <div className="stat-grid">
-        {STATS.map(s => (
-          <StatCard key={s.label} label={s.label} value={s.value} icon={s.icon} tone={s.tone}
-            note={s.note} suffix={'suffix' in s ? s.suffix : undefined} />
-        ))}
+        <StatCard label="Disputas abiertas" value={isError ? '—' : String(abiertas.length)} icon={<Inbox size={15} />} tone="amber" note="Esperando resolución" />
+        <StatCard label="Resueltas" value={isError ? '—' : String(resueltas.length)} icon={<CheckCircle2 size={15} />} tone="green" note="Historial completo" />
+        <StatCard label="Reembolsado" value={isError ? '—' : money(totalReembolsos)} icon={<Scale size={15} />} tone="navy" note="En disputas resueltas" />
       </div>
 
-      {/* Toolbar */}
       <div className="val-toolbar">
         <div className="val-search">
           <Search size={14} />
-          <input placeholder="Buscar usuario, caso o # de resolución..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input placeholder="Buscar por folio, cliente, técnico u observaciones..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <select className="tec-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-          <option value="ALL">Canal: Todos</option>
-          <option value="PENDIENTE DE RESOLUCIÓN">Pendiente</option>
-          <option value="ESCALADO A TI URGENTE">Urgente</option>
-        </select>
-        <button className="dash-export-btn"><Filter size={13} /> TIPOLOGÍA: TODOS</button>
       </div>
 
-      {/* Table */}
       <div className="dash-card" style={{ padding: 0, overflow: 'hidden' }}>
         <table className="dash-table sop-table">
           <thead>
             <tr>
-              <th>FOLIO / REGISTRO</th>
-              <th>USUARIO / TÉCNICO</th>
-              <th>ASUNTO / RESUMEN</th>
-              <th>ESTADO RESOLUCIÓN</th>
-              <th>RESOLUCIÓN (HS)</th>
+              <th>FOLIO</th>
+              <th>CLIENTE</th>
+              <th>TÉCNICO</th>
+              <th>ESTADO</th>
+              <th>REEMBOLSO / MULTA</th>
               <th>ACCIONES</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((row, i) => (
-              <tr key={i}>
-                <td>
-                  <p className="sop-folio">{row.id}</p>
-                  <p className="dash-table-id">{row.date}</p>
-                </td>
-                <td>
-                  <div className="val-tech-cell">
-                    <div className="sop-avatar">{row.user[0]}</div>
-                    <div>
-                      <p className="dash-table-name">{row.user}</p>
-                      <p className="dash-table-id">{row.userId || row.role || ''}</p>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <p className="dash-table-name">{row.subject}</p>
-                  <p className="dash-table-id">{row.desc}</p>
-                </td>
-                <td>
-                  <Badge variant={STATUS_MAP[row.status]}>{row.status}</Badge>
-                </td>
-                <td><span className="dash-table-id">{row.time}</span></td>
-                <td>
-                  <button className="sop-view-btn" onClick={() => handleOpenDispute(row)}>
-                    VER CASO (RF-109)
-                  </button>
+            {isLoading && (
+              <tr><td colSpan={6} className="sop-empty">Cargando disputas…</td></tr>
+            )}
+            {isError && (
+              <tr>
+                <td colSpan={6} className="sop-empty">
+                  <AlertCircle size={14} /> No se pudieron cargar las disputas.{' '}
+                  <button className="sop-view-btn" onClick={() => refetch()}>REINTENTAR</button>
                 </td>
               </tr>
-            ))}
+            )}
+            {!isLoading && !isError && filtered.length === 0 && (
+              <tr><td colSpan={6} className="sop-empty">No hay disputas {filtro === 'todas' ? 'registradas' : filtro}.</td></tr>
+            )}
+            {filtered.map(d => {
+              const cliente = fullName(d.cliente_nombre, d.cliente_apellido)
+              const tecnico = fullName(d.tecnico_nombre, d.tecnico_apellido)
+              const resuelta = d.estado === 'Resuelta'
+              return (
+                <tr key={d.id_disputa}>
+                  <td>
+                    <p className="sop-folio">{folio(d.id_disputa)}</p>
+                    <p className="dash-table-id">{fecha(d.fecha_creacion)}</p>
+                  </td>
+                  <td>
+                    <div className="val-tech-cell">
+                      <div className="sop-avatar">{cliente[0]}</div>
+                      <p className="dash-table-name">{cliente}</p>
+                    </div>
+                  </td>
+                  <td><p className="dash-table-name">{tecnico}</p></td>
+                  <td><Badge variant={resuelta ? 'success' : 'warning'}>{resuelta ? 'Resuelta' : 'Abierta'}</Badge></td>
+                  <td>
+                    <span className="dash-table-id">
+                      {resuelta ? `${money(d.monto_reembolso)} / ${money(d.monto_multa)}` : 'Pendiente'}
+                    </span>
+                  </td>
+                  <td>
+                    {!resuelta && (
+                      <button className="sop-view-btn" onClick={() => setSelected(d)}>RESOLVER</button>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
-
-        {/* Pagination */}
-        <div className="tec-pagination">
-          <p className="tec-page-info">MOSTRANDO {filtered.length} TICKETS TOTAL ABIERTOS</p>
-          <div className="tec-page-controls">
-            <button className="tec-page-btn"><ChevronLeft size={13} /></button>
-            {[1,2,3,4].map(n => (
-              <button key={n} className={`tec-page-btn ${n === 1 ? 'tec-page-btn--active' : ''}`}>{n}</button>
-            ))}
-            <button className="tec-page-btn"><ChevronRight size={13} /></button>
-          </div>
-        </div>
       </div>
 
-      {/* Modal Disputa */}
       <DisputeResolutionModal
-        isOpen={isDisputeOpen}
-        onClose={() => setIsDisputeOpen(false)}
-        ticketId={selectedTicket?.id}
-        userName={selectedTicket?.user}
-        techName={selectedTicket?.techName}
+        key={selected?.id_disputa}
+        isOpen={!!selected}
+        onClose={() => setSelected(null)}
+        ticketId={selected ? folio(selected.id_disputa) : ''}
+        userName={selected ? fullName(selected.cliente_nombre, selected.cliente_apellido) : undefined}
+        techName={selected ? fullName(selected.tecnico_nombre, selected.tecnico_apellido) : undefined}
+        onResolve={async payload => {
+          if (!selected) return
+          await settle.mutateAsync({ id: selected.id_disputa, payload })
+        }}
       />
     </div>
   )

@@ -29,3 +29,24 @@ export async function getServicioById(idServicio: number | string): Promise<Rece
   const { data } = await api.get<RecentService>(`/servicios/${idServicio}`)
   return data
 }
+
+export interface ServicioUbicado {
+  id_servicio: number
+  titulo: string | null
+  descripcion: string | null
+  estatus: string
+  latitud: string | number | null
+  longitud: string | number | null
+  direccion: string | null
+  fecha_creacion: string
+}
+
+/**
+ * Lista de servicios con sus coordenadas (para el mapa en vivo).
+ *
+ * Endpoint: GET /api/servicios
+ */
+export async function getServicios(): Promise<ServicioUbicado[]> {
+  const { data } = await api.get<ServicioUbicado[]>('/servicios')
+  return data
+}

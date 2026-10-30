@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   MapContainer,
   TileLayer,
@@ -7,149 +7,67 @@ import {
   useMap,
 } from 'react-leaflet'
 import L from 'leaflet'
-import {
-  SlidersHorizontal,
-  MapPin,
-  RotateCcw,
-  ExternalLink,
-  Navigation,
-  Clock,
-  User,
-  AlertTriangle,
-  CheckCircle2,
-} from 'lucide-react'
+import { MapPin, RotateCcw, ExternalLink, AlertTriangle } from 'lucide-react'
 import ServiceDetailModal from '@components/modals/ServiceDetailModal'
-import AdvancedFiltersModal from '@components/modals/AdvancedFiltersModal'
+import { useServiciosUbicados } from '@hooks/useServicios'
+import { useActividad, useDashboardStats } from '@hooks/useDashboard'
+import { getServicioById, type ServicioUbicado } from '@api/servicios'
+import type { RecentService } from '@/types/dashboard'
 import 'leaflet/dist/leaflet.css'
 import './mapa.css'
-
-interface TelemetriaNode {
-  id: number
-  label: string
-  lat: number
-  lng: number
-  status: 'online' | 'busy' | 'alert'
-  color: string
-  serviceId: string
-  techName: string
-  clientName: string
-  serviceTitle: string
-  address: string
-  eta: string
-}
 
 // ── Coordenadas Reales de Lázaro Cárdenas, Michoacán ─────────────────────────
 const LZC_CENTER: [number, number] = [17.9750, -102.2050]
 const DEFAULT_ZOOM = 13
 
-const NODES: TelemetriaNode[] = [
-  {
-    id: 1,
-    label: 'CENTRO',
-    lat: 17.9593,
-    lng: -102.2006,
-    status: 'online',
-    color: '#E8590C',
-    serviceId: 'SRV-108',
-    techName: 'Roberto García',
-    clientName: 'José López',
-    serviceTitle: 'Soporte e Instalación de Redes',
-    address: 'Av. Lázaro Cárdenas #120, Col. Centro',
-    eta: 'En sitio',
-  },
-  {
-    id: 2,
-    label: 'LAS ADELITAS',
-    lat: 17.9715,
-    lng: -102.2105,
-    status: 'busy',
-    color: '#3b82f6',
-    serviceId: 'SRV-182',
-    techName: 'Ana Martínez',
-    clientName: 'Comercializadora Pacífico',
-    serviceTitle: 'Mantenimiento Preventivo Servidores',
-    address: 'Blvd. Francisco J. Mújica #45, Las Adelitas',
-    eta: '10 min',
-  },
-  {
-    id: 3,
-    label: 'ZONA INDUSTRIAL',
-    lat: 17.9420,
-    lng: -102.1950,
-    status: 'alert',
-    color: '#ef4444',
-    serviceId: 'SRV-901',
-    techName: 'Carlos Villalobos',
-    clientName: 'Almacenes Portuarios LZC',
-    serviceTitle: 'Reparación de Enlace Troncal',
-    address: 'Isla de la Palma S/N, Parque Industrial',
-    eta: '+25 min (Tráfico)',
-  },
-  {
-    id: 4,
-    label: 'FIDEICOMISO',
-    lat: 17.9620,
-    lng: -102.1860,
-    status: 'online',
-    color: '#E8590C',
-    serviceId: 'SRV-404',
-    techName: 'Luis Mendoza',
-    clientName: 'Residencial Fideicomiso',
-    serviceTitle: 'Cableado Estructurado UTP',
-    address: 'Calle Río Balsas #310, Fideicomiso',
-    eta: 'En sitio',
-  },
-  {
-    id: 5,
-    label: 'GUACAMAYAS',
-    lat: 18.0125,
-    lng: -102.2198,
-    status: 'busy',
-    color: '#3b82f6',
-    serviceId: 'SRV-399',
-    techName: 'Mario Paredes',
-    clientName: 'Gabriel Solís',
-    serviceTitle: 'Configuración Router MikroTik',
-    address: 'Av. Circunvalación #88, Guacamayas',
-    eta: '15 min',
-  },
-]
+interface ServicioNodo {
+  id: number
+  codigo: string
+  lat: number
+  lng: number
+  color: string
+  titulo: string
+  direccion: string
+  estatus: string
+}
 
-const LOG = [
-  {
-    time: '13:05',
-    type: 'ALERTA',
-    typeColor: 'danger',
-    text: 'El técnico #TEC-4122 reporta tráfico pesado rumbo a Zona Industrial. ETA modificado a +15 mins.',
-    serviceId: 'SRV-901',
-  },
-  {
-    time: '13:21',
-    type: 'INFO',
-    typeColor: 'info',
-    text: 'Servicio #SRV-182 iniciado por Roberto G. en Las Adelitas.',
-    serviceId: 'SRV-182',
-  },
-  {
-    time: '12:40',
-    type: 'ÉXITO',
-    typeColor: 'success',
-    text: 'Servicio de Redes finalizado en Centro. Pago procesado correctamente.',
-    serviceId: 'SRV-108',
-  },
-]
+// Colores de estado de la paleta compartida con la app móvil
+function colorPorEstatus(estatus: string) {
+  const e = estatus.toLowerCase()
+  if (e.includes('cancel')) return '#D92D20'
+  if (e.includes('complet') || e.includes('finaliz')) return '#0E7A42'
+  if (e.includes('curso') || e.includes('progreso') || e.includes('camino')) return '#E25900'
+  return '#0C1C40'
+}
+
+const codigo = (id: number) => `SRV-${String(id).padStart(3, '0')}`
+
+function toNodo(s: ServicioUbicado): ServicioNodo | null {
+  const lat = Number(s.latitud)
+  const lng = Number(s.longitud)
+  if (s.latitud == null || s.longitud == null || Number.isNaN(lat) || Number.isNaN(lng)) return null
+  return {
+    id: s.id_servicio,
+    codigo: codigo(s.id_servicio),
+    lat,
+    lng,
+    color: colorPorEstatus(s.estatus),
+    titulo: s.titulo || 'Servicio sin título',
+    direccion: s.direccion || 'Sin dirección registrada',
+    estatus: s.estatus,
+  }
+}
 
 // ── Marcador personalizado HTML con Leaflet DivIcon ──────────────────────────
-function createNodeDivIcon(node: TelemetriaNode, isSelected: boolean) {
+function createNodeDivIcon(node: ServicioNodo, isSelected: boolean) {
   return L.divIcon({
     className: 'mapa-custom-leaflet-marker',
     html: `
       <div class="mapa-pin-wrapper ${isSelected ? 'mapa-pin-wrapper--selected' : ''}" style="--marker-color: ${node.color}">
         <div class="mapa-pulse-ring" style="background-color: ${node.color};"></div>
         <div class="mapa-pin-badge" style="background-color: ${node.color};">
-          <span class="mapa-pin-code">#${node.serviceId.replace('SRV-', '')}</span>
+          <span class="mapa-pin-code">#${node.id}</span>
         </div>
-        <div class="mapa-pin-label">${node.label}</div>
       </div>
     `,
     iconSize: [44, 44],
@@ -175,22 +93,38 @@ function MapFlightController({
   return null
 }
 
+const hora = (iso: string) =>
+  new Date(iso).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
+
 export default function MapaPage() {
-  const [selectedNode, setSelectedNode] = useState<TelemetriaNode | null>(null)
+  const servicios = useServiciosUbicados()
+  const stats = useDashboardStats()
+  const actividad = useActividad()
+
+  const [selectedId, setSelectedId] = useState<number | null>(null)
   const [flyTarget, setFlyTarget] = useState<[number, number] | null>(null)
   const [flyZoom, setFlyZoom] = useState<number | undefined>(undefined)
-  const [isServiceOpen, setIsServiceOpen] = useState(false)
-  const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [detalle, setDetalle] = useState<RecentService | null>(null)
+  const [detalleError, setDetalleError] = useState('')
 
-  const handleSelectNode = (node: TelemetriaNode) => {
-    setSelectedNode(node)
+  const nodos = useMemo(
+    () => (servicios.data ?? []).map(toNodo).filter((n): n is ServicioNodo => n !== null),
+    [servicios.data],
+  )
+
+  const handleSelectNode = (node: ServicioNodo) => {
+    setSelectedId(node.id)
     setFlyTarget([node.lat, node.lng])
     setFlyZoom(15)
   }
 
-  const handleOpenModalForNode = (node: TelemetriaNode) => {
-    setSelectedNode(node)
-    setIsServiceOpen(true)
+  const handleOpenDetail = async (id: number) => {
+    setDetalleError('')
+    try {
+      setDetalle(await getServicioById(id))
+    } catch {
+      setDetalleError(`No se pudo abrir ${codigo(id)}`)
+    }
   }
 
   const handleRecenter = () => {
@@ -198,19 +132,19 @@ export default function MapaPage() {
     setFlyZoom(DEFAULT_ZOOM)
   }
 
+  const statValue = (v: number | undefined) => (stats.isError || v === undefined ? '—' : v)
+
   return (
     <div className="mapa-page fade-in">
       {/* Header row */}
       <div className="dash-page-header">
         <div>
-          <h1 className="dash-page-title">Telemetría de Red en Vivo</h1>
-          <p className="dash-page-sub">
-            MONITOREO GEOGRÁFICO DE SERVICIOS • NODO LÁZARO CÁRDENAS, MICHOACÁN
-          </p>
+          <h1 className="dash-page-title">Mapa en vivo</h1>
+          <p className="dash-page-sub">Servicios con ubicación en Lázaro Cárdenas, Michoacán</p>
         </div>
         <div className="mapa-date">
           <span className="mapa-dot" />
-          NODO ACTIVO • LÁZARO CÁRDENAS
+          {servicios.isError ? 'SIN CONEXIÓN CON EL SERVIDOR' : `${nodos.length} SERVICIOS EN EL MAPA`}
         </div>
       </div>
 
@@ -230,8 +164,8 @@ export default function MapaPage() {
           </div>
 
           <div className="mapa-badge-city">
-            <MapPin size={12} color="#E8590C" />
-            <span>Lázaro Cárdenas, Michoacán (Nodo Operativo)</span>
+            <MapPin size={12} color="#E25900" />
+            <span>Lázaro Cárdenas, Michoacán</span>
           </div>
 
           <MapContainer
@@ -249,137 +183,107 @@ export default function MapaPage() {
 
             <MapFlightController target={flyTarget} zoom={flyZoom} />
 
-            {/* Marcadores reales de la ciudad */}
-            {NODES.map((node) => {
-              const isSelected = selectedNode?.id === node.id
-              return (
-                <Marker
-                  key={node.id}
-                  position={[node.lat, node.lng]}
-                  icon={createNodeDivIcon(node, isSelected)}
-                  eventHandlers={{
-                    click: () => handleSelectNode(node),
-                  }}
-                >
-                  <Popup>
-                    <div className="mapa-popup-card">
-                      <div className="mapa-popup-header">
-                        <span
-                          className="mapa-popup-tag"
-                          style={{
-                            backgroundColor: `${node.color}1a`,
-                            color: node.color,
-                          }}
-                        >
-                          {node.label}
-                        </span>
-                        <strong style={{ fontSize: 11, color: '#64748b' }}>
-                          #{node.serviceId}
-                        </strong>
-                      </div>
-
-                      <h4 className="mapa-popup-title">{node.serviceTitle}</h4>
-                      <p className="mapa-popup-sub">{node.address}</p>
-
-                      <div className="mapa-popup-detail">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                          <User size={12} color="#0284c7" />
-                          <span>Técnico: <strong>{node.techName}</strong></span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <Clock size={12} color="#0284c7" />
-                          <span>ETA: <strong>{node.eta}</strong></span>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        className="mapa-popup-btn"
-                        onClick={() => handleOpenModalForNode(node)}
+            {nodos.map((node) => (
+              <Marker
+                key={node.id}
+                position={[node.lat, node.lng]}
+                icon={createNodeDivIcon(node, selectedId === node.id)}
+                eventHandlers={{ click: () => handleSelectNode(node) }}
+              >
+                <Popup>
+                  <div className="mapa-popup-card">
+                    <div className="mapa-popup-header">
+                      <span
+                        className="mapa-popup-tag"
+                        style={{ backgroundColor: `${node.color}1a`, color: node.color }}
                       >
-                        <ExternalLink size={12} /> Ver Expediente del Servicio
-                      </button>
+                        {node.estatus}
+                      </span>
+                      <strong style={{ fontSize: 11, color: '#667085' }}>{node.codigo}</strong>
                     </div>
-                  </Popup>
-                </Marker>
-              )
-            })}
+
+                    <h4 className="mapa-popup-title">{node.titulo}</h4>
+                    <p className="mapa-popup-sub">{node.direccion}</p>
+
+                    <button
+                      type="button"
+                      className="mapa-popup-btn"
+                      onClick={() => handleOpenDetail(node.id)}
+                    >
+                      <ExternalLink size={12} /> Ver detalle del servicio
+                    </button>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
           </MapContainer>
         </div>
 
         {/* Right panel */}
         <div className="mapa-panel">
-          {/* Status */}
           <div className="mapa-status-grid">
             <div className="mapa-stat">
-              <p className="mapa-stat-label">EN LÍNEA</p>
-              <p className="mapa-stat-value" style={{ color: 'var(--accent)' }}>42</p>
+              <p className="mapa-stat-label">TÉCNICOS EN LÍNEA</p>
+              <p className="mapa-stat-value" style={{ color: 'var(--accent)' }}>{statValue(stats.data?.tecnicos_online)}</p>
             </div>
             <div className="mapa-stat">
-              <p className="mapa-stat-label">OCUPADOS</p>
-              <p className="mapa-stat-value" style={{ color: '#3b82f6' }}>18</p>
+              <p className="mapa-stat-label">SERVICIOS EN CURSO</p>
+              <p className="mapa-stat-value" style={{ color: '#0C1C40' }}>{statValue(stats.data?.servicios_en_curso)}</p>
             </div>
           </div>
 
-          {/* Live log */}
+          {detalleError && (
+            <p className="mapa-log-text" style={{ color: 'var(--danger-ink)' }}>{detalleError}</p>
+          )}
+
+          {/* Actividad real del sistema */}
           <div className="mapa-log-header">
-            <p className="mapa-log-title">BITÁCORA EN VIVO</p>
+            <p className="mapa-log-title">ACTIVIDAD RECIENTE</p>
             <span className="mapa-live-dot" />
           </div>
 
           <div className="mapa-log">
-            {LOG.map((entry, i) => {
-              const matchedNode = NODES.find((n) => n.serviceId === entry.serviceId) || NODES[0]
-              const isSelected = selectedNode?.serviceId === entry.serviceId
-
+            {actividad.isError && (
+              <p className="mapa-log-text"><AlertTriangle size={12} /> Sin conexión con el registro de actividad.</p>
+            )}
+            {!actividad.isError && (actividad.data?.items ?? []).length === 0 && !actividad.isLoading && (
+              <p className="mapa-log-text">Todavía no hay actividad registrada.</p>
+            )}
+            {(actividad.data?.items ?? []).map((entry) => {
+              const nodo = entry.tipo === 'servicio' ? nodos.find((n) => n.id === entry.id) : undefined
               return (
                 <div
-                  key={i}
-                  className={`mapa-log-entry ${isSelected ? 'mapa-log-entry--active' : ''}`}
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => handleSelectNode(matchedNode)}
+                  key={`${entry.tipo}-${entry.id}`}
+                  className={`mapa-log-entry ${nodo && selectedId === nodo.id ? 'mapa-log-entry--active' : ''}`}
+                  style={{ cursor: nodo ? 'pointer' : 'default' }}
+                  onClick={() => nodo && handleSelectNode(nodo)}
                 >
                   <div className="mapa-log-meta">
-                    <span>{entry.time}</span>
-                    <span className={`mapa-log-type mapa-log-type--${entry.typeColor}`}>
-                      {entry.type}
+                    <span>{hora(entry.creado_en)}</span>
+                    <span className={`mapa-log-type mapa-log-type--${entry.urgente ? 'danger' : 'info'}`}>
+                      {entry.tipo === 'servicio' ? 'SERVICIO' : 'TÉCNICO'}
                     </span>
                   </div>
-                  <p className="mapa-log-text">{entry.text}</p>
+                  <p className="mapa-log-text">{entry.descripcion}</p>
                 </div>
               )
             })}
           </div>
-
-          {/* Filter btn */}
-          <button
-            type="button"
-            className="mapa-filter-btn"
-            onClick={() => setIsFilterOpen(true)}
-          >
-            <SlidersHorizontal size={13} />
-            FILTROS AVANZADOS (RF-39)
-          </button>
         </div>
       </div>
 
-      {/* Modals */}
-      {selectedNode && (
+      {detalle && (
         <ServiceDetailModal
-          isOpen={isServiceOpen}
-          onClose={() => setIsServiceOpen(false)}
-          serviceId={selectedNode.serviceId}
-          title={selectedNode.serviceTitle}
-          techName={selectedNode.techName}
-          clientName={selectedNode.clientName}
-          status={selectedNode.status === 'online' ? 'Finalizado' : selectedNode.status === 'alert' ? 'Cancelado' : 'En Progreso'}
+          key={detalle.id_servicio}
+          isOpen
+          onClose={() => setDetalle(null)}
+          serviceId={detalle.id_servicio}
+          title={detalle.titulo}
+          clientName={`${detalle.cliente_nombre ?? ''} ${detalle.cliente_apellido ?? ''}`.trim() || 'Sin cliente'}
+          techName={detalle.tecnico_nombre ? `${detalle.tecnico_nombre} ${detalle.tecnico_apellido ?? ''}` : 'Sin asignar'}
+          status={detalle.estatus}
         />
       )}
-
-      <AdvancedFiltersModal
-        isOpen={isFilterOpen}
-        onClose={() => setIsFilterOpen(false)}
-      />
     </div>
   )
 }

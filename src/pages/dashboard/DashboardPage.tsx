@@ -26,14 +26,14 @@ import "./dashboard.css"
 
 // ── Paleta (azul marino + naranja de la app móvil, sin neón) ────────────────
 const C = {
-  orange: "#E8590C",
-  navy:   "#0A192F",
-  slate:  "#64748B",
-  peach:  "#F4A26B",
-  mist:   "#CBD5E1",
-  track:  "#E8ECF1",
+  orange: "#E25900",
+  navy:   "#0C1C40",
+  slate:  "#667085",
+  peach:  "#FF6B00",
+  mist:   "#CDD3E0",
+  track:  "#E6E9EE",
 }
-const PIE_COLORS = [C.navy, C.orange, C.slate, C.peach, C.mist, "#334155"]
+const PIE_COLORS = [C.navy, C.orange, C.slate, C.peach, C.mist, "#4B5563"]
 const RANK_COLORS = [C.orange, C.navy, C.slate, C.peach]
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -325,9 +325,9 @@ export default function DashboardPage() {
           ) : (
             <ResponsiveContainer width="100%" height={270}>
               <ComposedChart data={mes.data.puntos} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}>
-                <CartesianGrid vertical={false} stroke="#EEF1F4" />
-                <XAxis dataKey="dia" tick={{ fontSize: 11, fill: "#94A3B8" }} axisLine={false} tickLine={false} minTickGap={24} />
-                <YAxis tick={{ fontSize: 11, fill: "#94A3B8" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <CartesianGrid vertical={false} stroke="#E6E9EE" />
+                <XAxis dataKey="dia" tick={{ fontSize: 11, fill: "#667085" }} axisLine={false} tickLine={false} minTickGap={24} />
+                <YAxis tick={{ fontSize: 11, fill: "#667085" }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(10,25,47,.03)" }} />
                 <Bar dataKey="en_curso" name="En curso" fill={C.track} radius={[4, 4, 0, 0]} barSize={10} />
                 <Line type="monotone" dataKey="completados" name="Completados" stroke={C.orange} strokeWidth={2.5} dot={false} activeDot={{ r: 5, stroke: "#fff", strokeWidth: 2 }} />

@@ -59,7 +59,7 @@ export default function TecnicosPage() {
     <div className="tec-page fade-in">
       <div className="dash-page-header">
         <div>
-          <h1 className="dash-page-title">Directorio de Cuentas (RF-18, RF-37, RF-38)</h1>
+          <h1 className="dash-page-title">Directorio de Cuentas</h1>
           <p className="dash-page-sub">GESTIÓN DE RED LÁZARO CÁRDENAS</p>
         </div>
       </div>
@@ -93,7 +93,7 @@ export default function TecnicosPage() {
           <option value="Redes y Conectividad">Redes y Conectividad</option>
         </select>
         <button className="dash-export-btn" onClick={() => setIsFilterOpen(true)}>
-          <Filter size={13} /> FILTROS AVANZADOS (RF-39)
+          <Filter size={13} /> FILTROS AVANZADOS
         </button>
       </div>
 
@@ -148,7 +148,7 @@ export default function TecnicosPage() {
                   </td>
                   <td>
                     <button className="tec-action-btn" onClick={() => handleOpenProfile(row)}>
-                      VER PERFIL (RF-36)
+                      VER PERFIL
                     </button>
                   </td>
                 </tr>

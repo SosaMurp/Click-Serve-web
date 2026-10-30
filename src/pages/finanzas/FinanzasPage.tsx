@@ -56,7 +56,7 @@ export default function FinanzasPage() {
       for (const id of selectedIds) {
          await approveMutation.mutateAsync(id)
       }
-      alert(`Lote de ${selected.size} solicitudes de retiro autorizadas exitosamente. (RF-77)`)
+      alert(`Lote de ${selected.size} solicitudes de retiro autorizadas exitosamente.`)
       setSelected(new Set())
     } catch (e) {
        console.error("Error batch approving withdrawals", e)
