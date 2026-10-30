@@ -26,36 +26,43 @@ export default function RegisterPage() {
     e.preventDefault()
     setError('')
 
-    if (form.password !== form.confirmPass) {
-      setError('Las contraseñas no coinciden.')
+    const cleanEmail = form.userEmail.trim().toLowerCase()
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setError('Por favor ingresa un correo electrónico válido.')
       return
     }
+
     if (form.password.length < 8) {
       setError('La contraseña debe tener al menos 8 caracteres.')
+      return
+    }
+
+    if (form.password !== form.confirmPass) {
+      setError('Las contraseñas no coinciden.')
       return
     }
 
     setLoading(true)
     try {
       await registerAdmin({
-        nombre: form.nombre,
-        apellidos: form.apellidos,
-        telefono: form.telefono,
-        email: form.userEmail,
+        nombre: form.nombre.trim(),
+        apellidos: form.apellidos.trim(),
+        telefono: form.telefono.trim(),
+        email: cleanEmail,
         fechaNacimiento: form.fechaNacimiento,
         password: form.password,
         perfil: 3, // id_rol 3 = Administrador en la BD
       })
 
       // Guardar el email para usarlo en la pantalla de verificación
-      sessionStorage.setItem('pending_email', form.userEmail)
+      sessionStorage.setItem('pending_email', cleanEmail)
       navigate('/register/sent')
 
     } catch (err: unknown) {
       setLoading(false)
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
-      if (msg?.includes('Existente') || msg?.includes('23505')) {
-        setError('Este correo ya está registrado en el sistema.')
+      if (msg?.includes('registrado') || msg?.includes('Existente') || msg?.includes('23505')) {
+        setError('El correo electrónico ya se encuentra registrado en el sistema.')
       } else {
         setError(msg || 'Error al enviar la solicitud. Intenta de nuevo.')
       }

@@ -102,8 +102,8 @@ export default function PerfilPage() {
       setPasswordError('Ingresa tu contraseña actual.')
       return
     }
-    if (!newPassword || newPassword.length < 6) {
-      setPasswordError('La nueva contraseña debe tener al menos 6 caracteres.')
+    if (!newPassword || newPassword.length < 8) {
+      setPasswordError('La nueva contraseña debe tener al menos 8 caracteres.')
       return
     }
     if (newPassword !== confirmPassword) {
@@ -116,7 +116,7 @@ export default function PerfilPage() {
       const res = await updatePassword(currentPassword, newPassword)
       
       if (res.token) {
-        localStorage.setItem('admin_token', res.token)
+        useAuthStore.getState().updateToken(res.token)
       }
 
       setPasswordSuccess(res.mensaje || 'Contraseña actualizada exitosamente.')
@@ -349,7 +349,7 @@ export default function PerfilPage() {
                   </label>
                   <input
                     type="password"
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder="Mínimo 8 caracteres"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13 }}

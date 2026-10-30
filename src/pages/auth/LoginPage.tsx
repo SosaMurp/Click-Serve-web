@@ -4,57 +4,63 @@ import { Eye, EyeOff, User } from 'lucide-react'
 import AuthLayout from '@components/layout/AuthLayout'
 import { Button, Input } from '@components/ui'
 import { loginAdmin } from '@api/auth'
-import { useAuthStore } from '@store/authStore'
 import './auth.css'
 
-// Rol de administrador en la BD (id_rol = 3)
-const ADMIN_ROL_ID = 3
-
 // Componente principal de la página de Login
-// Este componente renderiza el formulario y maneja la interacción inicial del usuario.
 export default function LoginPage() {
-  const navigate = useNavigate() // Hook para redireccionar a otras páginas (ej. al paso 2FA)
-  const login = useAuthStore(s => s.login)
+  const navigate = useNavigate()
 
   // Estados locales para manejar los datos del formulario y la UI
-  const [showPass, setShowPass] = useState(false) // Controla si la contraseña es visible o enmascarada
-  const [email, setEmail] = useState('') // Almacena el correo ingresado
-  const [password, setPassword] = useState('') // Almacena la contraseña ingresada
-  const [loading, setLoading] = useState(false) // Estado de carga mientras se espera respuesta del servidor
-  const [error, setError] = useState('') // Almacena y muestra mensajes de error al usuario
+  const [showPass, setShowPass] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   // Función que se ejecuta al presionar el botón "AUTENTICAR EN EL SISTEMA"
   const handleSubmit = async (e: React.FormEvent) => {
-   e.preventDefault() // Evita que la página se recargue al enviar el formulario
-   setError('') // Limpiamos errores previos
-   setLoading(true) // Activamos el spinner del botón
+    e.preventDefault()
+    setError('')
 
-   try {
-      // Paso 1: Enviamos las credenciales al servidor a través de la función loginAdmin (definida en api/auth.ts)
-   const data = await loginAdmin({ email, password })
+    const cleanEmail = email.trim().toLowerCase()
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setError('Por favor ingresa un correo electrónico institucional válido.')
+      return
+    }
 
-      // Si el backend nos indica que las credenciales son correctas y mandó el código:
+    if (!password) {
+      setError('Por favor ingresa tu clave de acceso.')
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      // Paso 1: Enviar credenciales
+      const data = await loginAdmin({ email: cleanEmail, password })
+
       if (data.requiere2FA) {
-        // Redirigimos a la nueva vista de verificación pasándole el correo
         navigate('/verify-2fa', { 
-          state: { emailIngresado: email },
+          state: { emailIngresado: cleanEmail },
           replace: true 
         })
       }
 
-      } catch (err: unknown) {
+    } catch (err: unknown) {
       setLoading(false)
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
-   
-      if (msg?.includes('Contraseña') || msg?.includes('contraseña')) {
-     setError('Contraseña incorrecta. Verifica tus credenciales.')
-      } else if (msg?.includes('denegado')) {
-        setError(msg) // Muestra el error de "Exclusivo para panel web"
+
+      // Mitigación OWASP contra Enumeración de Usuarios (CWE-204):
+      // No revelar si el correo existe o si la clave fue el elemento que falló
+      if (msg?.includes('denegado') || msg?.includes('verificada') || msg?.includes('suspendida') || msg?.includes('inactiva')) {
+        setError(msg)
+      } else if (msg?.includes('incorrectos') || msg?.includes('credenciales') || msg?.includes('contraseña') || msg?.includes('correo')) {
+        setError('Credenciales incorrectas. Verifica tu correo y contraseña.')
       } else {
-     setError(msg || 'Error al conectar con el servidor.')
-     }
+        setError(msg || 'Error al conectar con el servidor.')
+      }
     }
-   }
+  }
 
   return (
     <AuthLayout

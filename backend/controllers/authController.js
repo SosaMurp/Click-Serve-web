@@ -224,13 +224,13 @@ exports.loginAdmin = async (req, res) => {
       `
     };
 
+    console.log(`\r\n========================================\r\n[AUTH 2FA] Código generado para ${emailFormateado}: ${tokenGenerado}\r\n========================================\r\n`);
+
     try {
       await transporter.sendMail(mailOptions);
     } catch (mailError) {
-      // Solo desarrollo: si el SMTP falla, el código ya quedó en tokens_temporales
-      // y se consulta con `node scripts/create-test-admin.js otp`.
-      if (process.env.DEV_SKIP_EMAIL !== 'true') throw mailError;
-      console.warn('[DEV_SKIP_EMAIL] No se envió el correo 2FA:', mailError.message);
+      console.warn('[SMTP WARNING] No se pudo despachar correo 2FA por Gmail SMTP:', mailError.message);
+      console.log(`======================================================\n>>> CÓDIGO 2FA PARA ${emailFormateado}: ${tokenGenerado} <<<\n======================================================`);
     }
 
     res.status(200).json({
@@ -497,7 +497,12 @@ exports.requestRecovery = async (req, res) => {
       `
     };
 
-    await transporter.sendMail(mailOptions);
+    try {
+      await transporter.sendMail(mailOptions);
+    } catch (mailError) {
+      console.warn('[SMTP WARNING] No se pudo despachar correo de recuperación:', mailError.message);
+      console.log(`======================================================\n>>> CÓDIGO RECUPERACIÓN PARA ${emailFormateado}: ${tokenGenerado} <<<\n======================================================`);
+    }
     res.status(200).json(genericResponse);
   } catch (error) {
     console.error('Error en requestRecovery:', error);

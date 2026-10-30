@@ -1,0 +1,64 @@
+{
+  "expo": {
+    "name": "Click & Serve",
+    "slug": "click-serve-movil",
+    "scheme": "click-serve",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permitir que Click & Serve adjunte fotos a tus solicitudes, evidencias y mensajes.",
+          "cameraPermission": "Permitir que Click & Serve use la cámara para verificar tu identidad y tomar fotos del servicio.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Permitir que Click & Serve use tu ubicación para ubicar el servicio y mostrar técnicos cercanos."
+        }
+      ],
+      "expo-secure-store",
+      "expo-sharing",
+      "expo-web-browser",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permitir que Click & Serve use la cámara para verificar tu credencial y tu rostro.",
+          "recordAudioAndroid": false
+        }
+      ]
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
+      "package": "com.gallo122.clickservemovil"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c6c536d8-cc7b-46fa-974a-4ad6dd7a4932"
+      }
+    }
+  }
+}

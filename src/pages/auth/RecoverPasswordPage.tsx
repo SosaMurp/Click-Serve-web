@@ -20,19 +20,20 @@ export default function RecoverPasswordPage() {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
 
-  // Paso 1: Enviar código al correo
+  // Paso 1: Enviar código al correo (Anti-User Enumeration)
   const handleRequest = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    if (!email || !email.includes('@')) {
+    const cleanEmail = email.trim().toLowerCase()
+    if (!cleanEmail || !cleanEmail.includes('@')) {
       setError('Por favor ingresa un correo electrónico válido.')
       return
     }
 
     setLoading(true)
     try {
-      await requestRecovery(email.trim().toLowerCase())
-      setMessage(`Código enviado a ${email.trim()}`)
+      const res = await requestRecovery(cleanEmail)
+      setMessage(res?.mensaje || `Si el correo está registrado y activo, se ha enviado un código a ${cleanEmail}`)
       setStep('reset')
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
@@ -81,7 +82,7 @@ export default function RecoverPasswordPage() {
     setLoading(true)
     try {
       await requestRecovery(email.trim().toLowerCase())
-      setMessage('Nuevo código de recuperación enviado a tu correo.')
+      setMessage('Si el correo está registrado y activo, se ha enviado un nuevo código de recuperación.')
     } catch {
       setError('Error al reenviar el código. Intenta más tarde.')
     } finally {
@@ -108,7 +109,7 @@ export default function RecoverPasswordPage() {
 
           <form className="auth-form" onSubmit={handleRequest} noValidate style={{ marginTop: 20 }}>
             <p className="auth-hint" style={{ marginBottom: 16 }}>
-              Ingresa el correo registrado asociado a tu cuenta de operador. Te enviaremos un código temporal de 4 dígitos.
+              Ingresa el correo registrado asociado a tu cuenta de operador. Si el correo cuenta con un rol asignado y activo, te enviaremos un código temporal de 4 dígitos.
             </p>
 
             <Input
@@ -139,7 +140,7 @@ export default function RecoverPasswordPage() {
         <>
           <div className="auth-form-header">
             <h2 className="auth-form-title">Nueva Clave</h2>
-            <p className="auth-form-subtitle">CÓDIGO ENVIADO A {email}</p>
+            <p className="auth-form-subtitle">VALIDACIÓN DE ACCESO PARA {email}</p>
           </div>
 
           <Badge variant="online" dot>CÓDIGO DE 4 DÍGITOS ACTIVO</Badge>
