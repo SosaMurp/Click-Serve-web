@@ -4,11 +4,18 @@ const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const pool = require('../config/db');
 
+// Credenciales SMTP solo desde variables de entorno (nunca en el código)
+const SMTP_USER = process.env.EMAIL_USER || process.env.SMTP_USER;
+const SMTP_PASS = process.env.EMAIL_PASS || process.env.SMTP_PASS;
+if (!SMTP_USER || !SMTP_PASS) {
+  console.warn('[SMTP WARNING] Faltan SMTP_USER/SMTP_PASS en .env: no se podrán enviar correos.');
+}
+
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: process.env.EMAIL_USER || process.env.SMTP_USER || 'projectcys1@gmail.com',
-    pass: process.env.EMAIL_PASS || process.env.SMTP_PASS || 'bzpacpnbucuobeat'
+    user: SMTP_USER,
+    pass: SMTP_PASS
   }
 });
 
@@ -29,6 +36,13 @@ exports.register = async (req, res) => {
     return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres.' });
   }
 
+  // El registro público solo crea clientes (1) o técnicos (2).
+  // Los administradores (3) solo los da de alta otro admin vía POST /api/admin/co-admins.
+  const idRol = perfil === undefined || perfil === null || perfil === '' ? 1 : Number(perfil);
+  if (idRol !== 1 && idRol !== 2) {
+    return res.status(403).json({ error: 'No se permite registrar este tipo de cuenta. Las cuentas administrativas las crea un administrador.' });
+  }
+
   try {
     const emailFormateado = email.trim().toLowerCase();
     const saltRounds = 10;
@@ -40,7 +54,7 @@ exports.register = async (req, res) => {
        VALUES 
         ($1, $2, $3, $4, $5, $6, $7, $8) 
        RETURNING id_usuario`,
-      [nombre, apellidos, telefono, emailFormateado, fechaNacimiento, hashedPassword, perfil || 1, 'No verificado']
+      [nombre, apellidos, telefono, emailFormateado, fechaNacimiento, hashedPassword, idRol, 'No verificado']
     );
 
     const idUsuario = newUser.rows[0].id_usuario;
@@ -53,7 +67,7 @@ exports.register = async (req, res) => {
     );
 
     const mailOptions = {
-      from: '"Click & Serve" <projectcys1@gmail.com>',
+      from: `"Click & Serve" <${SMTP_USER}>`,
       to: emailFormateado,
       subject: 'Tu código de verificación - Click & Serve',
       html: `
@@ -208,7 +222,7 @@ exports.loginAdmin = async (req, res) => {
     );
 
     const mailOptions = {
-      from: '"Click & Serve - Seguridad" <projectcys1@gmail.com>',
+      from: `"Click & Serve - Seguridad" <${SMTP_USER}>`,
       to: emailFormateado,
       subject: 'Código de acceso al panel - Click & Serve',
       html: `
@@ -392,7 +406,7 @@ exports.resendCode = async (req, res) => {
     );
 
     const mailOptions = {
-      from: '"Click & Serve" <projectcys1@gmail.com>',
+      from: `"Click & Serve" <${SMTP_USER}>`,
       to: emailFormateado,
       subject: 'Nuevo código de verificación - Click & Serve',
       html: `
@@ -482,7 +496,7 @@ exports.requestRecovery = async (req, res) => {
     );
 
     const mailOptions = {
-      from: '"Click & Serve" <projectcys1@gmail.com>',
+      from: `"Click & Serve" <${SMTP_USER}>`,
       to: emailFormateado,
       subject: 'Recuperación de contraseña - Click & Serve',
       html: `

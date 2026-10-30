@@ -33,16 +33,6 @@ export interface AuthSuccessResponse {
 // Para compatibilidad con referencias previas
 export type LoginResponse = AuthSuccessResponse
 
-export interface RegisterAdminPayload {
-  nombre: string
-  apellidos: string
-  telefono: string
-  email: string
-  fechaNacimiento: string
-  password: string
-  perfil?: number // id_rol — 3 para Administrador
-}
-
 export interface SesionActivaResponse {
   id_sesion: string // UUID en PostgreSQL
   dispositivo: string
@@ -69,15 +59,6 @@ export async function loginAdmin(payload: LoginPayload): Promise<LoginAdminStep1
  */
 export async function verifyAdminLogin(email: string, token: string): Promise<AuthSuccessResponse> {
   const { data } = await api.post<AuthSuccessResponse>('/verify-login-admin', { email, token })
-  return data
-}
-
-/** Registro de nuevo operador admin (fuerza id_rol = 3 en el backend) */
-export async function registerAdmin(payload: RegisterAdminPayload) {
-  const { data } = await api.post('/register', {
-    ...payload,
-    perfil: payload.perfil ?? 3,
-  })
   return data
 }
 
