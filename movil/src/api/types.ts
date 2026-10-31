@@ -174,7 +174,7 @@ export type Billetera = { id_billetera: number; saldo_actual: string; clabe: str
 export type Movimiento = {
   id_transaccion: number;
   folio: string;
-  tipo: 'INGRESO' | 'RETIRO';
+  tipo: 'INGRESO' | 'RETIRO' | 'AJUSTE';
   concepto: string;
   monto: string;
   estado: string;

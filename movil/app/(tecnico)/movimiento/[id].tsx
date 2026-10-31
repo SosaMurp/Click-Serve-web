@@ -24,26 +24,28 @@ export default function Movimiento() {
   }
 
   const ingreso = c.tipo === 'INGRESO';
+  const ajuste = c.tipo === 'AJUSTE';
+  const tipoTexto = ingreso ? 'Pago de servicio' : ajuste ? (c.concepto === 'MULTA' ? 'Cargo por incidencia (multa)' : 'Devolución al cliente descontada') : 'Retiro a cuenta bancaria';
   const rows = [
-    { label: 'Tipo', value: ingreso ? 'Pago de servicio' : 'Retiro a cuenta bancaria' },
+    { label: 'Tipo', value: tipoTexto },
     { label: 'Fecha', value: formatDateTime(c.fecha) },
     { label: 'Estado', value: c.estado === 'COMPLETADO' ? 'Completado' : c.estado === 'PENDIENTE' ? 'En proceso' : c.estado },
     { label: 'Beneficiario', value: c.beneficiario },
     ...(c.folio_solicitud ? [{ label: 'Servicio', value: `${c.categoria_nombre || ''} ${c.folio_solicitud}`.trim() }] : []),
     ...(!ingreso && c.cuenta_destino ? [{ label: 'Cuenta destino', value: `${c.banco_destino || ''} ${c.cuenta_destino}`.trim() }] : []),
-    ...(c.desglose ? [
+    ...(ingreso && c.desglose ? [
       { label: 'Total pagado por el cliente', value: formatMoney(c.desglose.total) },
       { label: 'Comisión Click & Serve', value: `−${formatMoney(c.desglose.comision)}` },
       { label: 'Retención ISR', value: `−${formatMoney(c.desglose.retencion_isr)}` },
       { label: 'Retención IVA', value: `−${formatMoney(c.desglose.retencion_iva)}` },
     ] : []),
-    { label: ingreso ? 'Neto a tu billetera' : 'Monto retirado', value: formatMoney(c.monto), strong: true },
+    { label: ingreso ? 'Neto a tu billetera' : ajuste ? 'Monto descontado' : 'Monto retirado', value: formatMoney(c.monto), strong: true },
   ];
 
   async function share() {
     setSharing(true);
     try {
-      await shareReceipt(receiptHtml(ingreso ? 'Comprobante de ingreso' : 'Comprobante de transferencia', c!.folio, rows));
+      await shareReceipt(receiptHtml(ingreso ? 'Comprobante de ingreso' : ajuste ? 'Comprobante de cargo' : 'Comprobante de transferencia', c!.folio, rows));
     } catch {
       toast.error('No se pudo generar el comprobante.');
     } finally {
@@ -55,12 +57,12 @@ export default function Movimiento() {
     <Screen header={<AppBar title="Comprobante" fallbackHref="/movimientos" />} footer={<Button title="Compartir o imprimir" icon="share-2" onPress={share} loading={sharing} full size="lg" />}>
       <HeroCard>
         <View style={styles.icon}><Icon name={ingreso ? 'arrow-down-left' : 'arrow-up-right'} size={24} color={ingreso ? color.success : color.accentPressed} /></View>
-        <Text variant="label" tone="onColor" style={styles.dim}>{ingreso ? 'Ingreso' : 'Retiro'}</Text>
+        <Text variant="label" tone="onColor" style={styles.dim}>{ingreso ? 'Ingreso' : ajuste ? 'Cargo' : 'Retiro'}</Text>
         <Text variant="display" tone="onColor" tabular>{ingreso ? '+' : '−'}{formatMoney(c.monto)}</Text>
         <Pill label={rows[2].value} tone={c.estado === 'COMPLETADO' ? 'success' : 'warning'} size="sm" solid style={styles.pill} />
       </HeroCard>
       <Surface style={styles.gap}>
-        <Folio value={c.folio} label={ingreso ? 'Folio' : 'Folio de transferencia'} />
+        <Folio value={c.folio} label={ingreso || ajuste ? 'Folio' : 'Folio de transferencia'} />
         <Divider />
         {rows.map((r) => (
           <View key={r.label} style={styles.row}>

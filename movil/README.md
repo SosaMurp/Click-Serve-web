@@ -1,50 +1,33 @@
-# Welcome to your Expo app 👋
+# Click & Serve · app móvil
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+App de clientes y técnicos hecha con Expo (React Native + expo-router). Habla con el backend único del repositorio
+(`../backend`), el mismo que usa el panel de administración.
 
-## Get started
-
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Correrla
 
 ```bash
-npm run reset-project
+npm install
+cp .env.example .env     # EXPO_PUBLIC_API_URL: http://localhost:3000, o la IP de la PC si usas un teléfono
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+El backend debe estar corriendo (`cd ../backend && npm start`). En un teléfono físico `localhost` es el teléfono:
+usa la IP de tu PC en la red local, por ejemplo `http://192.168.1.20:3000`. Fuera de desarrollo la app solo acepta URLs
+`https://`.
 
-## Learn more
+## Estructura
 
-To learn more about developing your project with Expo, look at the following resources:
+- `app/` rutas (expo-router): `(auth)`, `(cliente)`, `(tecnico)` y `(comun)`.
+- `src/api/` cliente HTTP y tipos del backend; `src/features/` pantallas por dominio; `src/design/` sistema de diseño
+  (mismos colores y tipografía que el panel web); `src/lib/` utilidades con pruebas en `src/lib/__tests__/`.
+- `docs/REPORTE-CAMBIOS.md` historial de cambios y requisitos cubiertos.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Pruebas
 
-## Join the community
+```bash
+npm test               # utilidades (formato, estados, URL del API, análisis de la foto de la INE…)
+npx tsc --noEmit       # tipos
+```
 
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+> Este código viene de la copia de trabajo `Click-Serve-MOVI`; cuando una pantalla cambie allá, copia el cambio aquí
+> (o al revés) para que no se separen.

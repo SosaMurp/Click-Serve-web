@@ -9,6 +9,6 @@ test('en producción solo se acepta una URL HTTPS (RNF-01)', () => {
 });
 
 test('en desarrollo se permite el backend local por HTTP', () => {
-  assert.equal(resolveApiUrl('http://localhost:3001/', true), 'http://localhost:3001');
+  assert.equal(resolveApiUrl('http://localhost:3000/', true), 'http://localhost:3000');
   assert.equal(resolveApiUrl(undefined, true), 'http://localhost:3000');
 });

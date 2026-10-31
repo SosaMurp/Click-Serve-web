@@ -289,7 +289,7 @@ En desarrollo, los códigos de verificación se imprimen en la consola del servi
 **App** (`C:\Proyectos\Click-Serve-MOVI`):
 ```bash
 npm install
-# .env → EXPO_PUBLIC_API_URL=http://localhost:3000 (backend único de `backend/`; o la IP de la PC para un teléfono en la misma red)
+# .env → EXPO_PUBLIC_API_URL=http://localhost:3000 (o la IP de la PC para un teléfono en la misma red)
 npm test                    # 26 pruebas
 npx tsc --noEmit            # chequeo de tipos
 npm run web                 # http://localhost:8081 · o `npm start` y Expo Go / dev client
