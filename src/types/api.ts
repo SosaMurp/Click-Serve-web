@@ -53,6 +53,31 @@ export interface TecnicoAppRow {
   cancelados: number
 }
 
+/** Expediente de GET /api/admin/usuarios/:id/expediente */
+export interface ExpedienteApp {
+  id_usuario: number
+  id_rol: number
+  nombre: string
+  apellido: string
+  correo: string
+  telefono: string | null
+  fecha_nacimiento: string | null
+  estado_cuenta: string
+  identidad_verificada: boolean
+  verificado_sep: boolean
+  disponible: boolean
+  bio: string | null
+  fecha_registro: string
+  fecha_revision: string | null
+  motivo_rechazo: string | null
+  calificacion: string | null
+  trabajos: number
+  cancelados: number
+  foto_url: string | null
+  documentos: { id_documento: number; tipo: string; numero: string | null; descripcion: string | null; estado: 'EN_REVISION' | 'APROBADO' | 'RECHAZADO'; fecha_creacion: string; url: string | null }[]
+  especialidades: { id_especialidad: number; categoria: string | null; nombre: string; estado: string | null; activa: boolean }[]
+}
+
 export interface SearchAdvancedPayload {
   especialidad?: string
   estadoCuenta?: string
@@ -160,6 +185,42 @@ export interface UpdateIncidenciaPayload {
   prioridad?: Prioridad
   notas_admin?: string
   accion?: AccionIncidencia
+}
+
+// ── TICKETS DE SOPORTE ──
+
+export interface TicketRow {
+  id_ticket: number
+  folio: string
+  asunto: string
+  categoria: 'PAGOS' | 'SERVICIO' | 'CUENTA' | 'SEGURIDAD' | 'OTRO'
+  prioridad: 'BAJA' | 'MEDIA' | 'ALTA'
+  estado: 'ABIERTO' | 'EN_ATENCION' | 'ESCALADO' | 'CERRADO'
+  fecha_creacion: string
+  fecha_actualizacion: string
+  folio_solicitud: string | null
+  id_usuario: number
+  nombre: string
+  apellido: string
+  id_rol: number
+  ultimo_mensaje: string | null
+  ultimo_es_asesor: boolean | null
+}
+
+export interface TicketDetalle extends Omit<TicketRow, 'ultimo_mensaje' | 'ultimo_es_asesor'> {
+  correo: string
+  telefono: string | null
+}
+
+export interface TicketMensaje {
+  id_mensaje: number
+  id_ticket: number
+  id_emisor: number | null
+  es_asesor: boolean
+  mensaje: string | null
+  adjunto_url: string | null
+  adjunto_tipo: string | null
+  fecha_envio: string
 }
 
 // ── CONFIGURACIÓN (backend de la app) ──

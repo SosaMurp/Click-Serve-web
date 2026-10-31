@@ -122,3 +122,67 @@ test('directorio: filtrar, suspender, reactivar, exportar, coadmin y baja con co
   const anon = (await getPool().query('SELECT anonimizado, nombre FROM usuarios WHERE id_usuario = $1', [tecnico.id])).rows[0];
   assert.deepEqual(anon, { anonimizado: true, nombre: 'Usuario' });
 });
+
+test('bandeja de soporte: el asesor ve el caso de la app, responde, lo clasifica y lo cierra', async () => {
+  const admin = await as(3);
+  const cliente = await as(1);
+  const nuevo = await api(server.url, 'POST', '/api/soporte/tickets', {
+    token: cliente.token, body: { asunto: 'No me llegó el reembolso', categoria: 'PAGOS', mensaje: 'Cancelé y no veo el reembolso.' },
+  });
+  assert.equal(nuevo.status, 201);
+  const id = nuevo.body.ticket.id_ticket;
+
+  const bandeja = await api(server.url, 'GET', '/api/admin/soporte/tickets?estado=ACTIVOS', { token: admin.token });
+  assert.equal(bandeja.status, 200);
+  assert.ok(bandeja.body.tickets.some((t) => t.id_ticket === id));
+  assert.equal((await api(server.url, 'GET', '/api/admin/soporte/tickets', { token: cliente.token })).status, 403);
+
+  const resp = await api(server.url, 'POST', `/api/admin/soporte/tickets/${id}/mensajes`, { token: admin.token, body: { mensaje: 'Ya lo revisé, llega en 3 días hábiles.' } });
+  assert.equal(resp.status, 201);
+  const hilo = await api(server.url, 'GET', `/api/soporte/tickets/${id}/mensajes`, { token: cliente.token });
+  assert.equal(hilo.body.mensajes.at(-1).mensaje, 'Ya lo revisé, llega en 3 días hábiles.');
+  assert.equal(hilo.body.ticket.estado, 'EN_ATENCION');
+
+  const cerrar = await api(server.url, 'PATCH', `/api/admin/soporte/tickets/${id}`, { token: admin.token, body: { estado: 'CERRADO', prioridad: 'BAJA' } });
+  assert.equal(cerrar.status, 200);
+  assert.equal(cerrar.body.ticket.estado, 'CERRADO');
+  assert.equal((await api(server.url, 'POST', `/api/admin/soporte/tickets/${id}/mensajes`, { token: admin.token, body: { mensaje: 'otra' } })).status, 409);
+  const detalle = await api(server.url, 'GET', `/api/admin/soporte/tickets/${id}/mensajes`, { token: admin.token });
+  assert.equal(detalle.body.ticket.nombre, 'Cliente');
+  assert.ok(detalle.body.mensajes.length >= 3);
+});
+
+test('reportes: CSV por partes, Excel con una hoja por dimensión y expediente de incidencia', async () => {
+  const admin = await as(3);
+  const cliente = await as(1);
+  const tecnico = await as(2);
+  const id = await solicitud(cliente.id, tecnico.id, 'ASIGNADA');
+  await getPool().query("UPDATE usuarios SET nombre = '=HYPERLINK(1)' WHERE id_usuario = $1", [cliente.id]);
+
+  const csv = await fetch(`${server.url}/api/admin/reportes?alcance=7d&dimensiones=servicios,identidad&formato=csv`, { headers: { Authorization: `Bearer ${admin.token}` } });
+  assert.equal(csv.status, 200);
+  assert.match(csv.headers.get('content-type'), /text\/csv/);
+  const texto = await csv.text();
+  assert.ok(texto.includes('Servicios') && texto.includes('Auditoría de identidad'));
+  assert.ok(texto.includes("'=HYPERLINK(1)"), 'el texto que empieza con = se neutraliza');
+
+  const xlsx = await fetch(`${server.url}/api/admin/reportes?alcance=month&dimensiones=servicios,finanzas&formato=xlsx`, { headers: { Authorization: `Bearer ${admin.token}` } });
+  assert.equal(xlsx.status, 200);
+  const buf = Buffer.from(await xlsx.arrayBuffer());
+  assert.equal(buf.slice(0, 2).toString(), 'PK', 'es un archivo .xlsx (zip)');
+  const ExcelJS = require('exceljs');
+  const libro = new ExcelJS.Workbook();
+  await libro.xlsx.load(buf);
+  assert.deepEqual(libro.worksheets.map((w) => w.name), ['Servicios', 'Cobros a clientes', 'Billeteras de técnicos']);
+  assert.ok(libro.worksheets[0].rowCount >= 2, 'encabezado y al menos un servicio');
+
+  const malo = await api(server.url, 'GET', '/api/admin/reportes?alcance=custom&desde=2026-01-10&hasta=2026-01-01', { token: admin.token });
+  assert.equal(malo.status, 400);
+  assert.equal((await api(server.url, 'GET', '/api/admin/reportes', { token: cliente.token })).status, 403);
+
+  const rep = await api(server.url, 'POST', `/api/solicitudes/${id}/incidencias`, { token: cliente.token, body: { tipo: 'OTRO', descripcion: 'Necesito que revisen el caso.' } });
+  const exp = await api(server.url, 'GET', `/api/admin/incidencias/${rep.body.incidencia.id_incidencia}/expediente`, { token: admin.token });
+  assert.equal(exp.status, 200);
+  assert.equal(exp.body.incidencia.folio, rep.body.incidencia.folio);
+  assert.ok(Array.isArray(exp.body.evidencias));
+});

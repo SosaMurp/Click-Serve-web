@@ -43,6 +43,7 @@ function createApp() {
   app.use(require('./routes/biometria'));
   app.use(require('./routes/admin'));
   app.use(require('./routes/panel'));
+  app.use(require('./routes/reportes'));
 
   app.use('/api', notFound);
   app.use(errorHandler);

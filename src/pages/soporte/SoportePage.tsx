@@ -1,9 +1,13 @@
 import { useMemo, useState } from 'react'
-import { Search, Inbox, CheckCircle2, AlertTriangle, ShieldAlert, X } from 'lucide-react'
+import { Search, Inbox, CheckCircle2, AlertTriangle, ShieldAlert, X, Download } from 'lucide-react'
 import { Badge, Button, StatCard } from '@components/ui'
 import { useIncidencias, useUpdateIncidencia } from '../../hooks/useAdminQueries'
 import type { AccionIncidencia, IncidenciaRow, IncidenciaTipo, Prioridad } from '../../types/api'
 import '@components/modals/modals.css'
+import TicketsPanel from './TicketsPanel'
+import api from '../../api/axios'
+import { abrirImprimible, escapeHtml, tablaHtml } from '../../utils/printable'
+import '../tecnicos/tecnicos.css'
 import './soporte.css'
 
 // Incidencias que clientes y técnicos reportan desde la app (RF-56, RF-109/110) y que soporte atiende aquí
@@ -34,6 +38,7 @@ const fecha = (iso: string) =>
 type Filtro = 'ABIERTA' | 'RESUELTA'
 
 export default function SoportePage() {
+  const [seccion, setSeccion] = useState<'incidencias' | 'tickets'>('incidencias')
   const [filtro, setFiltro] = useState<Filtro>('ABIERTA')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<IncidenciaRow | null>(null)
@@ -61,9 +66,9 @@ export default function SoportePage() {
       <div className="dash-page-header">
         <div>
           <h1 className="dash-page-title">Soporte e incidencias</h1>
-          <p className="dash-page-sub">Reportes de clientes y técnicos desde la app</p>
+          <p className="dash-page-sub">Reportes y tickets de clientes y técnicos desde la app</p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: seccion === 'incidencias' ? 'flex' : 'none', gap: 8 }}>
           <button className={`sop-filter-pill ${filtro === 'ABIERTA' ? 'sop-filter-pill--active' : ''}`} onClick={() => setFiltro('ABIERTA')}>
             Abiertas{abiertas.data ? ` (${abiertas.data.length})` : ''}
           </button>
@@ -73,6 +78,17 @@ export default function SoportePage() {
         </div>
       </div>
 
+      <div className="tec-tabs">
+        <button className={`tec-tab ${seccion === 'incidencias' ? 'tec-tab--active' : ''}`} onClick={() => setSeccion('incidencias')}>
+          INCIDENCIAS DE SERVICIOS
+        </button>
+        <button className={`tec-tab ${seccion === 'tickets' ? 'tec-tab--active' : ''}`} onClick={() => setSeccion('tickets')}>
+          TICKETS DE SOPORTE
+        </button>
+      </div>
+
+      {seccion === 'tickets' ? <TicketsPanel /> : (
+      <>
       <div className="stat-grid">
         <StatCard label="Abiertas" value={valor(abiertas.data?.length ?? 0)} icon={<Inbox size={15} />} tone="amber" note="Órdenes suspendidas o en revisión" />
         <StatCard label="Prioridad alta" value={valor(altas)} icon={<AlertTriangle size={15} />} tone="red" note="Atender primero" />
@@ -140,9 +156,35 @@ export default function SoportePage() {
         </table>
       </div>
 
+      </>
+      )}
+
       {selected && <IncidenciaModal key={selected.id_incidencia} incidencia={selected} onClose={() => setSelected(null)} />}
     </div>
   )
+}
+
+// RF-80: expediente del caso para imprimir o guardar como PDF (datos, orden, cotización, evidencias y chat).
+async function exportarCaso(id: number) {
+  const { data } = await api.get(`/admin/incidencias/${id}/expediente`)
+  const inc = data.incidencia
+  const campo = (k: string, v: unknown) => `<dt>${escapeHtml(k)}</dt><dd>${escapeHtml(v ?? '—')}</dd>`
+  const f = (iso?: string | null) => (iso ? new Date(iso).toLocaleString('es-MX') : '—')
+  abrirImprimible(`Incidencia ${inc.folio}`, `Orden ${inc.folio_solicitud ?? '—'} · generado ${f(data.generado)}`, `
+    <h2>Reporte</h2><dl>${[
+      campo('Tipo', TIPO_LABEL[inc.tipo as IncidenciaTipo] ?? inc.tipo), campo('Prioridad', inc.prioridad), campo('Estado', inc.estado),
+      campo('Reportó', inc.reporta), campo('Fecha', f(inc.fecha_creacion)), campo('Descripción', inc.descripcion),
+      campo('Resolución', inc.resolucion ? ACCION_LABEL[inc.resolucion as AccionIncidencia] : 'Pendiente'),
+      campo('Fecha de resolución', f(inc.fecha_resolucion)), campo('Atendió', inc.atendio?.trim() || '—'), campo('Notas internas', inc.notas_admin),
+    ].join('')}</dl>
+    <h2>Orden de servicio</h2><dl>${[
+      campo('Categoría', inc.categoria), campo('Estado', inc.estado_solicitud), campo('Pago', inc.estado_pago), campo('Monto (MXN)', inc.monto),
+      campo('Cliente', `${inc.cliente} · ${inc.cliente_correo ?? ''}`), campo('Técnico', inc.tecnico?.trim() ? `${inc.tecnico} · ${inc.tecnico_correo ?? ''}` : 'Sin asignar'),
+      campo('Dirección', inc.direccion), campo('Solicitada', f(inc.fecha_solicitud)), campo('Llegada del técnico', f(inc.fecha_llegada)),
+    ].join('')}</dl>
+    <h2>Cotización</h2>${tablaHtml(['Tipo', 'Concepto', 'Monto (MXN)'], data.conceptos.map((c: { tipo: string; descripcion: string; monto: string }) => [c.tipo, c.descripcion, c.monto]))}
+    <h2>Evidencias</h2>${tablaHtml(['Momento', 'Descripción', 'Fecha'], data.evidencias.map((e: { tipo: string; descripcion: string; fecha: string }) => [e.tipo, e.descripcion, f(e.fecha)]))}
+    <h2>Chat del servicio (últimos 30 mensajes)</h2>${tablaHtml(['Fecha', 'Quién', 'Mensaje'], data.chat.map((m: { fecha_envio: string; emisor: string; mensaje: string }) => [f(m.fecha_envio), m.emisor, m.mensaje]))}`)
 }
 
 function IncidenciaModal({ incidencia: i, onClose }: { incidencia: IncidenciaRow; onClose: () => void }) {
@@ -231,6 +273,10 @@ function IncidenciaModal({ incidencia: i, onClose }: { incidencia: IncidenciaRow
         </div>
 
         <div className="modal-footer">
+          <Button variant="outline" size="sm" style={{ marginRight: 'auto' }}
+            onClick={() => exportarCaso(i.id_incidencia).catch(() => setError('No se pudo generar el expediente.'))}>
+            <Download size={13} /> EXPORTAR PDF
+          </Button>
           <Button variant="ghost" size="sm" onClick={onClose}>{abierta ? 'CANCELAR' : 'CERRAR'}</Button>
           {abierta && (
             <Button variant="primary" size="sm" loading={update.isPending} onClick={guardar}>

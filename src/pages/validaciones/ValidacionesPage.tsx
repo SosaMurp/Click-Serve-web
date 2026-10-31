@@ -179,12 +179,7 @@ export default function ValidacionesPage() {
       <TechProfileModal
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
-        techData={selectedTech ? {
-          id: selectedTech.id,
-          name: selectedTech.name,
-          specialty: selectedTech.specialty,
-          status: selectedTech.status,
-        } : undefined}
+        userId={selectedTech?.realId ?? null}
       />
 
       <ValidationDecisionModal

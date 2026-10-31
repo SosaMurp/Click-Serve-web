@@ -11,6 +11,10 @@ import type {
   RetiroAppRow,
   IncidenciaRow,
   UpdateIncidenciaPayload,
+  ExpedienteApp,
+  TicketRow,
+  TicketDetalle,
+  TicketMensaje,
 } from '../types/api'
 
 // Todo se lee del backend único (backend/): los mismos datos que generan clientes y técnicos en la app.
@@ -200,6 +204,108 @@ export function useUpdatePlatformSettings() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['platform-settings'] })
+    },
+  })
+}
+
+// ── EXPEDIENTE Y ACCIONES SOBRE UNA CUENTA (RF-16, RF-17, RF-20, RF-31, RF-32, RF-33) ──
+
+export function useExpediente(id: number | null) {
+  return useQuery({
+    queryKey: ['admin-expediente', id],
+    enabled: id != null,
+    queryFn: async () => {
+      const { data } = await api.get<{ expediente: ExpedienteApp }>(`/admin/usuarios/${id}/expediente`)
+      return data.expediente
+    },
+  })
+}
+
+function useCuentaMutation<T>(fn: (vars: T) => Promise<unknown>) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-expediente'] })
+      qc.invalidateQueries({ queryKey: ['admin-users'] })
+      qc.invalidateQueries({ queryKey: ['admin-verifications'] })
+    },
+  })
+}
+
+export const useSuspendUser = () => useCuentaMutation((id: number) => api.post(`/admin/users/${id}/suspend`))
+export const useReactivateUser = () => useCuentaMutation((id: number) => api.post(`/admin/users/${id}/reactivate`))
+export const useDeleteUser = () =>
+  useCuentaMutation(({ id, password }: { id: number; password: string }) => api.delete(`/admin/users/${id}`, { data: { password } }))
+
+/** Descarga el expediente completo que arma el servidor (RF-17) */
+export async function descargarExpediente(id: number) {
+  const { data } = await api.get(`/admin/users/${id}/export`)
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `Expediente_${id}_${new Date().toISOString().slice(0, 10)}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+// ── COADMINISTRADORES (RF-26) ──
+
+export function useCreateCoAdmin() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (payload: { nombre: string; apellidos: string; email: string; telefono?: string; password: string }) => {
+      const { data } = await api.post<{ mensaje: string }>('/admin/co-admins', payload)
+      return data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-users'] }),
+  })
+}
+
+// ── TICKETS DE SOPORTE (RF-107, RF-115 a RF-120) ──
+
+export function useTickets(estado: 'ACTIVOS' | 'CERRADO') {
+  return useQuery({
+    queryKey: ['admin-tickets', estado],
+    queryFn: async () => {
+      const { data } = await api.get<{ tickets: TicketRow[] }>('/admin/soporte/tickets', { params: { estado } })
+      return data.tickets
+    },
+    refetchInterval: 20_000,
+  })
+}
+
+export function useTicketMensajes(id: number | null) {
+  return useQuery({
+    queryKey: ['admin-ticket-mensajes', id],
+    enabled: id != null,
+    queryFn: async () => {
+      const { data } = await api.get<{ ticket: TicketDetalle; mensajes: TicketMensaje[] }>(`/admin/soporte/tickets/${id}/mensajes`)
+      return data
+    },
+    refetchInterval: 10_000,
+  })
+}
+
+export function useResponderTicket() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, mensaje }: { id: number; mensaje: string }) => api.post(`/admin/soporte/tickets/${id}/mensajes`, { mensaje }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-ticket-mensajes'] })
+      qc.invalidateQueries({ queryKey: ['admin-tickets'] })
+    },
+  })
+}
+
+export function useActualizarTicket() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...payload }: { id: number; estado?: string; prioridad?: string }) => api.patch(`/admin/soporte/tickets/${id}`, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-ticket-mensajes'] })
+      qc.invalidateQueries({ queryKey: ['admin-tickets'] })
     },
   })
 }

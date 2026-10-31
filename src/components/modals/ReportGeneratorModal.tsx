@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { X, FileText, Download, Calendar, CheckSquare } from 'lucide-react'
 import { Button } from '@components/ui'
+import api from '../../api/axios'
+import { abrirImprimible, tablaHtml } from '../../utils/printable'
 import './modals.css'
 
 interface ReportGeneratorModalProps {
@@ -17,29 +19,43 @@ export default function ReportGeneratorModal({ isOpen, onClose }: ReportGenerato
   })
   const [format, setFormat] = useState<'csv' | 'xlsx' | 'pdf'>('pdf')
   const [loading, setLoading] = useState(false)
+  const [desde, setDesde] = useState('')
+  const [hasta, setHasta] = useState('')
+  const [error, setError] = useState('')
 
   if (!isOpen) return null
 
-  const handleGenerate = () => {
+  // RF-95/96: el servidor arma el archivo con los datos reales (CSV por partes, Excel con una hoja por
+  // dimensión). El PDF se genera con la impresión del navegador a partir de los mismos datos.
+  const handleGenerate = async () => {
+    setError('')
+    const dims = Object.entries(dimensions).filter(([, v]) => v).map(([k]) => k)
+    if (dims.length === 0) return setError('Elige al menos una dimensión.')
+    if (timeframe === 'custom' && (!desde || !hasta)) return setError('Elige las fechas de inicio y fin.')
+    const params = { alcance: timeframe, dimensiones: dims.join(','), desde: desde || undefined, hasta: hasta || undefined }
     setLoading(true)
-    setTimeout(() => {
-      setLoading(false)
-      const filename = `Reporte_ClickAndServe_${timeframe}_${new Date().toISOString().slice(0,10)}.${format}`
-      
-      // Simular descarga de archivo
-      const dummyContent = `Reporte Click & Serve Nodo LZC\nAlcance: ${timeframe}\nFecha: ${new Date().toLocaleString()}`
-      const blob = new Blob([dummyContent], { type: format === 'pdf' ? 'application/pdf' : 'text/csv' })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = filename
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-
-      alert(`Reporte compilado y descargado exitosamente en formato .${format.toUpperCase()}`)
+    try {
+      if (format === 'pdf') {
+        const { data } = await api.get<{ alcance: string; generado: string; hojas: { hoja: string; columnas: string[]; filas: unknown[][] }[] }>(
+          '/admin/reportes', { params: { ...params, formato: 'json' } })
+        abrirImprimible('Reporte de operación', `${data.alcance} · generado ${new Date(data.generado).toLocaleString('es-MX')}`,
+          data.hojas.map(h => `<h2>${h.hoja} (${h.filas.length})</h2>${tablaHtml(h.columnas, h.filas)}`).join(''))
+      } else {
+        const res = await api.get<Blob>('/admin/reportes', { params: { ...params, formato: format }, responseType: 'blob', timeout: 60000 })
+        const nombre = /filename="([^"]+)"/.exec(String(res.headers['content-disposition'] ?? ''))?.[1] ?? `Reporte_ClickServe.${format}`
+        const url = URL.createObjectURL(res.data)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = nombre
+        link.click()
+        URL.revokeObjectURL(url)
+      }
       onClose()
-    }, 600)
+    } catch {
+      setError('No se pudo generar el reporte. Revisa el rango de fechas e intenta de nuevo.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -83,6 +99,13 @@ export default function ReportGeneratorModal({ isOpen, onClose }: ReportGenerato
               ))}
             </div>
           </div>
+
+          {timeframe === 'custom' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <label className="field-label">Desde<input type="date" className="field-input" value={desde} onChange={e => setDesde(e.target.value)} /></label>
+              <label className="field-label">Hasta<input type="date" className="field-input" value={hasta} onChange={e => setHasta(e.target.value)} /></label>
+            </div>
+          )}
 
           {/* Dimensiones de Datos (RF-95) */}
           <div>
@@ -142,6 +165,7 @@ export default function ReportGeneratorModal({ isOpen, onClose }: ReportGenerato
         </div>
 
         <div className="modal-footer">
+          {error && <p style={{ margin: 0, fontSize: 12, color: 'var(--danger-ink)', flex: 1 }}>{error}</p>}
           <Button variant="outline" onClick={onClose}>
             CANCELAR
           </Button>

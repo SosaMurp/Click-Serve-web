@@ -1,311 +1,272 @@
 import { useState } from 'react'
-import { X, Shield, FileText, CheckCircle2, Download, AlertTriangle, User, Award, Eye, Trash2 } from 'lucide-react'
+import { X, FileText, Download, AlertTriangle, Eye, Trash2, ShieldOff, ShieldCheck, ExternalLink } from 'lucide-react'
 import { Badge, Button } from '@components/ui'
+import { env } from '../../config/env'
+import {
+  useExpediente, useSuspendUser, useReactivateUser, useDeleteUser, descargarExpediente,
+} from '../../hooks/useAdminQueries'
 import './modals.css'
 
+// Expediente real de la cuenta (RF-20, RF-31, RF-36) y acciones del administrador (RF-16, RF-17, RF-32, RF-33).
 interface TechProfileModalProps {
   isOpen: boolean
   onClose: () => void
-  techData?: {
-    id: string
-    name: string
-    email?: string
-    phone?: string
-    specialty: string
-    status: string
-    rating?: number | null
-    jobs?: string | null
-  }
+  /** id_usuario de la cuenta a revisar */
+  userId: number | null
 }
 
-export default function TechProfileModal({ isOpen, onClose, techData }: TechProfileModalProps) {
-  const [activeTab, setActiveTab] = useState<'perfil' | 'documentos' | 'habilidades' | 'acciones'>('perfil')
-  const [disponible, setDisponible] = useState(true)
-  const [categories, setCategories] = useState({
-    hardware: true,
-    redes: true,
-    desarrollo: false,
-    mantenimiento: true,
-  })
-  const [skills, setSkills] = useState(['Mantenimiento de Redes', 'Reparación de Laptops', 'Diagnóstico de Hardware'])
-  const [newSkill, setNewSkill] = useState('')
-  const [statusState, setStatusState] = useState(techData?.status || 'ACTIVO')
+const DOC_LABEL: Record<string, string> = {
+  INE_FRENTE: 'INE (frente)',
+  INE_REVERSO: 'INE (reverso)',
+  ROSTRO: 'Foto de rostro',
+  CEDULA: 'Cédula profesional',
+  CERTIFICACION: 'Certificación',
+  COMPROBANTE_DOMICILIO: 'Comprobante de domicilio',
+  ANTECEDENTES: 'Carta de antecedentes',
+}
+const DOC_VARIANT = { APROBADO: 'success', RECHAZADO: 'danger', EN_REVISION: 'warning' } as const
+
+// Las URL firmadas vienen como /api/archivos/...; si el panel habla con otro host, se le antepone.
+const API_ORIGIN = env.VITE_API_BASE_URL.replace(/\/api\/?$/, '')
+const fileUrl = (path: string) => (path.startsWith('http') ? path : `${API_ORIGIN}${path}`)
+const fecha = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : '—')
+const errorDe = (err: unknown) => (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'No se pudo completar la acción.'
+
+export default function TechProfileModal({ isOpen, onClose, userId }: TechProfileModalProps) {
+  const [activeTab, setActiveTab] = useState<'perfil' | 'documentos' | 'acciones'>('perfil')
+  const [preview, setPreview] = useState<{ nombre: string; url: string } | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [selectedDoc, setSelectedDoc] = useState<string | null>(null)
+  const [password, setPassword] = useState('')
+  const [mensaje, setMensaje] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null)
+
+  const { data: exp, isLoading, isError, refetch } = useExpediente(isOpen ? userId : null)
+  const suspend = useSuspendUser()
+  const reactivate = useReactivateUser()
+  const remove = useDeleteUser()
 
   if (!isOpen) return null
 
-  const techName = techData?.name || 'Roberto García'
-  const techId = techData?.id || 'PTEC-0041'
-  const techSpec = techData?.specialty || 'Soporte y Hardware'
+  const nombre = exp ? `${exp.nombre} ${exp.apellido}` : 'Cargando…'
+  const estado = (exp?.estado_cuenta || '').toUpperCase()
+  const suspendido = estado === 'SUSPENDIDO'
+  const esTecnico = exp?.id_rol === 2
 
-  const handleAddSkill = () => {
-    if (newSkill.trim()) {
-      setSkills([...skills, newSkill.trim()])
-      setNewSkill('')
+  const accion = async (fn: () => Promise<unknown>, ok: string) => {
+    setMensaje(null)
+    try {
+      await fn()
+      setMensaje({ tipo: 'ok', texto: ok })
+    } catch (err) {
+      setMensaje({ tipo: 'error', texto: errorDe(err) })
     }
   }
 
-  const handleExportExpediente = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
-      id: techId,
-      nombre: techName,
-      especialidad: techSpec,
-      habilidades: skills,
-      estatus: statusState,
-      fecha_exportacion: new Date().toISOString()
-    }, null, 2))
-    const downloadAnchor = document.createElement('a')
-    downloadAnchor.setAttribute("href", dataStr)
-    downloadAnchor.setAttribute("download", `Expediente_${techId}.json`)
-    document.body.appendChild(downloadAnchor)
-    downloadAnchor.click()
-    downloadAnchor.remove()
-  }
-
-  const handleDeleteAccount = () => {
-    if (!confirmPassword) {
-      alert('Debes ingresar tu contraseña para confirmar la baja definitiva de la cuenta.')
-      return
+  const eliminar = async () => {
+    if (!userId) return
+    setMensaje(null)
+    try {
+      await remove.mutateAsync({ id: userId, password })
+      onClose()
+    } catch (err) {
+      setMensaje({ tipo: 'error', texto: errorDe(err) })
     }
-    alert(`La cuenta de ${techName} (${techId}) ha sido dada de baja definitivamente.`)
-    setShowDeleteConfirm(false)
-    onClose()
   }
 
   return (
     <div className="modal-backdrop">
       <div className="modal-container modal-container--lg modal-container--fixed fade-in">
-        {/* Header */}
         <div className="modal-header">
           <div className="modal-title-wrap">
-            <h3 className="modal-title">Expediente Técnico Operativo</h3>
-            <p className="modal-subtitle">{techId} • NODO LÁZARO CÁRDENAS</p>
+            <h3 className="modal-title">{esTecnico ? 'Expediente del técnico' : 'Expediente de la cuenta'}</h3>
+            <p className="modal-subtitle">ID-{userId} · {nombre}</p>
           </div>
-          <button className="modal-close-btn" onClick={onClose}>
-            <X size={18} />
-          </button>
+          <button className="modal-close-btn" onClick={onClose}><X size={18} /></button>
         </div>
 
-        {/* Navigation Tabs */}
         <div className="modal-tabs">
-          <button
-            className={`modal-tab-btn ${activeTab === 'perfil' ? 'modal-tab-btn--active' : ''}`}
-            onClick={() => setActiveTab('perfil')}
-          >
-            PERFIL E IDENTIDAD
-          </button>
-          <button
-            className={`modal-tab-btn ${activeTab === 'documentos' ? 'modal-tab-btn--active' : ''}`}
-            onClick={() => setActiveTab('documentos')}
-          >
-            DOCUMENTOS Y CÉDULA
-          </button>
-          <button
-            className={`modal-tab-btn ${activeTab === 'habilidades' ? 'modal-tab-btn--active' : ''}`}
-            onClick={() => setActiveTab('habilidades')}
-          >
-            PORTAFOLIO Y HABILIDADES
-          </button>
-          <button
-            className={`modal-tab-btn ${activeTab === 'acciones' ? 'modal-tab-btn--active' : ''}`}
-            onClick={() => setActiveTab('acciones')}
-          >
-            ADMINISTRACIÓN Y BAJA
-          </button>
+          {([['perfil', 'PERFIL E IDENTIDAD'], ['documentos', 'DOCUMENTOS'], ['acciones', 'ADMINISTRACIÓN Y BAJA']] as const).map(([k, label]) => (
+            <button key={k} className={`modal-tab-btn ${activeTab === k ? 'modal-tab-btn--active' : ''}`} onClick={() => setActiveTab(k)}>
+              {label}
+            </button>
+          ))}
         </div>
 
-        {/* Modal Body */}
         <div className="modal-body">
-          {activeTab === 'perfil' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              {/* Header Info Card */}
-              <div style={{ display: 'flex', gap: 16, alignItems: 'center', background: '#F7F8F9', padding: 16, borderRadius: 8 }}>
-                <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--text-dark)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 800 }}>
-                  {techName[0]}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <h4 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: 'var(--text-dark)' }}>{techName}</h4>
-                    <Badge variant={statusState === 'ACTIVO' ? 'success' : statusState === 'SUSPENDIDO' ? 'danger' : 'warning'}>
-                      {statusState}
-                    </Badge>
+          {isLoading && <p style={{ color: 'var(--text-mid)' }}>Cargando expediente…</p>}
+          {isError && (
+            <p style={{ color: 'var(--danger)' }}>
+              No se pudo cargar el expediente. <button className="sop-view-btn" onClick={() => refetch()}>REINTENTAR</button>
+            </p>
+          )}
+
+          {exp && activeTab === 'perfil' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center', background: 'var(--bg-sunk)', padding: 16, borderRadius: 12 }}>
+                {exp.foto_url ? (
+                  <img src={fileUrl(exp.foto_url)} alt="" style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--navy)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 800 }}>
+                    {exp.nombre[0]}
                   </div>
-                  <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '4px 0 0' }}>{techSpec} • Lázaro Cárdenas</p>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <p style={{ fontSize: 11, color: 'var(--text-mid)', margin: 0 }}>DISPONIBILIDAD EN TIEMPO REAL</p>
-                  <label className="cfg-toggle" style={{ marginTop: 6 }}>
-                    <input type="checkbox" checked={disponible} onChange={e => setDisponible(e.target.checked)} />
-                    <span className="cfg-toggle-track" />
-                  </label>
+                )}
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <h4 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{nombre}</h4>
+                    <Badge variant={suspendido ? 'danger' : exp.identidad_verificada ? 'success' : 'warning'}>
+                      {suspendido ? 'SUSPENDIDO' : exp.identidad_verificada ? 'VERIFICADO' : estado || 'PENDIENTE'}
+                    </Badge>
+                    {exp.verificado_sep && <Badge variant="info">CÉDULA SEP</Badge>}
+                  </div>
+                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-mid)' }}>
+                    {exp.correo} · {exp.telefono || 'Sin teléfono'} · Registro: {fecha(exp.fecha_registro)}
+                  </p>
                 </div>
               </div>
 
-              {/* Categorías de Alerta (RF-23) */}
-              <div>
-                <h5 style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', marginBottom: 10 }}>
-                  Recepción de Alertas por Categoría
-                </h5>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#F7F8F9', borderRadius: 6, fontSize: 13, cursor: 'pointer' }}>
-                    <span>Soporte y Hardware</span>
-                    <input type="checkbox" checked={categories.hardware} onChange={e => setCategories({...categories, hardware: e.target.checked})} />
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#F7F8F9', borderRadius: 6, fontSize: 13, cursor: 'pointer' }}>
-                    <span>Redes y Conectividad</span>
-                    <input type="checkbox" checked={categories.redes} onChange={e => setCategories({...categories, redes: e.target.checked})} />
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#F7F8F9', borderRadius: 6, fontSize: 13, cursor: 'pointer' }}>
-                    <span>Desarrollo Web</span>
-                    <input type="checkbox" checked={categories.desarrollo} onChange={e => setCategories({...categories, desarrollo: e.target.checked})} />
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#F7F8F9', borderRadius: 6, fontSize: 13, cursor: 'pointer' }}>
-                    <span>Mantenimiento Preventivo</span>
-                    <input type="checkbox" checked={categories.mantenimiento} onChange={e => setCategories({...categories, mantenimiento: e.target.checked})} />
-                  </label>
+              {esTecnico && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                  {[
+                    ['Calificación', exp.calificacion ? `${exp.calificacion} ★` : 'Sin reseñas'],
+                    ['Trabajos finalizados', String(exp.trabajos)],
+                    ['Cancelados', String(exp.cancelados)],
+                  ].map(([l, v]) => (
+                    <div key={l} style={{ border: '1px solid var(--border-light)', borderRadius: 12, padding: 14 }}>
+                      <p style={{ margin: 0, fontSize: 12, color: 'var(--text-mid)' }}>{l}</p>
+                      <p style={{ margin: '4px 0 0', fontSize: 20, fontWeight: 700 }}>{v}</p>
+                    </div>
+                  ))}
                 </div>
-              </div>
+              )}
+
+              {esTecnico && (
+                <div>
+                  <p className="field-label" style={{ marginBottom: 8 }}>Especialidades</p>
+                  {exp.especialidades.length === 0 ? (
+                    <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>Todavía no registra especialidades.</p>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {exp.especialidades.map(e => (
+                        <Badge key={e.id_especialidad} variant={e.activa ? 'success' : 'neutral'}>
+                          {e.nombre}{e.activa ? '' : ' (alertas apagadas)'}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {exp.bio && <p style={{ fontSize: 14, margin: 0, whiteSpace: 'pre-wrap' }}>{exp.bio}</p>}
+              {exp.motivo_rechazo && (
+                <p style={{ fontSize: 13, margin: 0, color: 'var(--danger-ink)' }}>
+                  Último rechazo ({fecha(exp.fecha_revision)}): {exp.motivo_rechazo}
+                </p>
+              )}
             </div>
           )}
 
-          {activeTab === 'documentos' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <h5 style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', margin: 0 }}>
-                Expediente de Credenciales e Identidad
-              </h5>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                {[
-                  { name: 'Cédula Profesional', code: 'CED-9941', status: 'VALIDADA SEP', variant: 'success' as const },
-                  { name: 'Identificación INE', code: 'INE-2026', status: 'COMPLETADO', variant: 'success' as const },
-                  { name: 'Antecedentes No Penales', code: 'ANP-8812', status: 'EN REVISIÓN', variant: 'warning' as const },
-                ].map((doc, idx) => (
-                  <div key={idx} style={{ border: '1px solid #E6E9EE', padding: 14, borderRadius: 8, background: '#F7F8F9' }}>
-                    <FileText size={20} color="var(--text-mid)" />
-                    <p style={{ fontSize: 13, fontWeight: 700, margin: '8px 0 2px', color: 'var(--text-dark)' }}>{doc.name}</p>
-                    <p style={{ fontSize: 11, color: 'var(--text-mid)', margin: '0 0 10px' }}>{doc.code}</p>
-                    <Badge variant={doc.variant}>{doc.status}</Badge>
-                    <button
-                      onClick={() => setSelectedDoc(doc.name)}
-                      style={{ marginTop: 12, width: '100%', padding: '6px', fontSize: 11, fontWeight: 600, background: '#fff', border: '1px solid #CDD3E0', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
-                    >
-                      <Eye size={12} /> Inspeccionar
-                    </button>
+          {exp && activeTab === 'documentos' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {exp.documentos.length === 0 && <p style={{ color: 'var(--text-mid)', margin: 0 }}>La cuenta no ha subido documentos.</p>}
+              {exp.documentos.map(d => (
+                <div key={d.id_documento} style={{ display: 'flex', alignItems: 'center', gap: 12, border: '1px solid var(--border-light)', borderRadius: 12, padding: 12 }}>
+                  <FileText size={18} color="var(--navy)" />
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: 0, fontWeight: 600, fontSize: 14 }}>{DOC_LABEL[d.tipo] ?? d.tipo}{d.numero ? ` · ${d.numero}` : ''}</p>
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-mid)' }}>{d.descripcion || 'Sin descripción'} · {fecha(d.fecha_creacion)}</p>
                   </div>
-                ))}
-              </div>
-
-              {selectedDoc && (
-                <div className="doc-preview-box">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                    <strong style={{ fontSize: 13 }}>Vista Previa de Documento: {selectedDoc}</strong>
-                    <button style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12 }} onClick={() => setSelectedDoc(null)}>✕ Cerrar Visor</button>
+                  <Badge variant={DOC_VARIANT[d.estado] ?? 'neutral'}>{d.estado.replace('_', ' ')}</Badge>
+                  {d.url && (
+                    <Button size="sm" variant="outline" onClick={() => setPreview({ nombre: DOC_LABEL[d.tipo] ?? d.tipo, url: fileUrl(d.url!) })}>
+                      <Eye size={13} /> VER
+                    </Button>
+                  )}
+                </div>
+              ))}
+              {preview && (
+                <div style={{ border: '1px solid var(--border-light)', borderRadius: 12, padding: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <strong style={{ fontSize: 13 }}>{preview.nombre}</strong>
+                    <span style={{ display: 'flex', gap: 8 }}>
+                      <a href={preview.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: 'var(--accent-ink)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <ExternalLink size={12} /> Abrir aparte
+                      </a>
+                      <button style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12 }} onClick={() => setPreview(null)}>✕ Cerrar</button>
+                    </span>
                   </div>
-                  <div style={{ width: '100%', height: 180, background: '#E6E9EE', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#667085', fontSize: 13 }}>
-                    [ Muestra de PDF / Archivo digital de {selectedDoc} ]
-                  </div>
+                  {/* El enlace firmado dura 5 minutos (RNF-26); si vence, se vuelve a pedir el expediente */}
+                  <img src={preview.url} alt={preview.nombre} style={{ maxWidth: '100%', maxHeight: 360, display: 'block', margin: '0 auto', borderRadius: 8 }}
+                    onError={() => { setPreview(null); refetch() }} />
                 </div>
               )}
             </div>
           )}
 
-          {activeTab === 'habilidades' && (
+          {exp && activeTab === 'acciones' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <h5 style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', margin: 0 }}>
-                Acreditaciones y Habilidades Técnicas
-              </h5>
+              {mensaje && (
+                <p style={{ margin: 0, fontSize: 13, color: mensaje.tipo === 'ok' ? 'var(--success)' : 'var(--danger-ink)' }}>{mensaje.texto}</p>
+              )}
 
-              <div style={{ display: 'flex', gap: 8 }}>
-                <input
-                  type="text"
-                  placeholder="Agregar nueva habilidad o certificación..."
-                  value={newSkill}
-                  onChange={e => setNewSkill(e.target.value)}
-                  style={{ flex: 1, padding: '10px 14px', borderRadius: 6, border: '1px solid #CDD3E0', fontSize: 13 }}
-                />
-                <Button size="sm" onClick={handleAddSkill}>+ AGREGAR</Button>
-              </div>
-
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {skills.map((s, idx) => (
-                  <span key={idx} style={{ padding: '6px 12px', background: '#E8EBF2', color: '#0C1C40', borderRadius: 20, fontSize: 12, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <Award size={12} /> {s}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'acciones' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {/* Exportar Expediente (RF-17) */}
-              <div style={{ padding: 16, border: '1px solid #E6E9EE', borderRadius: 8, background: '#F7F8F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <h5 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Descarga de Expediente Técnico</h5>
-                  <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '4px 0 0' }}>Genera una copia en respaldo digital con las credenciales y métricas del operador.</p>
+              <div style={{ border: '1px solid var(--border-light)', borderRadius: 12, padding: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <h5 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Descargar expediente</h5>
+                  <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '2px 0 0' }}>Datos, documentos, especialidades, servicios y calificaciones (sin contraseña).</p>
                 </div>
-                <Button variant="secondary" size="sm" onClick={handleExportExpediente}>
-                  <Download size={13} /> EXPORTAR EXPEDIENTE
+                <Button variant="secondary" size="sm" onClick={() => userId && accion(() => descargarExpediente(userId), 'Expediente descargado.')}>
+                  <Download size={13} /> DESCARGAR
                 </Button>
               </div>
 
-              {/* Suspender / Restaurar facultades (RF-32, RF-33) */}
-              <div style={{ padding: 16, border: '1px solid #E6E9EE', borderRadius: 8, background: '#F7F8F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <h5 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Estatus Operativo del Técnico</h5>
-                  <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '4px 0 0' }}>Interrumpe o restaura los permisos para recibir servicios en la zona LZC.</p>
+              <div style={{ border: '1px solid var(--border-light)', borderRadius: 12, padding: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <h5 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>{suspendido ? 'Cuenta suspendida' : 'Suspender cuenta'}</h5>
+                  <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '2px 0 0' }}>
+                    {suspendido
+                      ? 'No puede iniciar sesión en la app. Al reactivarla recupera su estatus anterior.'
+                      : 'Cierra todas sus sesiones al momento y le impide volver a entrar a la app.'}
+                  </p>
                 </div>
-                {statusState === 'SUSPENDIDO' ? (
-                  <Button variant="primary" size="sm" onClick={() => setStatusState('ACTIVO')}>
-                    <CheckCircle2 size={13} /> RESTAURAR FACULTADES
+                {suspendido ? (
+                  <Button variant="primary" size="sm" loading={reactivate.isPending}
+                    onClick={() => userId && accion(() => reactivate.mutateAsync(userId), 'Cuenta reactivada.')}>
+                    <ShieldCheck size={13} /> REACTIVAR
                   </Button>
                 ) : (
-                  <Button variant="outline" size="sm" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={() => setStatusState('SUSPENDIDO')}>
-                    <AlertTriangle size={13} /> SUSPENDER TÉCNICO
+                  <Button variant="outline" size="sm" loading={suspend.isPending} style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                    onClick={() => userId && accion(() => suspend.mutateAsync(userId), 'Cuenta suspendida y sesiones cerradas.')}>
+                    <ShieldOff size={13} /> SUSPENDER
                   </Button>
                 )}
               </div>
 
-              {/* Baja Definitiva de Cuenta (RF-16) */}
-              <div style={{ padding: 16, border: '1px solid #F4C7C2', borderRadius: 8, background: '#FDE8E6' }}>
-                <h5 style={{ fontSize: 14, fontWeight: 700, color: '#A41F15', margin: 0 }}>Baja Definitiva de Cuenta</h5>
-                <p style={{ fontSize: 12, color: '#7f1d1d', margin: '4px 0 12px' }}>Eliminación o anonimización permanente del usuario. Exige validación obligatoria de clave de seguridad.</p>
-
-                {showDeleteConfirm ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <input
-                      type="password"
-                      placeholder="Ingresa tu contraseña de Administrador"
-                      value={confirmPassword}
-                      onChange={e => setConfirmPassword(e.target.value)}
-                      style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #F4C7C2', fontSize: 13 }}
-                    />
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <Button size="sm" style={{ background: '#D92D20', color: '#fff' }} onClick={handleDeleteAccount}>
-                        CONFIRMAR ELIMINACIÓN PERMANENTE
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => setShowDeleteConfirm(false)}>
-                        CANCELAR
-                      </Button>
-                    </div>
+              <div style={{ border: '1px solid var(--danger-soft)', background: 'var(--danger-soft)', borderRadius: 12, padding: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <AlertTriangle size={18} color="var(--danger)" />
+                  <div style={{ flex: 1 }}>
+                    <h5 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--danger-ink)' }}>Baja definitiva</h5>
+                    <p style={{ fontSize: 12, color: 'var(--danger-ink)', margin: '2px 0 0' }}>
+                      Anonimiza sus datos personales y conserva los registros financieros sin identidad. No se puede deshacer.
+                    </p>
                   </div>
-                ) : (
-                  <Button size="sm" style={{ background: '#D92D20', color: '#fff' }} onClick={() => setShowDeleteConfirm(true)}>
-                    <Trash2 size={13} /> INICIAR PROTOCOLO DE BAJA
-                  </Button>
+                  {!showDeleteConfirm && (
+                    <Button size="sm" style={{ background: 'var(--danger)', color: '#fff' }} onClick={() => setShowDeleteConfirm(true)}>
+                      <Trash2 size={13} /> DAR DE BAJA
+                    </Button>
+                  )}
+                </div>
+                {showDeleteConfirm && (
+                  <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center' }}>
+                    <input type="password" className="field-input" placeholder="Tu contraseña de administrador"
+                      value={password} onChange={e => setPassword(e.target.value)} style={{ flex: 1 }} />
+                    <Button size="sm" style={{ background: 'var(--danger)', color: '#fff' }} loading={remove.isPending} disabled={!password} onClick={eliminar}>
+                      CONFIRMAR BAJA
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => { setShowDeleteConfirm(false); setPassword('') }}>CANCELAR</Button>
+                  </div>
                 )}
               </div>
             </div>
           )}
-        </div>
-
-        {/* Footer */}
-        <div className="modal-footer">
-          <Button variant="secondary" onClick={onClose}>
-            CERRAR VENTANA
-          </Button>
         </div>
       </div>
     </div>

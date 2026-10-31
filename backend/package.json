@@ -23,6 +23,7 @@
     "conekta": "^9.0.6",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
+    "exceljs": "^4.4.0",
     "express": "^5.2.1",
     "jose": "^5.10.0",
     "jsonwebtoken": "^9.0.3",

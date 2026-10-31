@@ -164,12 +164,72 @@ router.post('/api/solicitudes/:id/escalar', auth, async (req, res) => {
   res.status(201).json({ mensaje: 'Escalamos tu caso con prioridad alta. El equipo de seguridad ya fue notificado.', ticket: out.ticket, incidencia: out.incidencia });
 });
 
+// ───────────────────────── Panel de administrador: bandeja de soporte (RF-107, RF-115 a RF-120) ─────────────────────────
+const ESTADOS_TICKET = ['ABIERTO', 'EN_ATENCION', 'ESCALADO', 'CERRADO'];
+
+router.get('/api/admin/soporte/tickets', auth, requireRole(ROL.ADMIN), async (req, res) => {
+  const estado = String(req.query.estado || '').toUpperCase();
+  const abiertos = estado === 'ACTIVOS';
+  if (estado && !abiertos && !ESTADOS_TICKET.includes(estado)) return fail(res, 400, 'VALIDATION_ERROR', 'Estado no válido.');
+  const { rows } = await db().query(
+    `SELECT t.id_ticket, t.folio, t.asunto, t.categoria, t.prioridad, t.estado, t.fecha_creacion, t.fecha_actualizacion,
+            s.folio AS folio_solicitud, u.id_usuario, u.nombre, u.apellido, u.id_rol,
+            (SELECT mensaje FROM soporte_mensajes m WHERE m.id_ticket = t.id_ticket ORDER BY fecha_envio DESC, id_mensaje DESC LIMIT 1) AS ultimo_mensaje,
+            -- La respuesta automática (sin emisor) no cuenta: el caso sigue esperando a un asesor.
+            (SELECT es_asesor AND id_emisor IS NOT NULL FROM soporte_mensajes m WHERE m.id_ticket = t.id_ticket ORDER BY fecha_envio DESC, id_mensaje DESC LIMIT 1) AS ultimo_es_asesor
+     FROM soporte_tickets t
+     JOIN usuarios u ON u.id_usuario = t.id_usuario
+     LEFT JOIN solicitudes_servicio s ON s.id_solicitud = t.id_solicitud
+     WHERE ($1 = '' OR ($1 = 'ACTIVOS' AND t.estado <> 'CERRADO') OR t.estado = $1)
+     ORDER BY (t.estado = 'ESCALADO') DESC, CASE t.prioridad WHEN 'ALTA' THEN 0 WHEN 'MEDIA' THEN 1 ELSE 2 END, t.fecha_actualizacion DESC
+     LIMIT 300`,
+    [estado]
+  );
+  res.json({ tickets: rows });
+});
+
+router.get('/api/admin/soporte/tickets/:id/mensajes', auth, requireRole(ROL.ADMIN), async (req, res) => {
+  const ticket = (await db().query(
+    `SELECT t.*, s.folio AS folio_solicitud, u.nombre, u.apellido, u.correo, u.telefono, u.id_rol
+     FROM soporte_tickets t JOIN usuarios u ON u.id_usuario = t.id_usuario
+     LEFT JOIN solicitudes_servicio s ON s.id_solicitud = t.id_solicitud WHERE t.id_ticket = $1`,
+    [req.params.id]
+  )).rows[0];
+  if (!ticket) return fail(res, 404, 'NOT_FOUND', 'Caso no encontrado.');
+  const { rows } = await db().query(
+    `SELECT m.*, a.tipo_mime FROM soporte_mensajes m LEFT JOIN archivos a ON a.id_archivo = m.id_archivo
+     WHERE m.id_ticket = $1 ORDER BY m.fecha_envio, m.id_mensaje`,
+    [ticket.id_ticket]
+  );
+  res.json({ ticket, mensajes: rows.map(shapeMessage) });
+});
+
+// Clasificación (prioridad) y cierre o reapertura del caso; avisa a la persona en la app.
+router.patch('/api/admin/soporte/tickets/:id', auth, requireRole(ROL.ADMIN), async (req, res) => {
+  const estado = req.body?.estado == null ? null : String(req.body.estado).toUpperCase();
+  const prioridad = req.body?.prioridad == null ? null : String(req.body.prioridad).toUpperCase();
+  if (estado && !ESTADOS_TICKET.includes(estado)) return fail(res, 400, 'VALIDATION_ERROR', 'Estado no válido.', { field: 'estado' });
+  if (prioridad && !['BAJA', 'MEDIA', 'ALTA'].includes(prioridad)) return fail(res, 400, 'VALIDATION_ERROR', 'Prioridad no válida.', { field: 'prioridad' });
+  const { rows } = await db().query(
+    `UPDATE soporte_tickets SET estado = COALESCE($1, estado), prioridad = COALESCE($2, prioridad), fecha_actualizacion = NOW()
+     WHERE id_ticket = $3 RETURNING *`,
+    [estado, prioridad, req.params.id]
+  );
+  if (!rows[0]) return fail(res, 404, 'NOT_FOUND', 'Caso no encontrado.');
+  audit(req, 'TICKET_ACTUALIZADO', 'ticket', rows[0].id_ticket, { estado, prioridad });
+  if (estado === 'CERRADO') {
+    realtime.emitToUser(rows[0].id_usuario, 'soporte.actualizado', { id_ticket: rows[0].id_ticket, estado, aviso: `Tu caso ${rows[0].folio} fue cerrado.` });
+  }
+  res.json({ ticket: rows[0] });
+});
+
 // Respuesta de un asesor (para el panel de administrador).
 router.post('/api/admin/soporte/tickets/:id/mensajes', auth, requireRole(ROL.ADMIN), async (req, res) => {
   const mensaje = sanitizeText(req.body?.mensaje, 2000);
   if (!mensaje) return fail(res, 400, 'VALIDATION_ERROR', 'El mensaje no puede estar vacío.');
   const ticket = (await db().query('SELECT * FROM soporte_tickets WHERE id_ticket = $1', [req.params.id])).rows[0];
   if (!ticket) return fail(res, 404, 'NOT_FOUND', 'Caso no encontrado.');
+  if (ticket.estado === 'CERRADO') return fail(res, 409, 'INVALID_STATE', 'El caso está cerrado; reábrelo para responder.');
   const saved = await withTransaction(async (tx) => {
     await tx.query("UPDATE soporte_tickets SET estado = CASE WHEN estado = 'ABIERTO' THEN 'EN_ATENCION' ELSE estado END WHERE id_ticket = $1", [ticket.id_ticket]);
     return insertMessage(tx, { idTicket: ticket.id_ticket, idEmisor: req.user.id_usuario, esAsesor: true, mensaje });
