@@ -4,21 +4,35 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon index.js"
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "db:setup": "node scripts/apply-schema.js",
+    "db:migrate": "node -e \"require('./src/db/migrate').migrate().then(()=>process.exit(0))\"",
+    "db:seed": "node scripts/seed-demo.js",
+    "test": "node --test --test-concurrency=1 --test-timeout=60000 test/*.test.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@tesseract.js-data/eng": "^1.0.0",
+    "@tesseract.js-data/spa": "^1.0.0",
     "bcrypt": "^6.0.0",
+    "compression": "^1.8.2",
+    "conekta": "^9.0.6",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "jose": "^5.10.0",
     "jsonwebtoken": "^9.0.3",
-    "nodemailer": "^8.0.11",
+    "multer": "^2.4.0",
+    "nodemailer": "^8.0.7",
     "pg": "^8.20.0",
-    "twilio": "^6.2.0"
+    "sharp": "^0.34.5",
+    "tesseract.js": "^6.0.1",
+    "twilio": "^6.0.2",
+    "ws": "^8.22.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

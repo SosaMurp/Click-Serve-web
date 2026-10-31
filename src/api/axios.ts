@@ -20,19 +20,7 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-/**
- * Instancia para el backend de la app móvil (Click-Serve-Back).
- * Técnicos, retiros, incidencias y configuración viven ahí: son los mismos datos que usa la app.
- * Comparte la sesión del administrador (mismo JWT_SECRET y misma base de datos en ambos backends).
- */
-export const appApi = axios.create({
-  baseURL: env.VITE_APP_API_BASE_URL,
-  timeout: 10000,
-  headers: { 'Content-Type': 'application/json' },
-})
-
 attachInterceptors(api)
-attachInterceptors(appApi)
 
 function attachInterceptors(instance: AxiosInstance) {
 // ── Request Interceptor ──

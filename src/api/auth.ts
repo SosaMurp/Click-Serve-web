@@ -33,16 +33,6 @@ export interface AuthSuccessResponse {
 // Para compatibilidad con referencias previas
 export type LoginResponse = AuthSuccessResponse
 
-export interface RegisterAdminPayload {
-  nombre: string
-  apellidos: string
-  telefono: string
-  email: string
-  fechaNacimiento: string
-  password: string
-  perfil?: number // id_rol — 3 para Administrador
-}
-
 export interface SesionActivaResponse {
   id_sesion: string // UUID en PostgreSQL
   dispositivo: string
@@ -69,15 +59,6 @@ export async function loginAdmin(payload: LoginPayload): Promise<LoginAdminStep1
  */
 export async function verifyAdminLogin(email: string, token: string): Promise<AuthSuccessResponse> {
   const { data } = await api.post<AuthSuccessResponse>('/verify-login-admin', { email, token })
-  return data
-}
-
-/** Registro de nuevo operador admin (fuerza id_rol = 3 en el backend) */
-export async function registerAdmin(payload: RegisterAdminPayload) {
-  const { data } = await api.post('/register', {
-    ...payload,
-    perfil: payload.perfil ?? 3,
-  })
   return data
 }
 
@@ -128,13 +109,14 @@ export async function revokeAllSessions() {
 
 /** Verificar código de recuperación de contraseña (4 dígitos) */
 export async function verifyRecovery(email: string, token: string) {
-  const { data } = await api.post('/verify-recovery', { email, token })
+  const { data } = await api.post<{ mensaje: string; reset_token: string }>('/verify-recovery', { email, token })
   return data
 }
 
 /** Restablecer contraseña con código verificado */
-export async function resetPassword(email: string, newPassword: string) {
-  const { data } = await api.post('/reset-password', { email, newPassword })
+/** El servidor exige el reset_token que entrega verifyRecovery: solo quien verificó el código cambia la clave */
+export async function resetPassword(email: string, resetToken: string, newPassword: string) {
+  const { data } = await api.post('/reset-password', { email, reset_token: resetToken, newPassword })
   return data
 }
 

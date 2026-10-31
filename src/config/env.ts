@@ -7,7 +7,6 @@ import { z } from 'zod/v4'
  *
  * Variables esperadas en .env.local:
  *   VITE_API_BASE_URL     → Base path o URL completa del backend (obligatoria, ej. "/api" o "http://localhost:3000/api")
- *   VITE_APP_API_BASE_URL → URL del backend de la app móvil (opcional, default: "/app-api/api")
  *   VITE_APP_NAME         → Nombre de la app para metadatos (opcional, default: "Click&Serve Admin")
  *   VITE_SESSION_TIMEOUT  → Minutos de inactividad antes de cerrar sesión (opcional, default: 30)
  */
@@ -15,11 +14,6 @@ const envSchema = z.object({
   VITE_API_BASE_URL: z
     .string()
     .min(1, 'VITE_API_BASE_URL es obligatoria (ej. "/api" o "http://localhost:3000/api")'),
-
-  // Backend de la app móvil (Click-Serve-Back). Por defecto, el proxy de Vite en /app-api.
-  VITE_APP_API_BASE_URL: z
-    .string()
-    .default('/app-api/api'),
 
   VITE_APP_NAME: z
     .string()

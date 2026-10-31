@@ -1,10 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import api, { appApi } from '../api/axios'
+import api from '../api/axios'
 import type {
   UsuarioRow,
   ExpedienteTecnicoRow,
   SolicitudRetiroRow,
-  DisputaRow,
   ConfiguracionPlataformaRow,
   UpdateSettingsPayload,
   RejectTechnicianPayload,
@@ -14,8 +13,7 @@ import type {
   UpdateIncidenciaPayload,
 } from '../types/api'
 
-// Técnicos, retiros, incidencias y configuración se leen del backend de la app móvil (appApi):
-// son los mismos datos que generan clientes y técnicos. El directorio de usuarios sigue en el backend del panel (api).
+// Todo se lee del backend único (backend/): los mismos datos que generan clientes y técnicos en la app.
 
 // ── USUARIOS Y EXPEDIENTES (RF-18, RF-37, RF-38) ──
 
@@ -52,7 +50,7 @@ export function useVerifications(estado: 'pendientes' | 'aprobados' | 'rechazado
   return useQuery({
     queryKey: ['admin-verifications', estado],
     queryFn: async () => {
-      const { data } = await appApi.get<{ tecnicos: TecnicoAppRow[] }>('/admin/tecnicos', { params: { estado } })
+      const { data } = await api.get<{ tecnicos: TecnicoAppRow[] }>('/admin/tecnicos', { params: { estado } })
       return data.tecnicos.map(toExpediente)
     },
   })
@@ -62,7 +60,7 @@ export function useApproveTechnician() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (id: number) => {
-      const { data } = await appApi.patch(`/admin/usuarios/${id}/aprobar`)
+      const { data } = await api.patch(`/admin/usuarios/${id}/aprobar`)
       return data
     },
     onSuccess: () => {
@@ -76,7 +74,7 @@ export function useRejectTechnician() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, payload }: { id: number; payload: RejectTechnicianPayload }) => {
-      const { data } = await appApi.patch(`/admin/usuarios/${id}/rechazar`, {
+      const { data } = await api.patch(`/admin/usuarios/${id}/rechazar`, {
         motivo: payload.motivoRechazo,
         bloquear: payload.bloquearUsuario,
       })
@@ -122,7 +120,7 @@ export function useWithdrawals(status?: SolicitudRetiroRow['estado']) {
   return useQuery({
     queryKey: ['admin-withdrawals', estado],
     queryFn: async () => {
-      const { data } = await appApi.get<{ retiros: RetiroAppRow[] }>('/admin/retiros', { params: { estado } })
+      const { data } = await api.get<{ retiros: RetiroAppRow[] }>('/admin/retiros', { params: { estado } })
       return data.retiros.map(toSolicitudRetiro)
     },
   })
@@ -132,7 +130,7 @@ export function useApproveWithdrawal() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (id: number) => {
-      const { data } = await appApi.post<{ mensaje: string; folio: string }>(`/admin/retiros/${id}/aprobar`)
+      const { data } = await api.post<{ mensaje: string; folio: string }>(`/admin/retiros/${id}/aprobar`)
       return data
     },
     onSuccess: () => {
@@ -145,23 +143,11 @@ export function useRejectWithdrawal() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, motivo }: { id: number; motivo: string }) => {
-      const { data } = await appApi.post<{ mensaje: string; folio: string }>(`/admin/retiros/${id}/rechazar`, { motivo })
+      const { data } = await api.post<{ mensaje: string; folio: string }>(`/admin/retiros/${id}/rechazar`, { motivo })
       return data
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-withdrawals'] })
-    },
-  })
-}
-
-export function useDisputes(status?: string) {
-  return useQuery({
-    queryKey: ['admin-disputes', status],
-    queryFn: async () => {
-      const { data } = await api.get<DisputaRow[] | { disputas: DisputaRow[] }>('/admin/disputes', {
-        params: { status },
-      })
-      return Array.isArray(data) ? data : data.disputas
     },
   })
 }
@@ -172,7 +158,7 @@ export function useIncidencias(estado?: 'ABIERTA' | 'RESUELTA') {
   return useQuery({
     queryKey: ['admin-incidencias', estado],
     queryFn: async () => {
-      const { data } = await appApi.get<{ incidencias: IncidenciaRow[] }>('/admin/incidencias', { params: { estado } })
+      const { data } = await api.get<{ incidencias: IncidenciaRow[] }>('/admin/incidencias', { params: { estado } })
       return data.incidencias
     },
     refetchInterval: 30_000,
@@ -183,7 +169,7 @@ export function useUpdateIncidencia() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, payload }: { id: number; payload: UpdateIncidenciaPayload }) => {
-      const { data } = await appApi.patch<{ mensaje: string; incidencia: IncidenciaRow }>(`/admin/incidencias/${id}`, payload)
+      const { data } = await api.patch<{ mensaje: string; incidencia: IncidenciaRow }>(`/admin/incidencias/${id}`, payload)
       return data
     },
     onSuccess: () => {
@@ -199,7 +185,7 @@ export function usePlatformSettings() {
   return useQuery({
     queryKey: ['platform-settings'],
     queryFn: async () => {
-      const { data } = await appApi.get<{ configuracion: ConfiguracionPlataformaRow }>('/admin/configuracion')
+      const { data } = await api.get<{ configuracion: ConfiguracionPlataformaRow }>('/admin/configuracion')
       return data.configuracion
     },
   })
@@ -209,7 +195,7 @@ export function useUpdatePlatformSettings() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (payload: UpdateSettingsPayload) => {
-      const { data } = await appApi.put('/admin/configuracion', payload)
+      const { data } = await api.put('/admin/configuracion', payload)
       return data
     },
     onSuccess: () => {

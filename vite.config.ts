@@ -20,15 +20,10 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
+      // Backend único (backend/): lo usan el panel y la app móvil
       '/api': {
-        target: 'http://localhost:3000',
+        target: process.env.API_TARGET || 'http://localhost:3000',
         changeOrigin: true,
-      },
-      // Backend de la app móvil (Click-Serve-Back): técnicos, retiros, incidencias y configuración
-      '/app-api': {
-        target: process.env.APP_API_TARGET || 'http://localhost:3001',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/app-api/, ''),
       },
     },
   },

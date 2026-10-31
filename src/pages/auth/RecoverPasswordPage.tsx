@@ -63,10 +63,10 @@ export default function RecoverPasswordPage() {
 
     setLoading(true)
     try {
-      // 1. Verificar token
-      await verifyRecovery(email.trim().toLowerCase(), code.trim())
-      // 2. Restablecer clave
-      await resetPassword(email.trim().toLowerCase(), newPassword)
+      // 1. Verificar el código: el servidor devuelve un reset_token de un solo uso
+      const { reset_token } = await verifyRecovery(email.trim().toLowerCase(), code.trim())
+      // 2. Restablecer clave con ese reset_token
+      await resetPassword(email.trim().toLowerCase(), reset_token, newPassword)
       setStep('success')
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error

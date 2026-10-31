@@ -11,7 +11,7 @@ export type ServicioEstatus =
   | 'Cancelado'
 
 /**
- * Payload enviado al endpoint PATCH /api/servicios/:id/status
+ * Payload enviado al endpoint PATCH /api/admin/solicitudes/:id/estado
  */
 export interface UpdateServiceStatusPayload {
   estatus: ServicioEstatus | string
