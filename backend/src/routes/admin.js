@@ -198,6 +198,7 @@ router.put('/api/admin/configuracion', ...adminOnly, async (req, res) => {
   const campos = {
     comision_porcentaje: numberIn(b.comision_porcentaje ?? b.comisionPorcentaje, 0, 50),
     monto_minimo_retiro: numberIn(b.monto_minimo_retiro ?? b.montoMinimoRetiro, 1, 100000),
+    multa_operativa: numberIn(b.multa_operativa ?? b.multaOperativa, 0, 10000),
     radio_maximo_km: numberIn(b.radio_maximo_km ?? b.radioMaximoKm, 1, 200),
     tolerancia_minutos: numberIn(b.tolerancia_minutos ?? b.toleranciaMinutos, 1, 120),
   };
@@ -221,6 +222,7 @@ router.put('/api/admin/configuracion', ...adminOnly, async (req, res) => {
     `UPDATE configuracion_plataforma SET
        comision_porcentaje = COALESCE($1, comision_porcentaje),
        monto_minimo_retiro = COALESCE($2, monto_minimo_retiro),
+       multa_operativa = COALESCE($8, multa_operativa),
        radio_maximo_km = COALESCE($3, radio_maximo_km),
        tolerancia_minutos = COALESCE($4, tolerancia_minutos),
        sensibilidad_ia = COALESCE($5, sensibilidad_ia),
@@ -232,6 +234,7 @@ router.put('/api/admin/configuracion', ...adminOnly, async (req, res) => {
       campos.comision_porcentaje ?? null, campos.monto_minimo_retiro ?? null, campos.radio_maximo_km ?? null,
       campos.tolerancia_minutos ?? null, sensibilidad ?? null, mantenimiento ?? null,
       mensaje === undefined ? null : sanitizeText(mensaje, 300) || null,
+      campos.multa_operativa ?? null,
     ]
   );
   invalidateConfig();

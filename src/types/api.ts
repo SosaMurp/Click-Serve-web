@@ -130,26 +130,57 @@ export interface SolicitudRetiroRow {
   telefono: string
 }
 
-export interface DisputaRow {
-  id_disputa: number
-  id_cliente: number
-  id_tecnico: number
-  estado: 'Pendiente' | 'Resuelta'
-  monto_reembolso: string | number
-  monto_multa: string | number
-  observaciones: string | null
-  fecha_creacion: string
-  fecha_resolucion: string | null
-  cliente_nombre: string
-  cliente_apellido: string
-  tecnico_nombre: string
-  tecnico_apellido: string
+/** Mensaje del administrador a una persona (RF-116, RF-117). */
+export interface Comunicado {
+  id_comunicado: number
+  canal: 'PUSH' | 'EMAIL'
+  asunto: string
+  mensaje: string
+  fecha: string
+  enviado_por?: string
 }
 
-export interface SettleDisputePayload {
-  montoReembolso?: number
-  montoMulta?: number
-  observaciones?: string
+export interface EnviarComunicadoPayload {
+  id_usuario: number
+  canal: 'PUSH' | 'EMAIL'
+  asunto: string
+  mensaje: string
+}
+
+/** GET /api/admin/incidencias/:id/liquidacion: lo que el panel necesita para liquidar un caso (RF-82, RF-83). */
+export interface LiquidacionInfo {
+  liquidada: boolean
+  fecha_liquidacion: string | null
+  monto_reembolso: number | null
+  multa: number | null
+  reembolso_a_cargo_tecnico: boolean | null
+  pagado: number
+  reembolsado: number
+  reembolsable: number
+  modo_pago: 'CONEKTA' | 'SANDBOX' | null
+  id_tecnico: number | null
+  tecnico: string | null
+  saldo_tecnico: number | null
+  multa_sugerida: number
+  multa_maxima: number
+}
+
+export interface LiquidarPayload {
+  devolucion?: number
+  multa?: number
+  descontar_devolucion?: boolean
+  notas?: string
+}
+
+export interface LiquidarResultado {
+  mensaje: string
+  liquidacion: {
+    monto_reembolso: number
+    multa: number
+    cargo_tecnico: number
+    saldo_tecnico: number | null
+    saldo_negativo: boolean
+  }
 }
 
 // ── INCIDENCIAS (backend de la app) ──
@@ -169,6 +200,9 @@ export interface IncidenciaRow {
   notas_admin: string | null
   fecha_creacion: string
   fecha_resolucion: string | null
+  monto_reembolso: string | null
+  multa: string | null
+  fecha_liquidacion: string | null
   id_solicitud: number | null
   folio_solicitud: string | null
   estado_solicitud: string | null
@@ -231,6 +265,7 @@ export interface ConfiguracionPlataformaRow {
   id: number
   comision_porcentaje: number | string
   monto_minimo_retiro: number | string
+  multa_operativa: number | string
   radio_maximo_km: number
   tolerancia_minutos: number
   sensibilidad_ia: string
@@ -242,6 +277,7 @@ export interface ConfiguracionPlataformaRow {
 export interface UpdateSettingsPayload {
   comisionPorcentaje?: number
   montoMinimoRetiro?: number
+  multaOperativa?: number
   radioMaximoKm?: number
   toleranciaMinutos?: number
   modoMantenimiento?: boolean

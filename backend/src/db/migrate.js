@@ -14,6 +14,7 @@ const STEPS = [
   { id: '003_cobro_en_proceso', file: 'migrations/003_cobro_en_proceso.sql' },
   { id: '004_verificaciones_ine', file: 'migrations/004_verificaciones_ine.sql' },
   { id: '005_panel_admin', file: 'migrations/005_panel_admin.sql' },
+  { id: '006_liquidacion_conflictos', file: 'migrations/006_liquidacion_conflictos.sql' },
 ];
 
 async function migrate(pool = getPool(), { silent = false } = {}) {

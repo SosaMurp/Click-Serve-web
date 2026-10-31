@@ -14,6 +14,7 @@ export default function ConfiguracionPage() {
   const [maintenance, setMaintenance] = useState(false)
   const [commission, setCommission] = useState('')
   const [minWithdraw, setMinWithdraw] = useState('')
+  const [fine, setFine] = useState('')
   const [radius, setRadius] = useState('')
   const [timeoutVal, setTimeoutVal] = useState('')
   const [dirty, setDirty] = useState(false)
@@ -24,6 +25,7 @@ export default function ConfiguracionPage() {
     if (settings) {
       setCommission(settings.comision_porcentaje.toString())
       setMinWithdraw(settings.monto_minimo_retiro.toString())
+      setFine(String(settings.multa_operativa ?? '100'))
       setRadius(settings.radio_maximo_km.toString())
       setTimeoutVal(settings.tolerancia_minutos.toString())
       setMaintenance(settings.modo_mantenimiento)
@@ -43,6 +45,7 @@ export default function ConfiguracionPage() {
       await updateSettingsMutation.mutateAsync({
         comisionPorcentaje: Number(commission),
         montoMinimoRetiro: Number(minWithdraw),
+        multaOperativa: Number(fine),
         radioMaximoKm: Number(radius),
         toleranciaMinutos: Number(timeoutVal),
       })
@@ -137,6 +140,18 @@ export default function ConfiguracionPage() {
                   onChange={e => { setMinWithdraw(e.target.value); mark() }} />
                 <span className="cfg-suffix">MXN</span>
               </div>
+            </div>
+          </div>
+          <div className="cfg-row" style={{ marginTop: 16 }}>
+            <div className="cfg-field">
+              <label className="cfg-label">Multa operativa estándar</label>
+              <div className="cfg-input-suffix">
+                <span className="cfg-prefix">$</span>
+                <input className="cfg-input cfg-input--prefix" type="number" value={fine}
+                  onChange={e => { setFine(e.target.value); mark() }} />
+                <span className="cfg-suffix">MXN</span>
+              </div>
+              <p className="cfg-hint">Monto que se sugiere al liquidar un conflicto por violar los T&amp;C. Se puede ajustar en cada caso.</p>
             </div>
           </div>
         </div>

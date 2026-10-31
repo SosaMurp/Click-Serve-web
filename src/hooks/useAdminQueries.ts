@@ -11,6 +11,11 @@ import type {
   RetiroAppRow,
   IncidenciaRow,
   UpdateIncidenciaPayload,
+  LiquidacionInfo,
+  Comunicado,
+  EnviarComunicadoPayload,
+  LiquidarPayload,
+  LiquidarResultado,
   ExpedienteApp,
   TicketRow,
   TicketDetalle,
@@ -177,6 +182,57 @@ export function useUpdateIncidencia() {
       return data
     },
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-incidencias'] })
+    },
+  })
+}
+
+// ── COMUNICADOS A CLIENTES Y TÉCNICOS (RF-116, RF-117) ──
+
+export function useComunicados(idUsuario: number | null) {
+  return useQuery({
+    queryKey: ['admin-comunicados', idUsuario],
+    enabled: idUsuario != null,
+    queryFn: async () => {
+      const { data } = await api.get<{ comunicados: Comunicado[] }>('/admin/comunicados', { params: { id_usuario: idUsuario } })
+      return data.comunicados
+    },
+  })
+}
+
+export function useEnviarComunicado() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (payload: EnviarComunicadoPayload) => {
+      const { data } = await api.post<{ mensaje: string; comunicado: Comunicado }>('/admin/comunicados', payload)
+      return data
+    },
+    onSuccess: (_data, { id_usuario }) => qc.invalidateQueries({ queryKey: ['admin-comunicados', id_usuario] }),
+  })
+}
+
+// ── LIQUIDACIÓN DE CONFLICTOS (RF-82, RF-83) ──
+
+export function useLiquidacion(id: number | null) {
+  return useQuery({
+    queryKey: ['admin-liquidacion', id],
+    enabled: id != null,
+    queryFn: async () => {
+      const { data } = await api.get<{ liquidacion: LiquidacionInfo }>(`/admin/incidencias/${id}/liquidacion`)
+      return data.liquidacion
+    },
+  })
+}
+
+export function useLiquidar() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, payload }: { id: number; payload: LiquidarPayload }) => {
+      const { data } = await api.post<LiquidarResultado>(`/admin/incidencias/${id}/liquidar`, payload)
+      return data
+    },
+    onSuccess: (_data, { id }) => {
+      qc.invalidateQueries({ queryKey: ['admin-liquidacion', id] })
       qc.invalidateQueries({ queryKey: ['admin-incidencias'] })
     },
   })

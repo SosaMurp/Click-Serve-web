@@ -5,6 +5,7 @@ const { getPool } = require('../db/pool');
 const DEFAULTS = Object.freeze({
   comision_porcentaje: '10.00',
   monto_minimo_retiro: '100.00',
+  multa_operativa: '100.00',
   radio_maximo_km: 25,
   tolerancia_minutos: 10,
   sensibilidad_ia: 'Media',

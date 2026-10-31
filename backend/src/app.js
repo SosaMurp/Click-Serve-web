@@ -44,6 +44,8 @@ function createApp() {
   app.use(require('./routes/admin'));
   app.use(require('./routes/panel'));
   app.use(require('./routes/reportes'));
+  app.use(require('./routes/liquidaciones'));
+  app.use(require('./routes/comunicados'));
 
   app.use('/api', notFound);
   app.use(errorHandler);

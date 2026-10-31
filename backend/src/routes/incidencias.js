@@ -152,7 +152,7 @@ router.get('/api/admin/incidencias', auth, requireRole(ROL.ADMIN), async (req, r
   const estado = ['ABIERTA', 'RESUELTA'].includes(String(req.query.estado || '').toUpperCase()) ? String(req.query.estado).toUpperCase() : null;
   const { rows } = await getPool().query(
     `SELECT i.id_incidencia, i.folio, i.tipo, i.descripcion, i.prioridad, i.estado, i.resolucion, i.notas_admin,
-            i.fecha_creacion, i.fecha_resolucion,
+            i.fecha_creacion, i.fecha_resolucion, i.monto_reembolso, i.multa, i.fecha_liquidacion,
             s.id_solicitud, s.folio AS folio_solicitud, s.estado AS estado_solicitud, s.estado_pago, s.categoria,
             r.id_usuario AS id_reporta, r.nombre AS reporta_nombre, r.apellido AS reporta_apellido, r.id_rol AS reporta_rol,
             c.id_usuario AS id_cliente, c.nombre AS cliente_nombre, c.apellido AS cliente_apellido,

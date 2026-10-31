@@ -172,3 +172,25 @@
 @media (max-width: 720px) {
   .dash-notif-menu { position: fixed; left: 16px; right: 16px; top: 76px; width: auto; }
 }
+
+/* Resultados de la búsqueda global, por tipo */
+.dash-search-results {
+  position: absolute; left: 0; top: calc(100% + 8px); width: min(460px, 92vw); z-index: 40;
+  background: #fff; border: 1px solid var(--border-light); border-radius: 14px;
+  box-shadow: var(--shadow-md); padding: 8px; max-height: 70vh; overflow-y: auto; color: var(--text-dark);
+}
+.dash-search-tabs { display: flex; gap: 6px; padding: 4px 4px 8px; flex-wrap: wrap; }
+.dash-search-tab {
+  padding: 5px 12px; border-radius: 99px; border: 1px solid var(--border-light); background: #fff;
+  font-family: inherit; font-size: 12px; font-weight: 500; color: var(--text-mid); cursor: pointer;
+}
+.dash-search-tab--active { background: var(--navy); border-color: var(--navy); color: #fff; }
+.dash-search-group { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); padding: 8px 8px 4px; }
+.dash-search-item {
+  display: flex; flex-direction: column; gap: 1px; width: 100%; text-align: left;
+  padding: 8px; border: none; background: none; border-radius: 10px; cursor: pointer; font-family: inherit;
+}
+.dash-search-item:hover, .dash-search-item:focus-visible { background: var(--bg-page); }
+.dash-search-item-title { font-size: 13px; font-weight: 600; color: var(--text-dark); }
+.dash-search-item-sub { font-size: 11.5px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-search-empty { padding: 10px 8px; font-size: 12.5px; color: var(--text-muted); }

@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { X, FileText, Download, AlertTriangle, Eye, Trash2, ShieldOff, ShieldCheck, ExternalLink } from 'lucide-react'
+import { X, FileText, Download, AlertTriangle, Eye, Trash2, ShieldOff, ShieldCheck, ExternalLink, Send } from 'lucide-react'
 import { Badge, Button } from '@components/ui'
 import { env } from '../../config/env'
 import {
   useExpediente, useSuspendUser, useReactivateUser, useDeleteUser, descargarExpediente,
 } from '../../hooks/useAdminQueries'
+import MensajeModal from './MensajeModal'
 import './modals.css'
 
 // Expediente real de la cuenta (RF-20, RF-31, RF-36) y acciones del administrador (RF-16, RF-17, RF-32, RF-33).
@@ -36,6 +37,7 @@ export default function TechProfileModal({ isOpen, onClose, userId }: TechProfil
   const [activeTab, setActiveTab] = useState<'perfil' | 'documentos' | 'acciones'>('perfil')
   const [preview, setPreview] = useState<{ nombre: string; url: string } | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [escribiendo, setEscribiendo] = useState(false)
   const [password, setPassword] = useState('')
   const [mensaje, setMensaje] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null)
 
@@ -219,6 +221,16 @@ export default function TechProfileModal({ isOpen, onClose, userId }: TechProfil
 
               <div style={{ border: '1px solid var(--border-light)', borderRadius: 12, padding: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ flex: 1 }}>
+                  <h5 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Enviar mensaje</h5>
+                  <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '2px 0 0' }}>Un aviso personalizado por notificación de la app o por correo.</p>
+                </div>
+                <Button variant="secondary" size="sm" onClick={() => setEscribiendo(true)}>
+                  <Send size={13} /> ESCRIBIR
+                </Button>
+              </div>
+
+              <div style={{ border: '1px solid var(--border-light)', borderRadius: 12, padding: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ flex: 1 }}>
                   <h5 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>{suspendido ? 'Cuenta suspendida' : 'Suspender cuenta'}</h5>
                   <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '2px 0 0' }}>
                     {suspendido
@@ -269,6 +281,7 @@ export default function TechProfileModal({ isOpen, onClose, userId }: TechProfil
           )}
         </div>
       </div>
+      {escribiendo && userId != null && <MensajeModal userId={userId} nombre={nombre} onClose={() => setEscribiendo(false)} />}
     </div>
   )
 }

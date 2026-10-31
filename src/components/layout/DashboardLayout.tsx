@@ -9,6 +9,8 @@ import { NetworkStatusBanner } from '@components/ui/NetworkStatusBanner'
 import ServiceDetailModal from '@components/modals/ServiceDetailModal'
 import { getServicioById } from '@api/servicios'
 import { useDashboardStats } from '@hooks/useDashboard'
+import api from '@api/axios'
+import TechProfileModal from '@components/modals/TechProfileModal'
 import { useWithdrawals, useIncidencias, useTickets } from '@hooks/useAdminQueries'
 import { LogoMark } from '@components/ui/Logo'
 import type { RecentService } from '@/types/dashboard'
@@ -16,6 +18,16 @@ import './dashboard-layout.css'
 
 // "SRV-108", "srv108", "#108" o un número corto → búsqueda por servicio
 const SERVICE_CODE = /^(?:srv-?|#)?(\d{1,6})$/i
+
+// Resultados de la búsqueda global segmentados por tipo (RF-44)
+type Segmento = 'todos' | 'tecnicos' | 'clientes' | 'servicios'
+const SEGMENTOS: { id: Segmento; label: string }[] = [
+  { id: 'todos', label: 'Todos' }, { id: 'tecnicos', label: 'Técnicos' },
+  { id: 'clientes', label: 'Clientes' }, { id: 'servicios', label: 'Servicios' },
+]
+interface Persona { id_usuario: number; nombre: string; apellido: string; correo: string; telefono: string | null }
+interface Hallazgo { id_solicitud: number; folio: string; estado: string; categoria: string | null; cliente: string; tecnico: string }
+interface Hallazgos { tecnicos: Persona[]; clientes: Persona[]; servicios: Hallazgo[] }
 
 const NAV_ITEMS = [
   { to: '/dashboard',     icon: LayoutDashboard, label: 'Dashboard',            badge: null },
@@ -69,6 +81,46 @@ export default function DashboardLayout() {
   const [searching, setSearching] = useState(false)
   const [searchError, setSearchError] = useState('')
   const [foundService, setFoundService] = useState<RecentService | null>(null)
+  const formRef = useRef<HTMLFormElement>(null)
+  const [segmento, setSegmento] = useState<Segmento>('todos')
+  const [hallazgos, setHallazgos] = useState<Hallazgos | null>(null)
+  const [listaAbierta, setListaAbierta] = useState(false)
+  const [perfilId, setPerfilId] = useState<number | null>(null)
+
+  // Mientras se escribe se buscan técnicos, clientes y servicios (con una pausa para no consultar en cada letra)
+  useEffect(() => {
+    const q = query.trim()
+    if (q.length < 2) { setHallazgos(null); return }
+    let vigente = true
+    const t = window.setTimeout(async () => {
+      try {
+        const { data } = await api.get<Hallazgos>('/admin/buscar', { params: { q, tipo: segmento } })
+        if (vigente) { setHallazgos(data); setListaAbierta(true) }
+      } catch {
+        if (vigente) setHallazgos(null)
+      }
+    }, 250)
+    return () => { vigente = false; window.clearTimeout(t) }
+  }, [query, segmento])
+
+  useEffect(() => {
+    if (!listaAbierta) return
+    const fuera = (e: MouseEvent) => { if (!formRef.current?.contains(e.target as Node)) setListaAbierta(false) }
+    document.addEventListener('mousedown', fuera)
+    return () => document.removeEventListener('mousedown', fuera)
+  }, [listaAbierta])
+
+  const abrirServicio = async (id: number) => {
+    setListaAbierta(false)
+    try {
+      setFoundService(await getServicioById(id))
+      setQuery('')
+    } catch {
+      setSearchError('No se pudo abrir el servicio')
+    }
+  }
+  const abrirPersona = (id: number) => { setListaAbierta(false); setPerfilId(id) }
+  const totalHallazgos = hallazgos ? hallazgos.tecnicos.length + hallazgos.clientes.length + hallazgos.servicios.length : 0
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -121,7 +173,7 @@ export default function DashboardLayout() {
           <div className="dash-logo" title="Click & Serve · Panel de administración">
             <LogoMark size={30} />
           </div>
-          <form className="dash-search" role="search" onSubmit={handleSearch}>
+          <form className="dash-search" role="search" onSubmit={handleSearch} ref={formRef}>
             <Search size={15} />
             <input
               ref={searchRef}
@@ -135,6 +187,39 @@ export default function DashboardLayout() {
               ? <span className="dash-search-spin" aria-label="Buscando" />
               : <kbd className="dash-search-kbd">Ctrl K</kbd>}
             {searchError && <p className="dash-search-error" role="alert">{searchError}</p>}
+            {listaAbierta && hallazgos && !searchError && (
+              <div className="dash-search-results" aria-label="Resultados de la búsqueda">
+                <div className="dash-search-tabs">
+                  {SEGMENTOS.map(s => (
+                    <button type="button" key={s.id} className={`dash-search-tab ${segmento === s.id ? 'dash-search-tab--active' : ''}`}
+                      onClick={() => setSegmento(s.id)}>{s.label}</button>
+                  ))}
+                </div>
+                {totalHallazgos === 0 && <p className="dash-search-empty">Sin resultados para «{query.trim()}».</p>}
+                {([['Técnicos', hallazgos.tecnicos], ['Clientes', hallazgos.clientes]] as const).map(([titulo, lista]) => lista.length > 0 && (
+                  <div key={titulo}>
+                    <p className="dash-search-group">{titulo}</p>
+                    {lista.map(u => (
+                      <button type="button" key={u.id_usuario} className="dash-search-item" onClick={() => abrirPersona(u.id_usuario)}>
+                        <span className="dash-search-item-title">{u.nombre} {u.apellido}</span>
+                        <span className="dash-search-item-sub">ID-{u.id_usuario} · {u.correo}</span>
+                      </button>
+                    ))}
+                  </div>
+                ))}
+                {hallazgos.servicios.length > 0 && (
+                  <div>
+                    <p className="dash-search-group">Servicios</p>
+                    {hallazgos.servicios.map(s => (
+                      <button type="button" key={s.id_solicitud} className="dash-search-item" onClick={() => abrirServicio(s.id_solicitud)}>
+                        <span className="dash-search-item-title">{s.folio} · {s.categoria ?? 'Servicio'}</span>
+                        <span className="dash-search-item-sub">{s.estado} · {s.cliente.trim() || 'Sin cliente'}{s.tecnico.trim() ? ` → ${s.tecnico.trim()}` : ''}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </form>
         </div>
 
@@ -203,6 +288,8 @@ export default function DashboardLayout() {
           <Outlet />
         </main>
       </div>
+
+      <TechProfileModal isOpen={perfilId != null} onClose={() => setPerfilId(null)} userId={perfilId} />
 
       {foundService && (
         <ServiceDetailModal

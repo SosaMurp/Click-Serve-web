@@ -5,6 +5,7 @@ import { useIncidencias, useUpdateIncidencia } from '../../hooks/useAdminQueries
 import type { AccionIncidencia, IncidenciaRow, IncidenciaTipo, Prioridad } from '../../types/api'
 import '@components/modals/modals.css'
 import TicketsPanel from './TicketsPanel'
+import LiquidacionModal from '@components/modals/LiquidacionModal'
 import api from '../../api/axios'
 import { abrirImprimible, escapeHtml, tablaHtml } from '../../utils/printable'
 import '../tecnicos/tecnicos.css'
@@ -176,6 +177,10 @@ async function exportarCaso(id: number) {
       campo('Reportó', inc.reporta), campo('Fecha', f(inc.fecha_creacion)), campo('Descripción', inc.descripcion),
       campo('Resolución', inc.resolucion ? ACCION_LABEL[inc.resolucion as AccionIncidencia] : 'Pendiente'),
       campo('Fecha de resolución', f(inc.fecha_resolucion)), campo('Atendió', inc.atendio?.trim() || '—'), campo('Notas internas', inc.notas_admin),
+      ...(inc.fecha_liquidacion ? [
+        campo('Liquidado', f(inc.fecha_liquidacion)), campo('Reembolso al cliente (MXN)', inc.monto_reembolso),
+        campo('Multa al técnico (MXN)', inc.multa), campo('Devolución descontada al técnico', inc.reembolso_a_cargo_tecnico ? 'Sí' : 'No'),
+      ] : []),
     ].join('')}</dl>
     <h2>Orden de servicio</h2><dl>${[
       campo('Categoría', inc.categoria), campo('Estado', inc.estado_solicitud), campo('Pago', inc.estado_pago), campo('Monto (MXN)', inc.monto),
@@ -193,6 +198,7 @@ function IncidenciaModal({ incidencia: i, onClose }: { incidencia: IncidenciaRow
   const [notas, setNotas] = useState(i.notas_admin ?? '')
   const [accion, setAccion] = useState<AccionIncidencia | ''>('')
   const [error, setError] = useState('')
+  const [liquidando, setLiquidando] = useState(false)
   const abierta = i.estado === 'ABIERTA'
   // Solo una orden suspendida se puede reasignar o cancelar; si no, únicamente se cierra el reporte.
   const acciones: AccionIncidencia[] = i.estado_solicitud === 'SUSPENDIDA' ? ['CONTINUAR', 'REASIGNAR', 'CANCELAR'] : ['CONTINUAR']
@@ -214,6 +220,7 @@ function IncidenciaModal({ incidencia: i, onClose }: { incidencia: IncidenciaRow
   const field: React.CSSProperties = { width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--border-strong, #8B93A1)', fontFamily: 'inherit', fontSize: 13, background: '#fff' }
 
   return (
+    <>
     <div className="modal-backdrop">
       <div className="modal-container modal-container--sm fade-in">
         <div className="modal-header">
@@ -277,6 +284,11 @@ function IncidenciaModal({ incidencia: i, onClose }: { incidencia: IncidenciaRow
             onClick={() => exportarCaso(i.id_incidencia).catch(() => setError('No se pudo generar el expediente.'))}>
             <Download size={13} /> EXPORTAR PDF
           </Button>
+          {i.id_solicitud != null && (
+            <Button variant="outline" size="sm" onClick={() => setLiquidando(true)}>
+              {i.fecha_liquidacion ? 'VER LIQUIDACIÓN' : 'LIQUIDAR'}
+            </Button>
+          )}
           <Button variant="ghost" size="sm" onClick={onClose}>{abierta ? 'CANCELAR' : 'CERRAR'}</Button>
           {abierta && (
             <Button variant="primary" size="sm" loading={update.isPending} onClick={guardar}>
@@ -286,5 +298,7 @@ function IncidenciaModal({ incidencia: i, onClose }: { incidencia: IncidenciaRow
         </div>
       </div>
     </div>
+    {liquidando && <LiquidacionModal incidencia={i} onClose={() => setLiquidando(false)} />}
+    </>
   )
 }

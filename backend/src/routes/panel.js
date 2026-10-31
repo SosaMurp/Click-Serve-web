@@ -182,6 +182,45 @@ router.patch('/api/admin/solicitudes/:id/estado', ...adminOnly, async (req, res)
   res.json({ mensaje: `Servicio ${row.folio} cancelado sin cargo.`, servicio: { id_servicio: row.id_solicitud, estatus: 'Cancelado' } });
 });
 
+// ───────────────────────── Búsqueda global (RF-44) ─────────────────────────
+// Resultados segmentados entre técnicos, clientes y servicios. `tipo` limita la búsqueda a un segmento.
+router.get('/api/admin/buscar', ...adminOnly, async (req, res) => {
+  const q = String(req.query.q || '').trim().slice(0, 80);
+  const tipo = String(req.query.tipo || 'todos').toLowerCase();
+  if (!['todos', 'tecnicos', 'clientes', 'servicios'].includes(tipo)) return fail(res, 400, 'VALIDATION_ERROR', 'Tipo de búsqueda no válido.', { field: 'tipo' });
+  const vacio = { tecnicos: [], clientes: [], servicios: [] };
+  if (q.length < 2) return res.json({ q, ...vacio });
+
+  const patron = `%${q.replace(/[\\%_]/g, '\\$&')}%`;
+  const limite = tipo === 'todos' ? 5 : 25;
+  const personas = (rol) => db().query(
+    `SELECT u.id_usuario, u.nombre, u.apellido, u.correo, u.telefono, u.estado_cuenta
+     FROM usuarios u
+     WHERE u.id_rol = $1 AND u.anonimizado = false
+       AND (CONCAT(u.nombre, ' ', u.apellido) ILIKE $2 OR u.correo ILIKE $2 OR u.telefono ILIKE $2 OR ('ID-' || u.id_usuario) ILIKE $2)
+     ORDER BY u.id_usuario DESC LIMIT $3`,
+    [rol, patron, limite]
+  ).then((r) => r.rows);
+  const servicios = () => db().query(
+    `SELECT s.id_solicitud, s.folio, s.estado, COALESCE(c.nombre, s.categoria) AS categoria,
+            CONCAT(cl.nombre, ' ', cl.apellido) AS cliente, CONCAT(t.nombre, ' ', t.apellido) AS tecnico
+     FROM solicitudes_servicio s
+     LEFT JOIN categorias_servicio c ON c.codigo = s.categoria
+     LEFT JOIN usuarios cl ON cl.id_usuario = s.id_usuario
+     LEFT JOIN usuarios t ON t.id_usuario = s.id_tecnico
+     WHERE s.folio ILIKE $1 OR s.descripcion ILIKE $1 OR s.direccion ILIKE $1
+     ORDER BY s.fecha_creacion DESC LIMIT $2`,
+    [patron, limite]
+  ).then((r) => r.rows);
+
+  const [tecnicos, clientes, srv] = await Promise.all([
+    tipo === 'todos' || tipo === 'tecnicos' ? personas(2) : [],
+    tipo === 'todos' || tipo === 'clientes' ? personas(1) : [],
+    tipo === 'todos' || tipo === 'servicios' ? servicios() : [],
+  ]);
+  res.json({ q, tecnicos, clientes, servicios: srv });
+});
+
 // ───────────────────────── Directorio de usuarios (RF-16, RF-17, RF-26, RF-32, RF-33, RF-37, RF-38) ─────────────────────────
 router.get('/api/admin/users', ...adminOnly, async (req, res) => {
   const { role, status, specialty, search } = req.query;
