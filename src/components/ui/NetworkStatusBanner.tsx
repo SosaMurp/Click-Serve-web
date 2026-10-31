@@ -11,7 +11,7 @@ export function NetworkStatusBanner() {
       style={{
         position: 'fixed', top: 0, left: 0, right: 0,
         zIndex: 999999,
-        background: !isOnline ? '#dc2626' : '#d97706',
+        background: !isOnline ? '#D92D20' : '#7A4F00',
         color: '#ffffff',
         padding: '8px 16px',
         fontSize: '12px',
@@ -28,12 +28,12 @@ export function NetworkStatusBanner() {
       {!isOnline ? (
         <>
           <WifiOff size={15} />
-          <span>SIN CONEXIÓN A INTERNET — FUNCIONALIDAD LIMITADA (RNF-19, RNF-28)</span>
+          <span>SIN CONEXIÓN A INTERNET — FUNCIONALIDAD LIMITADA</span>
         </>
       ) : (
         <>
           <AlertTriangle size={15} />
-          <span>SEÑAL DE RED DÉBIL DETECTADA — LAS OPERACIONES PUEDEN DEMORAR (RNF-28)</span>
+          <span>SEÑAL DE RED DÉBIL DETECTADA — LAS OPERACIONES PUEDEN DEMORAR</span>
         </>
       )}
     </div>

@@ -92,7 +92,7 @@ export default function LoginPage() {
               className="auth-forgot"
               onClick={() => navigate('/recover')}
             >
-              Recuperar IDs
+              ¿Olvidaste tu contraseña?
             </button>
           </div>
           <div className="field-wrap">

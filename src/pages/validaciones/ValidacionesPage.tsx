@@ -78,7 +78,7 @@ export default function ValidacionesPage() {
       <div className="dash-page-header">
         <div>
           <h1 className="dash-page-title">Centro de Validaciones</h1>
-          <p className="dash-page-sub">AUDITORÍA DE IDENTIDAD Y CREDENCIALES (RF-28 A RF-42)</p>
+          <p className="dash-page-sub">AUDITORÍA DE IDENTIDAD Y CREDENCIALES</p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button className="dash-export-btn" onClick={() => setVista('pendientes')}
@@ -110,7 +110,7 @@ export default function ValidacionesPage() {
           <input placeholder="Buscar técnico o ID..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <button className="dash-export-btn" onClick={() => setIsFilterOpen(true)}>
-          <Filter size={13} /> FILTRAR (RF-39)
+          <Filter size={13} /> FILTRAR
         </button>
       </div>
 

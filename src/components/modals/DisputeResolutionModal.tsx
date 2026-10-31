@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { X, Download, Check, AlertCircle } from 'lucide-react'
+import { X, Check, AlertCircle } from 'lucide-react'
 import { Button } from '@components/ui'
+import type { SettleDisputePayload } from '../../types/api'
 import './modals.css'
 
 interface DisputeResolutionModalProps {
@@ -9,30 +10,42 @@ interface DisputeResolutionModalProps {
   ticketId?: string
   userName?: string
   techName?: string
+  /** Liquida la disputa en el servidor (POST /api/admin/disputes/:id/settle) */
+  onResolve?: (payload: SettleDisputePayload) => Promise<void>
 }
 
 export default function DisputeResolutionModal({
   isOpen,
   onClose,
-  ticketId = 'ICS-399',
-  userName = 'José López',
-  techName = 'Roberto García',
+  ticketId = '',
+  userName = 'cliente',
+  techName = 'técnico',
+  onResolve,
 }: DisputeResolutionModalProps) {
-  const [refundAmount, setRefundAmount] = useState('250.00')
-  const [fineAmount, setFineAmount] = useState('100.00')
-  const [reason, setReason] = useState('Violación de Términos y Condiciones / Cancelación en ruta')
+  const [refundAmount, setRefundAmount] = useState('0')
+  const [fineAmount, setFineAmount] = useState('0')
+  const [reason, setReason] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   if (!isOpen) return null
 
-  const handleExportPDF = () => {
-    alert(`Expediente de disputa #${ticketId} exportado en PDF (RF-80).`)
-  }
-
-  const handleResolve = () => {
-    alert(
-      `Conflicto resuelto exitosamente. Reembolso a cliente: $${refundAmount} MXN. Multa a técnico: $${fineAmount} MXN. Billetera ajustada (RF-83).`,
-    )
-    onClose()
+  const handleResolve = async () => {
+    if (!onResolve) return
+    setSaving(true)
+    setError('')
+    try {
+      await onResolve({
+        montoReembolso: Number(refundAmount) || 0,
+        montoMulta: Number(fineAmount) || 0,
+        observaciones: reason.trim() || undefined,
+      })
+      onClose()
+    } catch {
+      setError('No se pudo registrar la liquidación. Intenta de nuevo.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -40,7 +53,7 @@ export default function DisputeResolutionModal({
       <div className="modal-container modal-container--sm fade-in">
         <div className="modal-header">
           <div className="modal-title-wrap">
-            <h3 className="modal-title">Liquidación de Conflictos (RF-81, RF-82)</h3>
+            <h3 className="modal-title">Liquidación de Conflictos</h3>
             <p className="modal-subtitle">FOLIO DE TICKET #{ticketId}</p>
           </div>
           <button className="modal-close-btn" onClick={onClose}>
@@ -51,12 +64,12 @@ export default function DisputeResolutionModal({
         <div className="modal-body" style={{ gap: 14 }}>
           <div
             style={{
-              background: '#fffbf0',
-              border: '1px solid #fde68a',
+              background: '#FFF3D6',
+              border: '1px solid #FFE3A3',
               padding: 12,
               borderRadius: 6,
               fontSize: 12,
-              color: '#92400e',
+              color: 'var(--warning)',
               display: 'flex',
               gap: 8,
               alignItems: 'flex-start',
@@ -87,13 +100,13 @@ export default function DisputeResolutionModal({
               <span
                 style={{
                   padding: '10px 14px',
-                  background: '#f1f5f9',
-                  border: '1px solid #cbd5e1',
+                  background: '#F7F8F9',
+                  border: '1px solid #CDD3E0',
                   borderRight: 'none',
                   borderRadius: '6px 0 0 6px',
                   fontSize: 13,
                   fontWeight: 700,
-                  color: '#334155',
+                  color: '#4B5563',
                 }}
               >
                 $
@@ -106,7 +119,7 @@ export default function DisputeResolutionModal({
                   flex: 1,
                   padding: '10px',
                   borderRadius: '0 6px 6px 0',
-                  border: '1px solid #cbd5e1',
+                  border: '1px solid #CDD3E0',
                   fontSize: 13,
                 }}
               />
@@ -130,13 +143,13 @@ export default function DisputeResolutionModal({
               <span
                 style={{
                   padding: '10px 14px',
-                  background: '#f1f5f9',
-                  border: '1px solid #cbd5e1',
+                  background: '#F7F8F9',
+                  border: '1px solid #CDD3E0',
                   borderRight: 'none',
                   borderRadius: '6px 0 0 6px',
                   fontSize: 13,
                   fontWeight: 700,
-                  color: '#334155',
+                  color: '#4B5563',
                 }}
               >
                 $
@@ -149,14 +162,11 @@ export default function DisputeResolutionModal({
                   flex: 1,
                   padding: '10px',
                   borderRadius: '0 6px 6px 0',
-                  border: '1px solid #cbd5e1',
+                  border: '1px solid #CDD3E0',
                   fontSize: 13,
                 }}
               />
             </div>
-            <p style={{ fontSize: 11, color: 'var(--text-mid)', margin: '4px 0 0' }}>
-              Estándar por T&C: $100.00 MXN por violación de servicio.
-            </p>
           </div>
 
           <div>
@@ -179,7 +189,7 @@ export default function DisputeResolutionModal({
                 width: '100%',
                 padding: '10px',
                 borderRadius: 6,
-                border: '1px solid #cbd5e1',
+                border: '1px solid #CDD3E0',
                 fontSize: 13,
                 height: 60,
                 fontFamily: 'inherit',
@@ -189,14 +199,12 @@ export default function DisputeResolutionModal({
         </div>
 
         <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
-          <Button variant="outline" size="sm" onClick={handleExportPDF} title="Exportar PDF (RF-80)">
-            <Download size={13} /> EXPORTAR PDF
-          </Button>
+          <p style={{ fontSize: 12, color: 'var(--danger-ink)', margin: 0 }}>{error}</p>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <Button variant="ghost" size="sm" onClick={onClose}>
               CANCELAR
             </Button>
-            <Button variant="primary" size="sm" onClick={handleResolve} title="Ejecutar Movimiento (RF-83)">
+            <Button variant="primary" size="sm" onClick={handleResolve} loading={saving} disabled={!onResolve} title="Ejecutar Movimiento">
               <Check size={14} /> EJECUTAR MOVIMIENTO
             </Button>
           </div>

@@ -71,11 +71,11 @@ export default function TwoFactorPage() {
   return (
     <AuthLayout
       leftTitle={<>Seguridad<br /><em>Avanzada</em></>}
-      leftDescription="Protegiendo el acceso al panel centralizado de Click&Serve. Sistema de autenticación de dos factores activado."
+      leftDescription="Protegiendo el acceso al panel centralizado de Click & Serve. Sistema de autenticación de dos factores activado."
     >
       <div className="auth-form-header">
         <h2 className="auth-form-title">Verificación 2FA</h2>
-        <p className="auth-form-subtitle">CÓDIGO DE SEGURIDAD REQUERIDO (RNF-04, RNF-18)</p>
+        <p className="auth-form-subtitle">CÓDIGO DE SEGURIDAD REQUERIDO</p>
       </div>
 
       <Badge variant="online" dot>CÓDIGO ENVIADO AL CORREO</Badge>

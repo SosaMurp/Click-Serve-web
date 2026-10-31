@@ -7,45 +7,60 @@
   line-height: 1.5;
   color-scheme: light;
 
-  /* Colors */
-  --bg-dark:    #080d18;
-  --bg-panel:   #0e1525;
-  --bg-sidebar: #111827;
-  --bg-light:   #f8fafc;
-  --bg-card:    #1a2235;
-  --bg-input:   #f1f5f9;
+  /* Paleta compartida con la app móvil (movil/src/design/tokens.ts).
+     Azul marino para títulos y la acción principal, naranja para la acción destacada;
+     verde, ámbar y rojo solo para estados. Contrastes sobre blanco: tinta 16.7:1,
+     secundario 7.6:1, tenue 5:1. */
+  --bg-dark:    #081430;
+  --bg-panel:   #0C1C40;
+  --bg-sidebar: #0C1C40;
+  --bg-light:   #F7F8F9;
+  --bg-card:    #13244D;
+  --bg-input:   #FFFFFF;
+  --bg-sunk:    #F7F8F9;
 
-  --navy:       #0A192F;
-  --navy-soft:  #1E293B;
-  --bg-page:    #F6F7F9;
+  --navy:       #0C1C40;
+  --navy-soft:  #081430;
+  --bg-page:    #F7F8F9;
 
-  --accent:     #E8590C;
-  --accent-dim: #C2410C;
-  --accent-soft:#FDF0E8;
-  --accent-glow:rgba(232,89,12,.14);
+  /* #FF6B00 es el naranja de marca; en rellenos con texto blanco se usa #E25900 (3.7:1)
+     y en texto naranja sobre blanco #B84A00 (5.2:1). */
+  --brand-orange: #FF6B00;
+  --accent:     #E25900;
+  --accent-dim: #C94E00;
+  --accent-ink: #B84A00;
+  --accent-soft:#FFEDE0;
+  --accent-glow:rgba(255,107,0,.18);
 
-  --success:    #15803D;
-  --warning:    #B45309;
-  --danger:     #B91C1C;
-  --info:       #1D4ED8;
+  --success:      #0E7A42;
+  --success-soft: #E3F4EA;
+  --warning:      #7A4F00;
+  --warning-fill: #F2A91E;
+  --warning-soft: #FFF3D6;
+  --danger:       #D92D20;
+  --danger-ink:   #A41F15;
+  --danger-soft:  #FDE8E6;
+  --info:         #0C1C40;
+  --info-soft:    #E8EBF2;
 
-  --text-dark:  #0A192F;
-  --text-mid:   #475569;
-  --text-muted: #94a3b8;
-  --text-light: #e2e8f0;
+  --text-dark:  #0C1C40;
+  --text-mid:   #4B5563;
+  --text-muted: #667085;
+  --text-light: #E6E9EE;
   --text-white: #ffffff;
 
-  --border-light: #e2e8f0;
-  --border-dark:  rgba(255,255,255,.08);
+  --border-light:  #E6E9EE;
+  --border-strong: #8B93A1;
+  --border-dark:   rgba(255,255,255,.08);
 
-  --radius-sm: 6px;
-  --radius-md: 10px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 24px;
 
-  --shadow-sm: 0 1px 3px rgba(0,0,0,.12);
-  --shadow-md: 0 4px 16px rgba(0,0,0,.18);
-  --shadow-lg: 0 8px 32px rgba(0,0,0,.25);
+  --shadow-sm: 0 2px 10px rgba(12,28,64,.06);
+  --shadow-md: 0 10px 28px rgba(12,28,64,.14);
+  --shadow-lg: 0 16px 40px rgba(12,28,64,.18);
 
   --transition: 0.18s ease;
 }
@@ -64,7 +79,7 @@ a { color: inherit; text-decoration: none; }
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+::-webkit-scrollbar-thumb { background: #CDD3E0; border-radius: 99px; }
 
 /* ── Animations ── */
 @keyframes fadeIn   { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }

@@ -8,6 +8,8 @@ import {
 import { NetworkStatusBanner } from '@components/ui/NetworkStatusBanner'
 import ServiceDetailModal from '@components/modals/ServiceDetailModal'
 import { getServicioById } from '@api/servicios'
+import { useDashboardStats } from '@hooks/useDashboard'
+import { LogoMark } from '@components/ui/Logo'
 import type { RecentService } from '@/types/dashboard'
 import './dashboard-layout.css'
 
@@ -16,7 +18,7 @@ const SERVICE_CODE = /^(?:srv-?|#)?(\d{1,6})$/i
 
 const NAV_ITEMS = [
   { to: '/dashboard',     icon: LayoutDashboard, label: 'Dashboard',            badge: null },
-  { to: '/validaciones',  icon: ShieldCheck,     label: 'Validaciones',         badge: '3' },
+  { to: '/validaciones',  icon: ShieldCheck,     label: 'Validaciones',         badge: 'validaciones' },
   { to: '/tecnicos',      icon: Users,           label: 'Técnicos y usuarios',  badge: null },
   { to: '/soporte',       icon: MessageSquare,   label: 'Soporte y tickets',    badge: null },
   { to: '/mapa',          icon: Map,             label: 'Mapa en vivo',         badge: null },
@@ -27,6 +29,8 @@ const NAV_ITEMS = [
 export default function DashboardLayout() {
   const navigate = useNavigate()
   const { user, logout } = useAuthStore()
+  // Pendientes reales de validación (antes era un 3 fijo)
+  const pendientes = useDashboardStats().data?.validaciones_pendientes ?? 0
 
   const handleLogout = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -90,10 +94,8 @@ export default function DashboardLayout() {
       {/* ── TOPBAR ── */}
       <header className="dash-topbar">
         <div className="dash-topbar-left">
-          <div className="dash-logo" title="Click&Serve Admin">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-            </svg>
+          <div className="dash-logo" title="Click & Serve · Panel de administración">
+            <LogoMark size={30} />
           </div>
           <form className="dash-search" role="search" onSubmit={handleSearch}>
             <Search size={15} />
@@ -141,7 +143,7 @@ export default function DashboardLayout() {
                 className={({ isActive }) => `dash-rail-link ${isActive ? 'dash-rail-link--active' : ''}`}
               >
                 <Icon size={18} />
-                {badge && <span className="dash-rail-badge">{badge}</span>}
+                {badge === 'validaciones' && pendientes > 0 && <span className="dash-rail-badge">{pendientes > 99 ? '99+' : pendientes}</span>}
                 <span className="dash-rail-tip">{label}</span>
               </NavLink>
             ))}

@@ -14,7 +14,7 @@
 
 /* ── Map Canvas & Leaflet ── */
 .mapa-canvas {
-  background: #e5e7eb;
+  background: #E6E9EE;
   border: 1px solid var(--border-light);
   border-radius: var(--radius-lg);
   position: relative; overflow: hidden;
@@ -41,12 +41,12 @@
 
 .mapa-recenter-btn {
   background: #ffffff;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #CDD3E0;
   border-radius: 8px;
   padding: 8px 12px;
   font-size: 12px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-dark);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -55,8 +55,8 @@
   transition: all 0.15s ease;
 }
 .mapa-recenter-btn:hover {
-  background: #f8fafc;
-  border-color: #94a3b8;
+  background: var(--bg-sunk);
+  border-color: var(--text-muted);
   transform: translateY(-1px);
 }
 
@@ -65,7 +65,7 @@
   bottom: 14px;
   left: 14px;
   z-index: 1000;
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(12,28,64, 0.85);
   backdrop-filter: blur(4px);
   color: #ffffff;
   padding: 6px 12px;
@@ -136,7 +136,7 @@
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #0f172a;
+  color: var(--text-dark);
   background: rgba(255, 255, 255, 0.95);
   border: 1px solid rgba(0,0,0,0.08);
   padding: 2px 6px;
@@ -181,25 +181,25 @@
 .mapa-popup-title {
   font-size: 13px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-dark);
   margin: 0 0 2px 0;
 }
 .mapa-popup-sub {
   font-size: 11px;
-  color: #64748b;
+  color: var(--text-muted);
   margin: 0 0 8px 0;
 }
 .mapa-popup-detail {
   font-size: 11px;
   color: #334155;
-  background: #f8fafc;
+  background: var(--bg-sunk);
   padding: 6px 8px;
   border-radius: 4px;
   margin-bottom: 10px;
 }
 .mapa-popup-btn {
   width: 100%;
-  background: #0284c7;
+  background: var(--navy);
   color: #ffffff;
   border: none;
   border-radius: 6px;
@@ -240,23 +240,23 @@
 .mapa-log { display: flex; flex-direction: column; gap: 6px; flex: 1; }
 .mapa-log-entry {
   padding: 10px;
-  border: 1px solid #f1f5f9;
+  border: 1px solid var(--bg-sunk);
   border-radius: 8px;
-  background: #fafafa;
+  background: var(--bg-sunk);
   transition: all 0.15s ease;
 }
 .mapa-log-entry:hover,
 .mapa-log-entry--active {
-  background: #f0f9ff;
-  border-color: #bae6fd;
+  background: #E8EBF2;
+  border-color: #CDD3E0;
 }
 .mapa-log-meta  { display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: var(--text-muted); margin-bottom: 4px; }
 .mapa-log-text  { font-size: 12px; color: var(--text-dark); line-height: 1.4; margin: 0; }
 
 .mapa-log-type { font-size: 9px; font-weight: 700; letter-spacing: .06em; padding: 1px 7px; border-radius: 99px; }
-.mapa-log-type--danger  { background: rgba(239,68,68,.1);  color: var(--danger); }
-.mapa-log-type--info    { background: rgba(59,130,246,.1); color: var(--info); }
-.mapa-log-type--success { background: rgba(232,89,12,.1);  color: var(--accent-dim); }
+.mapa-log-type--danger  { background: rgba(217,45,32,.1);  color: var(--danger); }
+.mapa-log-type--info    { background: rgba(12,28,64,.1); color: var(--info); }
+.mapa-log-type--success { background: rgba(226,89,0,.1);  color: var(--accent-dim); }
 
 .mapa-filter-btn {
   display: flex; align-items: center; justify-content: center; gap: 6px;

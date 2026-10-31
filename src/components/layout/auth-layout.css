@@ -27,8 +27,8 @@
 .auth-logo {
   width: 40px;
   height: 40px;
-  background: var(--accent);
-  border-radius: 10px;
+  background: #fff;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -64,7 +64,7 @@
 
 .auth-left-title em {
   font-style: normal;
-  color: #f4a26b;
+  color: var(--brand-orange);
 }
 
 .auth-left-desc {

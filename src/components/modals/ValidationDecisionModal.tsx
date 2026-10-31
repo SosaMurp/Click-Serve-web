@@ -58,34 +58,34 @@ export default function ValidationDecisionModal({
               onClick={() => setAction('approve')}
               style={{
                 padding: '14px', borderRadius: 8, border: '2px solid',
-                borderColor: action === 'approve' ? 'var(--accent-dim)' : '#e2e8f0',
-                background: action === 'approve' ? '#f0fdf4' : '#fff',
+                borderColor: action === 'approve' ? 'var(--accent-dim)' : '#E6E9EE',
+                background: action === 'approve' ? '#E3F4EA' : '#fff',
                 cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-                fontWeight: 700, fontSize: 13, color: action === 'approve' ? '#166534' : '#64748b'
+                fontWeight: 700, fontSize: 13, color: action === 'approve' ? '#0B6235' : '#667085'
               }}
             >
-              <ShieldCheck size={24} color={action === 'approve' ? '#166534' : '#64748b'} />
-              AUTORIZAR ACCESO (RF-42)
+              <ShieldCheck size={24} color={action === 'approve' ? '#0B6235' : '#667085'} />
+              AUTORIZAR ACCESO
             </button>
 
             <button
               onClick={() => setAction('reject')}
               style={{
                 padding: '14px', borderRadius: 8, border: '2px solid',
-                borderColor: action === 'reject' ? 'var(--danger)' : '#e2e8f0',
-                background: action === 'reject' ? '#fef2f2' : '#fff',
+                borderColor: action === 'reject' ? 'var(--danger)' : '#E6E9EE',
+                background: action === 'reject' ? '#FDE8E6' : '#fff',
                 cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-                fontWeight: 700, fontSize: 13, color: action === 'reject' ? '#991b1b' : '#64748b'
+                fontWeight: 700, fontSize: 13, color: action === 'reject' ? '#A41F15' : '#667085'
               }}
             >
-              <ShieldAlert size={24} color={action === 'reject' ? '#991b1b' : '#64748b'} />
-              RECHAZAR SOLICITUD (RF-41)
+              <ShieldAlert size={24} color={action === 'reject' ? '#A41F15' : '#667085'} />
+              RECHAZAR SOLICITUD
             </button>
           </div>
 
           {action === 'approve' ? (
-            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: 14, borderRadius: 6, fontSize: 13, color: '#166534' }}>
-              <p style={{ margin: 0, fontWeight: 600 }}>Protocolo de Autorización y Firma (RF-42)</p>
+            <div style={{ background: '#E3F4EA', border: '1px solid #BFE3CD', padding: 14, borderRadius: 6, fontSize: 13, color: '#0B6235' }}>
+              <p style={{ margin: 0, fontWeight: 600 }}>Protocolo de Autorización y Firma</p>
               <p style={{ margin: '4px 0 0', fontSize: 12, opacity: 0.9 }}>
                 Al confirmar, se otorgará el estatus operativo "ACTIVO" en la red Lázaro Cárdenas y se enviará la notificación oficial al técnico.
               </p>
@@ -94,12 +94,12 @@ export default function ValidationDecisionModal({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-mid)', display: 'block', marginBottom: 6 }}>
-                  Motivo de Rechazo Predefinido (RF-41)
+                  Motivo de Rechazo Predefinido
                 </label>
                 <select
                   value={rejectReason}
                   onChange={e => setRejectReason(e.target.value)}
-                  style={{ width: '100%', padding: '10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13 }}
+                  style={{ width: '100%', padding: '10px', borderRadius: 6, border: '1px solid #CDD3E0', fontSize: 13 }}
                 >
                   <option value="Sospecha de fraude">Sospecha de fraude en documentos</option>
                   <option value="Inconsistencia de cédula">Cédula Profesional no coincide con SEP</option>
@@ -114,11 +114,11 @@ export default function ValidationDecisionModal({
                   placeholder="Escribe la justificación detallada..."
                   value={customReason}
                   onChange={e => setCustomReason(e.target.value)}
-                  style={{ width: '100%', padding: '10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13, height: 70, fontFamily: 'inherit' }}
+                  style={{ width: '100%', padding: '10px', borderRadius: 6, border: '1px solid #CDD3E0', fontSize: 13, height: 70, fontFamily: 'inherit' }}
                 />
               )}
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#991b1b', fontWeight: 600, cursor: 'pointer', background: '#fef2f2', padding: 10, borderRadius: 6 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#A41F15', fontWeight: 600, cursor: 'pointer', background: '#FDE8E6', padding: 10, borderRadius: 6 }}>
                 <input type="checkbox" checked={blockUser} onChange={e => setBlockUser(e.target.checked)} />
                 <Ban size={16} /> Bloquear usuario e inhabilitar nuevos registros
               </label>

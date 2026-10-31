@@ -50,7 +50,7 @@ const AVAILABLE_STATUSES: {
     label: 'En Progreso',
     description: 'El técnico ha iniciado las labores físicas en sitio.',
     icon: <Clock size={16} />,
-    color: '#0284c7',
+    color: '#0C1C40',
     badgeVariant: 'info',
   },
   {
@@ -58,7 +58,7 @@ const AVAILABLE_STATUSES: {
     label: 'Finalizado',
     description: 'El servicio técnico ha sido concluido exitosamente.',
     icon: <CheckCircle2 size={16} />,
-    color: '#16a34a',
+    color: '#0E7A42',
     badgeVariant: 'success',
   },
   {
@@ -66,7 +66,7 @@ const AVAILABLE_STATUSES: {
     label: 'Cancelado',
     description: 'El servicio fue cancelado por el cliente, técnico o administración.',
     icon: <XCircle size={16} />,
-    color: '#dc2626',
+    color: '#D92D20',
     badgeVariant: 'danger',
   },
   {
@@ -74,7 +74,7 @@ const AVAILABLE_STATUSES: {
     label: 'En Camino',
     description: 'El prestador se encuentra en tránsito hacia el domicilio.',
     icon: <AlertTriangle size={16} />,
-    color: '#eab308',
+    color: '#F2A91E',
     badgeVariant: 'warning',
   },
 ]
@@ -200,16 +200,16 @@ export default function UpdateServiceStatusModal({
                   display: 'flex',
                   alignItems: 'center',
                   gap: 10,
-                  background: '#f0fdf4',
-                  border: '1px solid #bbf7d0',
-                  color: '#166534',
+                  background: '#E3F4EA',
+                  border: '1px solid #BFE3CD',
+                  color: '#0B6235',
                   padding: '12px 14px',
                   borderRadius: 8,
                   fontSize: 13,
                   fontWeight: 600,
                 }}
               >
-                <Check size={18} color="#16a34a" />
+                <Check size={18} color="#0E7A42" />
                 <span>{successNotice}</span>
               </div>
             )}
@@ -220,15 +220,15 @@ export default function UpdateServiceStatusModal({
                   display: 'flex',
                   alignItems: 'center',
                   gap: 10,
-                  background: '#fef2f2',
-                  border: '1px solid #fecaca',
-                  color: '#991b1b',
+                  background: '#FDE8E6',
+                  border: '1px solid #F4C7C2',
+                  color: '#A41F15',
                   padding: '12px 14px',
                   borderRadius: 8,
                   fontSize: 13,
                 }}
               >
-                <ShieldAlert size={18} color="#dc2626" />
+                <ShieldAlert size={18} color="#D92D20" />
                 <span>{apiError}</span>
               </div>
             )}
@@ -239,8 +239,8 @@ export default function UpdateServiceStatusModal({
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
+                background: '#F7F8F9',
+                border: '1px solid #E6E9EE',
                 padding: '10px 14px',
                 borderRadius: 8,
               }}
@@ -293,7 +293,7 @@ export default function UpdateServiceStatusModal({
                           style={{
                             padding: '10px 12px',
                             borderRadius: 8,
-                            border: `2px solid ${isSelected ? st.color : '#e2e8f0'}`,
+                            border: `2px solid ${isSelected ? st.color : '#E6E9EE'}`,
                             background: isSelected ? `${st.color}0f` : '#ffffff',
                             textAlign: 'left',
                             cursor: 'pointer',
@@ -311,7 +311,7 @@ export default function UpdateServiceStatusModal({
                                 gap: 6,
                                 fontWeight: 700,
                                 fontSize: 13,
-                                color: isSelected ? st.color : '#334155',
+                                color: isSelected ? st.color : '#4B5563',
                               }}
                             >
                               {st.icon}
@@ -332,7 +332,7 @@ export default function UpdateServiceStatusModal({
                             style={{
                               margin: 0,
                               fontSize: 11,
-                              color: '#64748b',
+                              color: '#667085',
                               lineHeight: 1.3,
                             }}
                           >
@@ -354,8 +354,8 @@ export default function UpdateServiceStatusModal({
             {/* Checkbox de Notificación al Cliente (Requisito clave) */}
             <div
               style={{
-                background: notificarCliente ? '#f0f9ff' : '#f8fafc',
-                border: `1px solid ${notificarCliente ? '#bae6fd' : '#e2e8f0'}`,
+                background: notificarCliente ? '#E8EBF2' : '#F7F8F9',
+                border: `1px solid ${notificarCliente ? '#CDD3E0' : '#E6E9EE'}`,
                 borderRadius: 8,
                 padding: '14px 16px',
                 transition: 'all 0.2s ease',
@@ -379,7 +379,7 @@ export default function UpdateServiceStatusModal({
                     height: 18,
                     marginTop: 2,
                     cursor: 'pointer',
-                    accentColor: '#0284c7',
+                    accentColor: '#0C1C40',
                   }}
                 />
                 <div style={{ flex: 1 }}>
@@ -390,7 +390,7 @@ export default function UpdateServiceStatusModal({
                       gap: 6,
                       fontSize: 13,
                       fontWeight: 700,
-                      color: notificarCliente ? '#0369a1' : 'var(--text-dark)',
+                      color: notificarCliente ? '#0C1C40' : 'var(--text-dark)',
                     }}
                   >
                     <Bell size={15} />
@@ -408,14 +408,14 @@ export default function UpdateServiceStatusModal({
                   style={{
                     marginTop: 14,
                     paddingTop: 12,
-                    borderTop: '1px dashed #bae6fd',
+                    borderTop: '1px dashed #CDD3E0',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: 10,
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#0369a1', textTransform: 'uppercase' }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#0C1C40', textTransform: 'uppercase' }}>
                       Canal de Envío
                     </span>
                     <div style={{ display: 'flex', gap: 6 }}>
@@ -427,9 +427,9 @@ export default function UpdateServiceStatusModal({
                             fontWeight: 600,
                             padding: '4px 8px',
                             borderRadius: 6,
-                            background: canalNotificacion === canal ? '#0284c7' : '#ffffff',
-                            color: canalNotificacion === canal ? '#ffffff' : '#334155',
-                            border: '1px solid #cbd5e1',
+                            background: canalNotificacion === canal ? '#0C1C40' : '#ffffff',
+                            color: canalNotificacion === canal ? '#ffffff' : '#4B5563',
+                            border: '1px solid #CDD3E0',
                             cursor: 'pointer',
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -455,11 +455,11 @@ export default function UpdateServiceStatusModal({
                     <div
                       style={{
                         fontSize: 11,
-                        color: '#475569',
+                        color: '#4B5563',
                         background: '#ffffff',
                         padding: '6px 10px',
                         borderRadius: 6,
-                        border: '1px solid #e2e8f0',
+                        border: '1px solid #E6E9EE',
                         display: 'flex',
                         gap: 12,
                         flexWrap: 'wrap',
@@ -467,12 +467,12 @@ export default function UpdateServiceStatusModal({
                     >
                       {clientPhone && (
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                          <Smartphone size={12} color="#0284c7" /> {clientPhone}
+                          <Smartphone size={12} color="#0C1C40" /> {clientPhone}
                         </span>
                       )}
                       {clientEmail && (
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                          <Mail size={12} color="#0284c7" /> {clientEmail}
+                          <Mail size={12} color="#0C1C40" /> {clientEmail}
                         </span>
                       )}
                     </div>

@@ -17,7 +17,7 @@ const envSchema = z.object({
 
   VITE_APP_NAME: z
     .string()
-    .default('Click&Serve Admin'),
+    .default('Click & Serve Admin'),
 
   VITE_SESSION_TIMEOUT: z
     .string()

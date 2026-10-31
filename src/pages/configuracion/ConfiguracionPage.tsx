@@ -6,16 +6,16 @@ import './configuracion.css'
 import { usePlatformSettings, useUpdatePlatformSettings } from '../../hooks/useAdminQueries'
 
 export default function ConfiguracionPage() {
-  const { data: settings, isLoading } = usePlatformSettings()
+  const { data: settings, isLoading, isError, refetch } = usePlatformSettings()
   const updateSettingsMutation = useUpdatePlatformSettings()
 
   const [threshold, setThreshold] = useState(85)
   const [sepValidation, setSepValidation] = useState(true)
   const [maintenance, setMaintenance] = useState(false)
-  const [commission, setCommission] = useState('15')
-  const [minWithdraw, setMinWithdraw] = useState('500')
-  const [radius, setRadius] = useState('15')
-  const [timeoutVal, setTimeoutVal] = useState('5')
+  const [commission, setCommission] = useState('')
+  const [minWithdraw, setMinWithdraw] = useState('')
+  const [radius, setRadius] = useState('')
+  const [timeoutVal, setTimeoutVal] = useState('')
   const [dirty, setDirty] = useState(false)
   const [savedSuccess, setSavedSuccess] = useState(false)
 
@@ -71,6 +71,25 @@ export default function ConfiguracionPage() {
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Cargando parámetros...</div>
   }
 
+  // Sin datos del servidor no se muestran valores de ejemplo: guardarlos sobrescribiría la configuración real.
+  if (isError || !settings) {
+    return (
+      <div className="cfg-page fade-in">
+        <div className="dash-page-header">
+          <div>
+            <h1 className="dash-page-title">Configuración</h1>
+            <p className="dash-page-sub">Parámetros globales de la plataforma</p>
+          </div>
+        </div>
+        <div className="cfg-card cfg-load-error">
+          <AlertTriangle size={16} />
+          <p>No se pudo cargar la configuración desde el servidor.</p>
+          <button className="cfg-save-btn" onClick={() => refetch()}>Reintentar</button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="cfg-page fade-in">
       {/* Header */}
@@ -102,7 +121,7 @@ export default function ConfiguracionPage() {
           </div>
           <div className="cfg-row">
             <div className="cfg-field">
-              <label className="cfg-label">Comisión Click&amp;Serve <span className="cfg-badge-pill">Afecta a todos los servicios</span></label>
+              <label className="cfg-label">Comisión Click &amp; Serve <span className="cfg-badge-pill">Afecta a todos los servicios</span></label>
               <div className="cfg-input-suffix">
                 <input className="cfg-input" type="number" value={commission}
                   onChange={e => { setCommission(e.target.value); mark() }} />

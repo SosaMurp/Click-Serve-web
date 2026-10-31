@@ -27,7 +27,7 @@ export default function ReportGeneratorModal({ isOpen, onClose }: ReportGenerato
       const filename = `Reporte_ClickAndServe_${timeframe}_${new Date().toISOString().slice(0,10)}.${format}`
       
       // Simular descarga de archivo
-      const dummyContent = `Reporte Click&Serve Nodo LZC\nAlcance: ${timeframe}\nFecha: ${new Date().toLocaleString()}`
+      const dummyContent = `Reporte Click & Serve Nodo LZC\nAlcance: ${timeframe}\nFecha: ${new Date().toLocaleString()}`
       const blob = new Blob([dummyContent], { type: format === 'pdf' ? 'application/pdf' : 'text/csv' })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
@@ -47,7 +47,7 @@ export default function ReportGeneratorModal({ isOpen, onClose }: ReportGenerato
       <div className="modal-container modal-container--sm fade-in">
         <div className="modal-header">
           <div className="modal-title-wrap">
-            <h3 className="modal-title">Configuración de Reportes (RF-95, RF-96)</h3>
+            <h3 className="modal-title">Configuración de Reportes</h3>
             <p className="modal-subtitle">EXPORTACIÓN DE DATOS DEL NODO</p>
           </div>
           <button className="modal-close-btn" onClick={onClose}>
@@ -59,7 +59,7 @@ export default function ReportGeneratorModal({ isOpen, onClose }: ReportGenerato
           {/* Alcance Temporal (RF-95) */}
           <div>
             <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-mid)', display: 'block', marginBottom: 6 }}>
-              Alcance Temporal del Archivo (RF-95)
+              Alcance Temporal del Archivo
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {[
@@ -73,9 +73,9 @@ export default function ReportGeneratorModal({ isOpen, onClose }: ReportGenerato
                   onClick={() => setTimeframe(t.id)}
                   style={{
                     padding: '8px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                    border: '1px solid', borderColor: timeframe === t.id ? 'var(--accent-dim)' : '#cbd5e1',
-                    background: timeframe === t.id ? '#e0f2fe' : '#fff',
-                    color: timeframe === t.id ? '#0369a1' : '#475569', cursor: 'pointer'
+                    border: '1px solid', borderColor: timeframe === t.id ? 'var(--accent-dim)' : '#CDD3E0',
+                    background: timeframe === t.id ? '#E8EBF2' : '#fff',
+                    color: timeframe === t.id ? '#0C1C40' : '#4B5563', cursor: 'pointer'
                   }}
                 >
                   {t.label}
@@ -87,10 +87,10 @@ export default function ReportGeneratorModal({ isOpen, onClose }: ReportGenerato
           {/* Dimensiones de Datos (RF-95) */}
           <div>
             <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-mid)', display: 'block', marginBottom: 6 }}>
-              Dimensiones de Datos a Incluir (RF-95)
+              Dimensiones de Datos a Incluir
             </label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, background: '#f8fafc', padding: 8, borderRadius: 6, cursor: 'pointer' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, background: '#F7F8F9', padding: 8, borderRadius: 6, cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   checked={dimensions.servicios}
@@ -98,7 +98,7 @@ export default function ReportGeneratorModal({ isOpen, onClose }: ReportGenerato
                 />
                 Dimensiones de Servicios y Operaciones
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, background: '#f8fafc', padding: 8, borderRadius: 6, cursor: 'pointer' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, background: '#F7F8F9', padding: 8, borderRadius: 6, cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   checked={dimensions.finanzas}
@@ -106,7 +106,7 @@ export default function ReportGeneratorModal({ isOpen, onClose }: ReportGenerato
                 />
                 Dimensiones Financieras y Retiros
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, background: '#f8fafc', padding: 8, borderRadius: 6, cursor: 'pointer' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, background: '#F7F8F9', padding: 8, borderRadius: 6, cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   checked={dimensions.identidad}
@@ -120,7 +120,7 @@ export default function ReportGeneratorModal({ isOpen, onClose }: ReportGenerato
           {/* Formato de Descarga (RF-96) */}
           <div>
             <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-mid)', display: 'block', marginBottom: 6 }}>
-              Formato de Entrega (RF-96)
+              Formato de Entrega
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
               {(['pdf', 'csv', 'xlsx'] as const).map(fmt => (
@@ -129,9 +129,9 @@ export default function ReportGeneratorModal({ isOpen, onClose }: ReportGenerato
                   onClick={() => setFormat(fmt)}
                   style={{
                     padding: '8px', borderRadius: 6, fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
-                    border: '1px solid', borderColor: format === fmt ? 'var(--text-dark)' : '#cbd5e1',
+                    border: '1px solid', borderColor: format === fmt ? 'var(--text-dark)' : '#CDD3E0',
                     background: format === fmt ? 'var(--text-dark)' : '#fff',
-                    color: format === fmt ? '#fff' : '#475569', cursor: 'pointer'
+                    color: format === fmt ? '#fff' : '#4B5563', cursor: 'pointer'
                   }}
                 >
                   .{fmt}

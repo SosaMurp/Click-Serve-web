@@ -208,7 +208,7 @@ export default function PerfilPage() {
                 <Shield size={18} className="perfil-shield-icon" />
                 <div>
                   <p className="perfil-security-title">Autenticación en 2 Pasos (Activa)</p>
-                  <p className="perfil-security-sub">Protegido mediante Verificación por Correo (RF-11)</p>
+                  <p className="perfil-security-sub">Protegido mediante Verificación por Correo</p>
                 </div>
               </div>
               <button className="perfil-action-btn">RECONFIGURAR</button>
@@ -216,7 +216,7 @@ export default function PerfilPage() {
 
             <div className="perfil-security-row">
               <div>
-                <p className="perfil-security-title">CONTRASEÑA PRINCIPAL (RF-09, RF-15)</p>
+                <p className="perfil-security-title">CONTRASEÑA PRINCIPAL</p>
                 <p className="perfil-security-sub">Actualiza tu clave de acceso de forma segura</p>
               </div>
               <button 
@@ -237,7 +237,7 @@ export default function PerfilPage() {
         <div className="dash-card perfil-devices-card">
           <div className="perfil-section-head">
             <Monitor size={14} />
-            <p className="perfil-section-title">DISPOSITIVOS ACTIVOS (RF-12, RF-13)</p>
+            <p className="perfil-section-title">DISPOSITIVOS ACTIVOS</p>
           </div>
           <p className="cfg-hint" style={{ marginTop: -6, marginBottom: 16 }}>
             Monitorea tus conexiones recientes y revoca accesos sospechosos.
@@ -292,7 +292,7 @@ export default function PerfilPage() {
               className="perfil-revoke-all" 
               onClick={handleRevokeAll}
             >
-              CERRAR TODAS LAS DEMÁS SESIONES (RF-14)
+              CERRAR TODAS LAS DEMÁS SESIONES
             </button>
           )}
           {/* 👆 -------------------------- 👆 */}
@@ -305,7 +305,7 @@ export default function PerfilPage() {
           <div className="modal-container modal-container--sm fade-in" style={{ maxWidth: 420 }}>
             <div className="modal-header">
               <div className="modal-title-wrap">
-                <h3 className="modal-title">Cambio de Contraseña Maestra (RF-09, RF-15)</h3>
+                <h3 className="modal-title">Cambio de Contraseña Maestra</h3>
                 <p className="modal-subtitle">ACTUALIZACIÓN DE SEGURIDAD</p>
               </div>
               <button className="modal-close-btn" onClick={() => setIsPasswordModalOpen(false)}>
@@ -316,14 +316,14 @@ export default function PerfilPage() {
             <form onSubmit={handleUpdatePassword}>
               <div className="modal-body" style={{ gap: 14 }}>
                 {passwordError && (
-                  <div style={{ background: '#fef2f2', border: '1px solid #fecaca', padding: '10px 12px', borderRadius: 6, fontSize: 13, color: '#dc2626', display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ background: '#FDE8E6', border: '1px solid #F4C7C2', padding: '10px 12px', borderRadius: 6, fontSize: 13, color: '#D92D20', display: 'flex', gap: 8, alignItems: 'center' }}>
                     <AlertCircle size={16} style={{ flexShrink: 0 }} />
                     <span>{passwordError}</span>
                   </div>
                 )}
 
                 {passwordSuccess && (
-                  <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '10px 12px', borderRadius: 6, fontSize: 13, color: '#16a34a', display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ background: '#E3F4EA', border: '1px solid #BFE3CD', padding: '10px 12px', borderRadius: 6, fontSize: 13, color: '#0E7A42', display: 'flex', gap: 8, alignItems: 'center' }}>
                     <CheckCircle size={16} style={{ flexShrink: 0 }} />
                     <span>{passwordSuccess}</span>
                   </div>
@@ -338,7 +338,7 @@ export default function PerfilPage() {
                     placeholder="••••••••"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13 }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #CDD3E0', fontSize: 13 }}
                     required
                   />
                 </div>
@@ -352,7 +352,7 @@ export default function PerfilPage() {
                     placeholder="Mínimo 8 caracteres"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13 }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #CDD3E0', fontSize: 13 }}
                     required
                   />
                 </div>
@@ -366,7 +366,7 @@ export default function PerfilPage() {
                     placeholder="Repite la nueva contraseña"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13 }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #CDD3E0', fontSize: 13 }}
                     required
                   />
                 </div>

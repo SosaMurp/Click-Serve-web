@@ -17,7 +17,7 @@
 .btn--primary:hover:not(:disabled) { background: var(--navy-soft); transform: translateY(-1px); box-shadow: var(--shadow-md); }
 
 .btn--secondary { background: var(--bg-input); color: var(--text-dark); border: 1px solid var(--border-light); }
-.btn--secondary:hover:not(:disabled) { background: #e2e8f0; }
+.btn--secondary:hover:not(:disabled) { background: var(--border-light); }
 
 .btn--outline { background: transparent; color: var(--text-dark); border: 1px solid var(--border-light); }
 .btn--outline:hover:not(:disabled) { background: var(--bg-input); }
@@ -33,17 +33,17 @@
 
 /* ━━━━━━━━━━━━━━━━━━ FIELD ━━━━━━━━━━━━━━━━━━ */
 .field { display: flex; flex-direction: column; gap: 6px; }
-.field-label { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-mid); }
+.field-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-dark); }
 .field-wrap { position: relative; }
 .field-input {
   width: 100%; padding: 12px 14px; font-family: inherit; font-size: 14px;
-  background: var(--bg-input); border: 1.5px solid var(--border-light);
+  background: var(--bg-input); border: 1px solid var(--border-strong);
   border-radius: var(--radius-md); color: var(--text-dark);
   transition: border-color var(--transition), box-shadow var(--transition);
   outline: none;
 }
 .field-input::placeholder { color: var(--text-muted); }
-.field-input:focus { border-color: var(--accent-dim); box-shadow: 0 0 0 3px var(--accent-glow); }
+.field-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
 .field--error .field-input { border-color: var(--danger); }
 .field-icon { position: absolute; top: 50%; transform: translateY(-50%); color: var(--text-muted); display: flex; }
 .field-icon--right { right: 12px; cursor: pointer; }
@@ -66,18 +66,18 @@
   font-size: 12px; font-weight: 500; white-space: nowrap;
 }
 .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-.badge--success { background: #ECFDF3; color: var(--success); }
-.badge--online  { background: #ECFDF3; color: var(--success); }
-.badge--warning { background: #FFF7ED; color: var(--warning); }
-.badge--danger  { background: #FEF2F2; color: var(--danger); }
-.badge--info    { background: #EFF6FF; color: var(--info); }
-.badge--neutral { background: #F1F5F9; color: var(--text-mid); }
+.badge--success { background: var(--success-soft); color: var(--success); }
+.badge--online  { background: var(--success-soft); color: var(--success); }
+.badge--warning { background: var(--warning-soft); color: var(--warning); }
+.badge--danger  { background: var(--danger-soft); color: var(--danger); }
+.badge--info    { background: var(--info-soft); color: var(--info); }
+.badge--neutral { background: var(--bg-sunk); color: var(--text-mid); }
 
 /* ━━━━━━━━━━━━━━━━━━ STAT CARD ━━━━━━━━━━━━━━━━━━ */
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
 
 .stat-card {
-  background: #fff; border: 1px solid #EDF0F3; border-radius: 18px;
+  background: #fff; border: 1px solid var(--border-light); border-radius: 18px;
   padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0;
 }
 .stat-head { display: flex; align-items: center; gap: 10px; }
@@ -85,12 +85,12 @@
   width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
 }
-.stat-icon--navy   { background: #EEF1F6; color: var(--navy); }
-.stat-icon--blue   { background: #EAF1FB; color: #2F5D9E; }
-.stat-icon--amber  { background: #FDF3E4; color: #B45309; }
+.stat-icon--navy   { background: var(--info-soft); color: var(--navy); }
+.stat-icon--blue   { background: var(--info-soft); color: var(--navy); }
+.stat-icon--amber  { background: var(--warning-soft); color: var(--warning); }
 .stat-icon--orange { background: var(--accent-soft); color: var(--accent); }
-.stat-icon--green  { background: #EAF6EF; color: var(--success); }
-.stat-icon--red    { background: #FDECEC; color: var(--danger); }
+.stat-icon--green  { background: var(--success-soft); color: var(--success); }
+.stat-icon--red    { background: var(--danger-soft); color: var(--danger); }
 .stat-label { font-size: 13px; font-weight: 500; color: var(--text-mid); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stat-value {
   font-size: 26px; font-weight: 700; color: var(--text-dark);

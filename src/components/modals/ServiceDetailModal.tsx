@@ -93,7 +93,7 @@ export default function ServiceDetailModal({
           {activeTab === 'detalles' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
               {/* Header Status Card */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: 16, borderRadius: 8, border: '1px solid #e2e8f0', flexWrap: 'wrap', gap: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F7F8F9', padding: 16, borderRadius: 8, border: '1px solid #E6E9EE', flexWrap: 'wrap', gap: 12 }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <Badge variant={serviceStatus.toUpperCase() === 'FINALIZADO' || serviceStatus.toUpperCase() === 'COMPLETADO' ? 'success' : serviceStatus.toUpperCase() === 'CANCELADO' ? 'danger' : 'warning'}>
@@ -103,9 +103,9 @@ export default function ServiceDetailModal({
                       type="button"
                       onClick={() => setIsUpdateStatusOpen(true)}
                       style={{
-                        background: '#e0f2fe',
-                        border: '1px solid #bae6fd',
-                        color: '#0284c7',
+                        background: '#E8EBF2',
+                        border: '1px solid #CDD3E0',
+                        color: '#0C1C40',
                         fontSize: 11,
                         fontWeight: 700,
                         padding: '3px 8px',
@@ -123,8 +123,8 @@ export default function ServiceDetailModal({
                   <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '2px 0 0' }}>Zona Centro, Lázaro Cárdenas, Michoacán</p>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-mid)', margin: 0 }}>CHECK-IN EN SITIO (RF-60)</p>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: arrived ? '#166534' : '#b45309', display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-mid)', margin: 0 }}>CHECK-IN EN SITIO</p>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: arrived ? '#0B6235' : '#7A4F00', display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
                     <MapPin size={13} /> {arrived ? 'Técnico en Sitio' : 'En Traslado (ETA 10 min)'}
                   </span>
                 </div>
@@ -132,12 +132,12 @@ export default function ServiceDetailModal({
 
               {/* Participants */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <div style={{ padding: 14, border: '1px solid #e2e8f0', borderRadius: 8 }}>
+                <div style={{ padding: 14, border: '1px solid #E6E9EE', borderRadius: 8 }}>
                   <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', margin: '0 0 6px' }}>CLIENTE SOLICITANTE</p>
                   <p style={{ fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--text-dark)' }}>{clientName}</p>
                   <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '2px 0 0' }}>Tel: +52 753 102 9918</p>
                 </div>
-                <div style={{ padding: 14, border: '1px solid #e2e8f0', borderRadius: 8 }}>
+                <div style={{ padding: 14, border: '1px solid #E6E9EE', borderRadius: 8 }}>
                   <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', margin: '0 0 6px' }}>TÉCNICO ASIGNADO</p>
                   <p style={{ fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--text-dark)' }}>{techName}</p>
                   <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '2px 0 0' }}>ID: PTEC-0041 • ★ 4.9</p>
@@ -147,13 +147,13 @@ export default function ServiceDetailModal({
               {/* Checklist de Actividades (RF-62) */}
               <div>
                 <h5 style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', marginBottom: 10 }}>
-                  Gestión de Labores e Imprevistos (RF-62)
+                  Gestión de Labores e Imprevistos
                 </h5>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {activities.map((act, idx) => (
-                    <label key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, background: '#f8fafc', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>
+                    <label key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, background: '#F7F8F9', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>
                       <input type="checkbox" checked={act.done} onChange={() => toggleActivity(idx)} />
-                      <span style={{ textDecoration: act.done ? 'line-through' : 'none', color: act.done ? '#64748b' : '#0f172a' }}>{act.text}</span>
+                      <span style={{ textDecoration: act.done ? 'line-through' : 'none', color: act.done ? '#667085' : '#0C1C40' }}>{act.text}</span>
                     </label>
                   ))}
                 </div>
@@ -165,7 +165,7 @@ export default function ServiceDetailModal({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h5 style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', margin: 0 }}>
-                  Galería de Fotos y Evidencias de Trabajo (RF-65)
+                  Galería de Fotos y Evidencias de Trabajo
                 </h5>
                 <Button size="sm" onClick={handleAddEvidence}>
                   <Plus size={13} /> AGREGAR FOTO
@@ -174,7 +174,7 @@ export default function ServiceDetailModal({
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 14 }}>
                 {evidences.map((url, idx) => (
-                  <div key={idx} style={{ position: 'relative', border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden', background: '#f1f5f9' }}>
+                  <div key={idx} style={{ position: 'relative', border: '1px solid #E6E9EE', borderRadius: 8, overflow: 'hidden', background: '#F7F8F9' }}>
                     <img src={url} alt={`Evidencia ${idx + 1}`} style={{ width: '100%', height: 130, objectFit: 'cover' }} />
                     <button
                       onClick={() => setSelectedImage(url)}
@@ -201,27 +201,27 @@ export default function ServiceDetailModal({
           {activeTab === 'rating' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <h5 style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', margin: 0 }}>
-                Sistema de Calificación Bidireccional (RF-43, RF-54)
+                Sistema de Calificación Bidireccional
               </h5>
 
-              <div style={{ padding: 16, border: '1px solid #e2e8f0', borderRadius: 8, background: '#fafafa' }}>
+              <div style={{ padding: 16, border: '1px solid #E6E9EE', borderRadius: 8, background: '#F7F8F9' }}>
                 <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 8px' }}>Evaluación del Cliente sobre el Técnico</p>
-                <div style={{ display: 'flex', gap: 4, marginBottom: 8, color: '#f59e0b' }}>
+                <div style={{ display: 'flex', gap: 4, marginBottom: 8, color: '#F2A91E' }}>
                   {[1, 2, 3, 4, 5].map(star => (
-                    <Star key={star} size={18} fill={star <= clientRating ? '#f59e0b' : 'none'} onClick={() => setClientRating(star)} style={{ cursor: 'pointer' }} />
+                    <Star key={star} size={18} fill={star <= clientRating ? '#F2A91E' : 'none'} onClick={() => setClientRating(star)} style={{ cursor: 'pointer' }} />
                   ))}
                 </div>
-                <p style={{ fontSize: 12, color: '#475569', fontStyle: 'italic', margin: 0 }}>"Excelente atención, puntualidad y diagnóstico certero."</p>
+                <p style={{ fontSize: 12, color: '#4B5563', fontStyle: 'italic', margin: 0 }}>"Excelente atención, puntualidad y diagnóstico certero."</p>
               </div>
 
-              <div style={{ padding: 16, border: '1px solid #e2e8f0', borderRadius: 8, background: '#fafafa' }}>
+              <div style={{ padding: 16, border: '1px solid #E6E9EE', borderRadius: 8, background: '#F7F8F9' }}>
                 <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 8px' }}>Evaluación del Técnico sobre el Cliente</p>
-                <div style={{ display: 'flex', gap: 4, marginBottom: 8, color: '#f59e0b' }}>
+                <div style={{ display: 'flex', gap: 4, marginBottom: 8, color: '#F2A91E' }}>
                   {[1, 2, 3, 4, 5].map(star => (
-                    <Star key={star} size={18} fill={star <= techRating ? '#f59e0b' : 'none'} onClick={() => setTechRating(star)} style={{ cursor: 'pointer' }} />
+                    <Star key={star} size={18} fill={star <= techRating ? '#F2A91E' : 'none'} onClick={() => setTechRating(star)} style={{ cursor: 'pointer' }} />
                   ))}
                 </div>
-                <p style={{ fontSize: 12, color: '#475569', fontStyle: 'italic', margin: 0 }}>"Trato respetuoso y facilidades de acceso al lugar."</p>
+                <p style={{ fontSize: 12, color: '#4B5563', fontStyle: 'italic', margin: 0 }}>"Trato respetuoso y facilidades de acceso al lugar."</p>
               </div>
             </div>
           )}
@@ -233,17 +233,17 @@ export default function ServiceDetailModal({
               </h5>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <Button variant="outline" size="sm" onClick={() => alert('Solicitud de Reasignación Prioritaria (RF-55) enviada al algoritmo.')}>
-                  <RefreshCw size={13} /> Reasignación Prioritaria (RF-55)
+                <Button variant="outline" size="sm" onClick={() => alert('Solicitud de Reasignación Prioritaria enviada al algoritmo.')}>
+                  <RefreshCw size={13} /> Reasignación Prioritaria
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => alert('Reporte registrado: El prestador no se presentó (RF-56).')}>
-                  <AlertTriangle size={13} /> Denegación por Inasistencia (RF-56)
+                <Button variant="outline" size="sm" onClick={() => alert('Reporte registrado: El prestador no se presentó.')}>
+                  <AlertTriangle size={13} /> Denegación por Inasistencia
                 </Button>
-                <Button variant="outline" size="sm" style={{ color: 'var(--danger)' }} onClick={() => { setServiceStatus('CANCELADO'); alert('Servicio revocatorio cancelado sin cargos adicionales (RF-57).'); }}>
-                  <XCircle size={13} /> Revocación Total sin Cargos (RF-57)
+                <Button variant="outline" size="sm" style={{ color: 'var(--danger)' }} onClick={() => { setServiceStatus('CANCELADO'); alert('Servicio revocatorio cancelado sin cargos adicionales.'); }}>
+                  <XCircle size={13} /> Revocación Total sin Cargos
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => alert('Labor en ruta abortada exitosamente (RF-61).')}>
-                  <XCircle size={13} /> Abortar Labor en Ruta (RF-61)
+                <Button variant="outline" size="sm" onClick={() => alert('Labor en ruta abortada exitosamente.')}>
+                  <XCircle size={13} /> Abortar Labor en Ruta
                 </Button>
               </div>
             </div>
