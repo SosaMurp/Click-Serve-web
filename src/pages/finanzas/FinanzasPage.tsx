@@ -4,7 +4,7 @@ import { StatCard } from '@components/ui'
 import WithdrawalDetailModal from '@components/modals/WithdrawalDetailModal'
 import './finanzas.css'
 
-import { useWithdrawals, useApproveWithdrawal, usePlatformSettings } from '../../hooks/useAdminQueries'
+import { useWithdrawals, useApproveWithdrawal, useRejectWithdrawal, usePlatformSettings } from '../../hooks/useAdminQueries'
 import { useDashboardStats } from '@hooks/useDashboard'
 
 const fmtMXN = (n: number) =>
@@ -19,6 +19,7 @@ export default function FinanzasPage() {
   const statusFilter = filter === 'pendientes' ? 'Pendiente' : undefined
   const { data: retirosData, isLoading, isError } = useWithdrawals(statusFilter)
   const approveMutation = useApproveWithdrawal()
+  const rejectMutation = useRejectWithdrawal()
 
   // Datos de las tarjetas (independientes del filtro de la tabla)
   const pendientes = useWithdrawals('Pendiente')
@@ -30,12 +31,15 @@ export default function FinanzasPage() {
 
   const WITHDRAWALS = (retirosData || []).map(r => ({
     realId: r.id_retiro,
-    req: `#REQ-${r.id_retiro}`,
+    req: r.folio_trx || `#${r.id_retiro}`,
+    estado: r.estado,
+    motivoRechazo: r.motivo_rechazo,
     date: new Date(r.fecha_solicitud).toLocaleString(),
     name: `${r.nombre} ${r.apellido}`,
     techId: `ID: #TEC-${r.id_usuario}`,
     bank: r.banco || 'Desconocido',
     bankColor: '#1565c0', // Using a default generic color for now
+    // La CLABE llega enmascarada desde el servidor (RNF-09)
     clabe: String(r.clabe || 'No especificada'),
     amount: `$${Number(r.monto).toFixed(2)}`
   }))
@@ -53,10 +57,12 @@ export default function FinanzasPage() {
     }
     try {
       const selectedIds = Array.from(selected).map(i => WITHDRAWALS[i].realId)
-      for (const id of selectedIds) {
-         await approveMutation.mutateAsync(id)
-      }
-      alert(`Lote de ${selected.size} solicitudes de retiro autorizadas exitosamente. (RF-77)`)
+      // Uno por uno: si alguno ya fue procesado, los demás siguen y se informa cuántos fallaron
+      const results = await Promise.allSettled(selectedIds.map(id => approveMutation.mutateAsync(id)))
+      const fallidos = results.filter(r => r.status === 'rejected').length
+      alert(fallidos === 0
+        ? `Se autorizaron ${selectedIds.length} retiros.`
+        : `Se autorizaron ${selectedIds.length - fallidos} retiros; ${fallidos} no se pudieron procesar.`)
       setSelected(new Set())
     } catch (e) {
        console.error("Error batch approving withdrawals", e)
@@ -147,13 +153,15 @@ export default function FinanzasPage() {
             </thead>
             <tbody>
               {WITHDRAWALS.length === 0 && (
-                <tr><td colSpan={6} style={{textAlign: 'center', padding: '1rem'}}>No hay retiros {filter}</td></tr>
+                <tr><td colSpan={6} style={{textAlign: 'center', padding: '1rem'}}>{filter === 'pendientes' ? 'No hay retiros pendientes' : 'Todavía no hay retiros'}</td></tr>
               )}
               {WITHDRAWALS.map((row, i) => (
                 <tr key={i} className={selected.has(i) ? 'fin-row--selected' : ''}>
                   <td>
-                    <input type="checkbox" className="fin-checkbox"
-                      checked={selected.has(i)} onChange={() => toggleSelect(i)} />
+                    {row.estado === 'Pendiente' && (
+                      <input type="checkbox" className="fin-checkbox"
+                        checked={selected.has(i)} onChange={() => toggleSelect(i)} />
+                    )}
                   </td>
                   <td>
                     <p className="fin-req">{row.req}</p>
@@ -176,14 +184,20 @@ export default function FinanzasPage() {
                   </td>
                   <td><p className="fin-amount">{row.amount}</p></td>
                   <td>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button className="fin-btn-deny" onClick={() => handleOpenDetail(row)}>
-                        <X size={11} /> DENEGAR
-                      </button>
+                    {row.estado === 'Pendiente' ? (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="fin-btn-deny" onClick={() => handleOpenDetail(row)}>
+                          <X size={11} /> DENEGAR
+                        </button>
+                        <button className="fin-btn-approve" onClick={() => handleOpenDetail(row)}>
+                          <Check size={11} /> AUTORIZAR
+                        </button>
+                      </div>
+                    ) : (
                       <button className="fin-btn-approve" onClick={() => handleOpenDetail(row)}>
-                        <Check size={11} /> ABONAR
+                        {row.estado === 'Aprobado' ? 'AUTORIZADO' : 'RECHAZADO'}
                       </button>
-                    </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -194,9 +208,12 @@ export default function FinanzasPage() {
 
       {/* Modal */}
       <WithdrawalDetailModal
+        key={selectedWithdrawal?.realId}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         withdrawalData={selectedWithdrawal || undefined}
+        onApprove={id => approveMutation.mutateAsync(id)}
+        onReject={(id, motivo) => rejectMutation.mutateAsync({ id, motivo })}
       />
     </div>
   )

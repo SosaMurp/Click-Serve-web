@@ -28,6 +28,29 @@ export interface ExpedienteTecnicoRow {
   correo: string
   telefono: string
   estado_cuenta: string
+  verificado_sep?: boolean
+  documentos_pendientes?: number
+}
+
+/** Técnico tal como lo devuelve GET /api/admin/tecnicos del backend de la app */
+export interface TecnicoAppRow {
+  id_usuario: number
+  nombre: string
+  apellido: string
+  correo: string
+  telefono: string
+  estado_cuenta: string
+  identidad_verificada: boolean
+  verificado_sep: boolean
+  fecha_registro: string
+  fecha_revision: string | null
+  motivo_rechazo: string | null
+  documentos: number
+  documentos_pendientes: number
+  especialidades: string[] | null
+  calificacion: string | null
+  trabajos: number
+  cancelados: number
 }
 
 export interface SearchAdvancedPayload {
@@ -42,7 +65,26 @@ export interface RejectTechnicianPayload {
   bloquearUsuario: boolean
 }
 
-// ── FINANZAS Y TESORERÍA (adminFinanceController) ──
+// ── FINANZAS Y TESORERÍA ──
+
+/** Retiro tal como lo devuelve GET /api/admin/retiros del backend de la app (tabla transacciones) */
+export interface RetiroAppRow {
+  id_transaccion: number
+  folio: string
+  monto: string
+  estado: 'EN_PROCESO' | 'COMPLETADO' | 'RECHAZADO'
+  fecha: string
+  fecha_procesado: string | null
+  motivo_rechazo: string | null
+  /** CLABE enmascarada en el servidor (RNF-09) */
+  clabe_destino: string | null
+  banco_destino: string | null
+  id_usuario: number
+  nombre: string
+  apellido: string
+  correo: string
+  telefono: string
+}
 
 export interface SolicitudRetiroRow {
   id_retiro: number
@@ -83,12 +125,49 @@ export interface SettleDisputePayload {
   observaciones?: string
 }
 
-// ── CONFIGURACIÓN (adminSettingsController) ──
+// ── INCIDENCIAS (backend de la app) ──
+
+export type IncidenciaTipo = 'NO_SE_PRESENTO' | 'COBRO_INDEBIDO' | 'MALA_CALIDAD' | 'DANOS' | 'SEGURIDAD' | 'GARANTIA' | 'OTRO'
+export type Prioridad = 'BAJA' | 'MEDIA' | 'ALTA'
+export type AccionIncidencia = 'REASIGNAR' | 'CANCELAR' | 'CONTINUAR'
+
+export interface IncidenciaRow {
+  id_incidencia: number
+  folio: string
+  tipo: IncidenciaTipo
+  descripcion: string
+  prioridad: Prioridad
+  estado: 'ABIERTA' | 'RESUELTA'
+  resolucion: AccionIncidencia | null
+  notas_admin: string | null
+  fecha_creacion: string
+  fecha_resolucion: string | null
+  id_solicitud: number | null
+  folio_solicitud: string | null
+  estado_solicitud: string | null
+  estado_pago: string | null
+  categoria: string | null
+  reporta_nombre: string | null
+  reporta_apellido: string | null
+  reporta_rol: number | null
+  cliente_nombre: string | null
+  cliente_apellido: string | null
+  tecnico_nombre: string | null
+  tecnico_apellido: string | null
+}
+
+export interface UpdateIncidenciaPayload {
+  prioridad?: Prioridad
+  notas_admin?: string
+  accion?: AccionIncidencia
+}
+
+// ── CONFIGURACIÓN (backend de la app) ──
 
 export interface ConfiguracionPlataformaRow {
   id: number
-  comision_porcentaje: number
-  monto_minimo_retiro: number
+  comision_porcentaje: number | string
+  monto_minimo_retiro: number | string
   radio_maximo_km: number
   tolerancia_minutos: number
   sensibilidad_ia: string
@@ -102,4 +181,6 @@ export interface UpdateSettingsPayload {
   montoMinimoRetiro?: number
   radioMaximoKm?: number
   toleranciaMinutos?: number
+  modoMantenimiento?: boolean
+  mensajeMantenimiento?: string
 }

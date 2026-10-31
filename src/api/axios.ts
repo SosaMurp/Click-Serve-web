@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios, { type AxiosInstance } from 'axios'
 import { useAuthStore } from '../store/authStore'
 import { appNavigate } from '../lib/navigation'
 import { generateUUIDv4 } from '../utils/sanitizer'
@@ -20,10 +20,25 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
+/**
+ * Instancia para el backend de la app móvil (Click-Serve-Back).
+ * Técnicos, retiros, incidencias y configuración viven ahí: son los mismos datos que usa la app.
+ * Comparte la sesión del administrador (mismo JWT_SECRET y misma base de datos en ambos backends).
+ */
+export const appApi = axios.create({
+  baseURL: env.VITE_APP_API_BASE_URL,
+  timeout: 10000,
+  headers: { 'Content-Type': 'application/json' },
+})
+
+attachInterceptors(api)
+attachInterceptors(appApi)
+
+function attachInterceptors(instance: AxiosInstance) {
 // ── Request Interceptor ──
 // Intercepta todas las peticiones ANTES de que salgan al servidor.
 // Su función principal en el login/sesión es inyectar el JWT en la cabecera Authorization.
-api.interceptors.request.use(
+instance.interceptors.request.use(
   (config) => {
     // 1. Obtiene el JWT desde el estado global (Zustand), no accede directamente al localStorage para mantener reactividad.
     const token = useAuthStore.getState().token
@@ -48,7 +63,7 @@ api.interceptors.request.use(
 // ── Response Interceptor ──
 // Intercepta las respuestas del servidor ANTES de que lleguen a las funciones de `auth.ts` u otras.
 // Es crucial para la seguridad: detecta si la sesión caducó o no hay permisos.
-api.interceptors.response.use(
+instance.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error.response?.status
@@ -85,5 +100,6 @@ api.interceptors.response.use(
     return Promise.reject(error)
   }
 )
+}
 
 export default api

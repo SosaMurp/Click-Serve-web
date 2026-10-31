@@ -1,172 +1,244 @@
-import { useState } from 'react'
-import { Search, Filter, ChevronLeft, ChevronRight, MessageSquare, AlertCircle, Inbox, Loader, Clock, CheckCircle2 } from 'lucide-react'
-import { Badge, StatCard } from '@components/ui'
-import DisputeResolutionModal from '@components/modals/DisputeResolutionModal'
+import { useMemo, useState } from 'react'
+import { Search, Inbox, CheckCircle2, AlertTriangle, ShieldAlert, X } from 'lucide-react'
+import { Badge, Button, StatCard } from '@components/ui'
+import { useIncidencias, useUpdateIncidencia } from '../../hooks/useAdminQueries'
+import type { AccionIncidencia, IncidenciaRow, IncidenciaTipo, Prioridad } from '../../types/api'
+import '@components/modals/modals.css'
 import './soporte.css'
 
-const STATS = [
-  { label: 'Tickets abiertos', value: '4',  icon: <Inbox size={15} />,        tone: 'amber', note: 'Esperando respuesta' },
-  { label: 'En progreso',      value: '0',  icon: <Loader size={15} />,       tone: 'blue',  note: 'Asignados a un agente' },
-  { label: 'Tiempo medio',     value: '14', icon: <Clock size={15} />,        tone: 'navy',  note: 'Hasta la resolución', suffix: 'h' },
-  { label: 'Resueltos',        value: '29', icon: <CheckCircle2 size={15} />, tone: 'green', note: 'En este mes' },
-] as const
+// Incidencias que clientes y técnicos reportan desde la app (RF-56, RF-109/110) y que soporte atiende aquí
+// (RF-114 clasificar, RF-118 historial, RF-121 revisar el caso).
 
-type TicketStatus = 'PENDIENTE DE RESOLUCIÓN' | 'SANS ACCIONES' | 'ESCALADO A TI URGENTE'
-type StatusVariant = 'warning' | 'neutral' | 'danger'
-
-const STATUS_MAP: Record<TicketStatus, StatusVariant> = {
-  'PENDIENTE DE RESOLUCIÓN': 'warning',
-  'SANS ACCIONES':           'neutral',
-  'ESCALADO A TI URGENTE':  'danger',
+const TIPO_LABEL: Record<IncidenciaTipo, string> = {
+  NO_SE_PRESENTO: 'El técnico no llegó',
+  COBRO_INDEBIDO: 'Cobro indebido',
+  MALA_CALIDAD: 'Mala calidad',
+  DANOS: 'Daños',
+  SEGURIDAD: 'Seguridad / SOS',
+  GARANTIA: 'Garantía',
+  OTRO: 'Otro',
 }
 
-const TICKETS = [
-  {
-    id: 'ICS-399', date: 'May, 22:15',
-    user: 'José López', userId: null, role: 'Cliente',
-    subject: 'Cancelación en Guacamayas',
-    desc: 'Cliente canceló servicio; cobro ya fue procesado en cuenta.',
-    status: 'PENDIENTE DE RESOLUCIÓN' as TicketStatus,
-    time: 'SIN ACCIÓN', techName: 'Roberto García'
-  },
-  {
-    id: 'ICS-001', date: 'Abril, 10:20',
-    user: 'Roberto García', userId: 'PTEC-0001', role: 'Técnico',
-    subject: 'Consulta de Facturación',
-    desc: 'Necesita factura del mes de Abril.',
-    status: 'SANS ACCIONES' as TicketStatus,
-    time: 'SIN CASO', techName: 'N/A'
-  },
-  {
-    id: 'ICS-002', date: 'Abr, 09:46',
-    user: 'Andrea López', userId: null, role: 'Cliente',
-    subject: 'Error al cargar tarjeta No.',
-    desc: 'Cuando intenta agregar tarjeta de crédito en pasarela.',
-    status: 'ESCALADO A TI URGENTE' as TicketStatus,
-    time: 'SIN DETALLE', techName: 'Carlos V.'
-  },
-]
+const PRIORIDAD_VARIANT: Record<Prioridad, 'danger' | 'warning' | 'neutral'> = { ALTA: 'danger', MEDIA: 'warning', BAJA: 'neutral' }
+
+const ACCION_LABEL: Record<AccionIncidencia, string> = {
+  CONTINUAR: 'Cerrar reporte, la orden continúa',
+  REASIGNAR: 'Reasignar a otro técnico',
+  CANCELAR: 'Cancelar la orden sin cargo',
+}
+
+const persona = (n?: string | null, a?: string | null) => [n, a].filter(Boolean).join(' ') || '—'
+const fecha = (iso: string) =>
+  new Date(iso).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+
+type Filtro = 'ABIERTA' | 'RESUELTA'
 
 export default function SoportePage() {
+  const [filtro, setFiltro] = useState<Filtro>('ABIERTA')
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('ALL')
-  const [selectedTicket, setSelectedTicket] = useState<typeof TICKETS[0] | null>(null)
-  const [isDisputeOpen, setIsDisputeOpen] = useState(false)
+  const [selected, setSelected] = useState<IncidenciaRow | null>(null)
 
-  const filtered = TICKETS.filter(t =>
-    (!search || t.subject.toLowerCase().includes(search.toLowerCase()) || t.user.toLowerCase().includes(search.toLowerCase())) &&
-    (statusFilter === 'ALL' || t.status === statusFilter)
-  )
+  const abiertas = useIncidencias('ABIERTA')
+  const resueltas = useIncidencias('RESUELTA')
+  const actual = filtro === 'ABIERTA' ? abiertas : resueltas
 
-  const handleOpenDispute = (ticket: typeof TICKETS[0]) => {
-    setSelectedTicket(ticket)
-    setIsDisputeOpen(true)
-  }
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    const rows = actual.data ?? []
+    if (!q) return rows
+    return rows.filter(i =>
+      [i.folio, i.folio_solicitud ?? '', persona(i.cliente_nombre, i.cliente_apellido), persona(i.tecnico_nombre, i.tecnico_apellido), i.descripcion]
+        .some(v => v.toLowerCase().includes(q)),
+    )
+  }, [actual.data, search])
+
+  const altas = (abiertas.data ?? []).filter(i => i.prioridad === 'ALTA').length
+  const seguridad = (abiertas.data ?? []).filter(i => i.tipo === 'SEGURIDAD').length
+  const valor = (n: number) => (abiertas.isError ? '—' : String(n))
 
   return (
     <div className="sop-page fade-in">
       <div className="dash-page-header">
         <div>
-          <h1 className="dash-page-title">Soporte y disputas</h1>
-          <p className="dash-page-sub">Atención a clientes y técnicos</p>
+          <h1 className="dash-page-title">Soporte e incidencias</h1>
+          <p className="dash-page-sub">Reportes de clientes y técnicos desde la app</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="sop-filter-pill sop-filter-pill--active">Abiertos (4)</button>
-          <button className="sop-filter-pill">En progreso (0)</button>
-          <button className="sop-filter-pill">Resueltos</button>
+          <button className={`sop-filter-pill ${filtro === 'ABIERTA' ? 'sop-filter-pill--active' : ''}`} onClick={() => setFiltro('ABIERTA')}>
+            Abiertas{abiertas.data ? ` (${abiertas.data.length})` : ''}
+          </button>
+          <button className={`sop-filter-pill ${filtro === 'RESUELTA' ? 'sop-filter-pill--active' : ''}`} onClick={() => setFiltro('RESUELTA')}>
+            Resueltas
+          </button>
         </div>
       </div>
 
-      {/* Stats */}
       <div className="stat-grid">
-        {STATS.map(s => (
-          <StatCard key={s.label} label={s.label} value={s.value} icon={s.icon} tone={s.tone}
-            note={s.note} suffix={'suffix' in s ? s.suffix : undefined} />
-        ))}
+        <StatCard label="Abiertas" value={valor(abiertas.data?.length ?? 0)} icon={<Inbox size={15} />} tone="amber" note="Órdenes suspendidas o en revisión" />
+        <StatCard label="Prioridad alta" value={valor(altas)} icon={<AlertTriangle size={15} />} tone="red" note="Atender primero" />
+        <StatCard label="Seguridad / SOS" value={valor(seguridad)} icon={<ShieldAlert size={15} />} tone="red" note="Escaladas desde la app" />
+        <StatCard label="Resueltas" value={resueltas.isError ? '—' : String(resueltas.data?.length ?? 0)} icon={<CheckCircle2 size={15} />} tone="green" note="Historial" />
       </div>
 
-      {/* Toolbar */}
       <div className="val-toolbar">
         <div className="val-search">
           <Search size={14} />
-          <input placeholder="Buscar usuario, caso o # de resolución..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input placeholder="Buscar por folio, orden, cliente, técnico o descripción..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <select className="tec-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-          <option value="ALL">Canal: Todos</option>
-          <option value="PENDIENTE DE RESOLUCIÓN">Pendiente</option>
-          <option value="ESCALADO A TI URGENTE">Urgente</option>
-        </select>
-        <button className="dash-export-btn"><Filter size={13} /> TIPOLOGÍA: TODOS</button>
       </div>
 
-      {/* Table */}
       <div className="dash-card" style={{ padding: 0, overflow: 'hidden' }}>
         <table className="dash-table sop-table">
           <thead>
             <tr>
-              <th>FOLIO / REGISTRO</th>
-              <th>USUARIO / TÉCNICO</th>
-              <th>ASUNTO / RESUMEN</th>
-              <th>ESTADO RESOLUCIÓN</th>
-              <th>RESOLUCIÓN (HS)</th>
+              <th>FOLIO / FECHA</th>
+              <th>TIPO</th>
+              <th>CLIENTE / TÉCNICO</th>
+              <th>ORDEN</th>
+              <th>PRIORIDAD</th>
               <th>ACCIONES</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((row, i) => (
-              <tr key={i}>
+            {actual.isLoading && <tr><td colSpan={6} className="sop-empty">Cargando incidencias…</td></tr>}
+            {actual.isError && (
+              <tr><td colSpan={6} className="sop-empty">
+                No se pudieron cargar las incidencias.{' '}
+                <button className="sop-view-btn" onClick={() => actual.refetch()}>REINTENTAR</button>
+              </td></tr>
+            )}
+            {!actual.isLoading && !actual.isError && filtered.length === 0 && (
+              <tr><td colSpan={6} className="sop-empty">{filtro === 'ABIERTA' ? 'No hay incidencias abiertas.' : 'Todavía no hay incidencias resueltas.'}</td></tr>
+            )}
+            {filtered.map(i => (
+              <tr key={i.id_incidencia}>
                 <td>
-                  <p className="sop-folio">{row.id}</p>
-                  <p className="dash-table-id">{row.date}</p>
+                  <p className="sop-folio">{i.folio}</p>
+                  <p className="dash-table-id">{fecha(i.fecha_creacion)}</p>
                 </td>
                 <td>
-                  <div className="val-tech-cell">
-                    <div className="sop-avatar">{row.user[0]}</div>
-                    <div>
-                      <p className="dash-table-name">{row.user}</p>
-                      <p className="dash-table-id">{row.userId || row.role || ''}</p>
-                    </div>
-                  </div>
+                  <p className="dash-table-name">{TIPO_LABEL[i.tipo] ?? i.tipo}</p>
+                  <p className="dash-table-id">Reporta: {persona(i.reporta_nombre, i.reporta_apellido)}</p>
                 </td>
                 <td>
-                  <p className="dash-table-name">{row.subject}</p>
-                  <p className="dash-table-id">{row.desc}</p>
+                  <p className="dash-table-name">{persona(i.cliente_nombre, i.cliente_apellido)}</p>
+                  <p className="dash-table-id">{persona(i.tecnico_nombre, i.tecnico_apellido)}</p>
                 </td>
                 <td>
-                  <Badge variant={STATUS_MAP[row.status]}>{row.status}</Badge>
+                  <p className="dash-table-name">{i.folio_solicitud ?? '—'}</p>
+                  <p className="dash-table-id">{i.estado_solicitud ?? ''}</p>
                 </td>
-                <td><span className="dash-table-id">{row.time}</span></td>
+                <td><Badge variant={PRIORIDAD_VARIANT[i.prioridad]}>{i.prioridad}</Badge></td>
                 <td>
-                  <button className="sop-view-btn" onClick={() => handleOpenDispute(row)}>
-                    VER CASO (RF-109)
+                  <button className="sop-view-btn" onClick={() => setSelected(i)}>
+                    {i.estado === 'ABIERTA' ? 'ATENDER' : 'VER CASO'}
                   </button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-
-        {/* Pagination */}
-        <div className="tec-pagination">
-          <p className="tec-page-info">MOSTRANDO {filtered.length} TICKETS TOTAL ABIERTOS</p>
-          <div className="tec-page-controls">
-            <button className="tec-page-btn"><ChevronLeft size={13} /></button>
-            {[1,2,3,4].map(n => (
-              <button key={n} className={`tec-page-btn ${n === 1 ? 'tec-page-btn--active' : ''}`}>{n}</button>
-            ))}
-            <button className="tec-page-btn"><ChevronRight size={13} /></button>
-          </div>
-        </div>
       </div>
 
-      {/* Modal Disputa */}
-      <DisputeResolutionModal
-        isOpen={isDisputeOpen}
-        onClose={() => setIsDisputeOpen(false)}
-        ticketId={selectedTicket?.id}
-        userName={selectedTicket?.user}
-        techName={selectedTicket?.techName}
-      />
+      {selected && <IncidenciaModal key={selected.id_incidencia} incidencia={selected} onClose={() => setSelected(null)} />}
+    </div>
+  )
+}
+
+function IncidenciaModal({ incidencia: i, onClose }: { incidencia: IncidenciaRow; onClose: () => void }) {
+  const update = useUpdateIncidencia()
+  const [prioridad, setPrioridad] = useState<Prioridad>(i.prioridad)
+  const [notas, setNotas] = useState(i.notas_admin ?? '')
+  const [accion, setAccion] = useState<AccionIncidencia | ''>('')
+  const [error, setError] = useState('')
+  const abierta = i.estado === 'ABIERTA'
+  // Solo una orden suspendida se puede reasignar o cancelar; si no, únicamente se cierra el reporte.
+  const acciones: AccionIncidencia[] = i.estado_solicitud === 'SUSPENDIDA' ? ['CONTINUAR', 'REASIGNAR', 'CANCELAR'] : ['CONTINUAR']
+
+  const guardar = async () => {
+    setError('')
+    try {
+      await update.mutateAsync({
+        id: i.id_incidencia,
+        payload: { prioridad, notas_admin: notas.trim() || undefined, accion: accion || undefined },
+      })
+      onClose()
+    } catch (err) {
+      setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'No se pudo guardar. Intenta de nuevo.')
+    }
+  }
+
+  const label: React.CSSProperties = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-dark)', display: 'block', marginBottom: 6 }
+  const field: React.CSSProperties = { width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--border-strong, #8B93A1)', fontFamily: 'inherit', fontSize: 13, background: '#fff' }
+
+  return (
+    <div className="modal-backdrop">
+      <div className="modal-container modal-container--sm fade-in">
+        <div className="modal-header">
+          <div className="modal-title-wrap">
+            <h3 className="modal-title">{TIPO_LABEL[i.tipo] ?? i.tipo}</h3>
+            <p className="modal-subtitle">{i.folio} · ORDEN {i.folio_solicitud ?? '—'}</p>
+          </div>
+          <button className="modal-close-btn" onClick={onClose}><X size={18} /></button>
+        </div>
+
+        <div className="modal-body" style={{ gap: 14 }}>
+          <div style={{ background: 'var(--bg-sunk, #F7F8F9)', border: '1px solid var(--border-light, #E6E9EE)', borderRadius: 8, padding: 12, fontSize: 13 }}>
+            <p style={{ margin: '0 0 6px', color: 'var(--text-mid)' }}>
+              {persona(i.reporta_nombre, i.reporta_apellido)} · {fecha(i.fecha_creacion)}
+            </p>
+            <p style={{ margin: 0, color: 'var(--text-dark)', whiteSpace: 'pre-wrap' }}>{i.descripcion}</p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 13 }}>
+            <div><span style={{ color: 'var(--text-mid)' }}>Cliente</span><br /><strong>{persona(i.cliente_nombre, i.cliente_apellido)}</strong></div>
+            <div><span style={{ color: 'var(--text-mid)' }}>Técnico</span><br /><strong>{persona(i.tecnico_nombre, i.tecnico_apellido)}</strong></div>
+            <div><span style={{ color: 'var(--text-mid)' }}>Estado de la orden</span><br /><strong>{i.estado_solicitud ?? '—'}</strong></div>
+            <div><span style={{ color: 'var(--text-mid)' }}>Pago</span><br /><strong>{i.estado_pago ?? '—'}</strong></div>
+          </div>
+
+          {abierta ? (
+            <>
+              <div>
+                <label style={label}>Prioridad</label>
+                <select style={field} value={prioridad} onChange={e => setPrioridad(e.target.value as Prioridad)}>
+                  <option value="ALTA">Alta</option>
+                  <option value="MEDIA">Media</option>
+                  <option value="BAJA">Baja</option>
+                </select>
+              </div>
+              <div>
+                <label style={label}>Notas internas</label>
+                <textarea style={{ ...field, minHeight: 64 }} value={notas} onChange={e => setNotas(e.target.value)}
+                  placeholder="Qué se revisó, con quién se habló…" />
+              </div>
+              <div>
+                <label style={label}>Resolver</label>
+                <select style={field} value={accion} onChange={e => setAccion(e.target.value as AccionIncidencia | '')}>
+                  <option value="">Solo guardar, sin resolver</option>
+                  {acciones.map(a => <option key={a} value={a}>{ACCION_LABEL[a]}</option>)}
+                </select>
+              </div>
+            </>
+          ) : (
+            <div style={{ fontSize: 13 }}>
+              <p style={{ margin: '0 0 4px' }}><strong>Resolución:</strong> {i.resolucion ? ACCION_LABEL[i.resolucion] : '—'}</p>
+              {i.fecha_resolucion && <p style={{ margin: '0 0 4px', color: 'var(--text-mid)' }}>{fecha(i.fecha_resolucion)}</p>}
+              {i.notas_admin && <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}><strong>Notas:</strong> {i.notas_admin}</p>}
+            </div>
+          )}
+          {error && <p style={{ margin: 0, fontSize: 12, color: 'var(--danger-ink, #A41F15)' }}>{error}</p>}
+        </div>
+
+        <div className="modal-footer">
+          <Button variant="ghost" size="sm" onClick={onClose}>{abierta ? 'CANCELAR' : 'CERRAR'}</Button>
+          {abierta && (
+            <Button variant="primary" size="sm" loading={update.isPending} onClick={guardar}>
+              {accion ? 'GUARDAR Y RESOLVER' : 'GUARDAR'}
+            </Button>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

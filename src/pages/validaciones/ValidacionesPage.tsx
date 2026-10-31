@@ -13,8 +13,10 @@ export default function ValidacionesPage() {
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isDecisionOpen, setIsDecisionOpen] = useState(false)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [vista, setVista] = useState<'pendientes' | 'todos'>('pendientes')
 
-  const { data: expedientes, isLoading, isError } = useVerifications('Pendiente') // or any specific status you need
+  // Técnicos que se registraron en la app (backend de la app): pendientes de revisión o el historial completo
+  const { data: expedientes, isLoading, isError } = useVerifications(vista)
   const approveMutation = useApproveTechnician()
   const rejectMutation = useRejectTechnician()
 
@@ -25,22 +27,21 @@ export default function ValidacionesPage() {
     id: `ID-${e.id_usuario}`,
     realId: e.id_usuario, // Using realId to identify the technician correctly
     contact: e.telefono || e.correo,
-    specialty: e.especialidad || 'No definida',
-    match: null,
-    matchLabel: 'PENDIENTE',
-    matchColor: 'warning' as any,
-    cedula: e.estatus?.toUpperCase() || 'SIN VALIDAR',
-    cedulaColor: (e.estatus === 'Aprobado' ? 'success' : 'warning') as any,
+    specialty: e.especialidad || 'Sin especialidades',
+    documentos: e.documentos_pendientes ?? 0,
+    matchLabel: e.documentos_pendientes ? `${e.documentos_pendientes} POR REVISAR` : 'SIN PENDIENTES',
+    matchColor: (e.documentos_pendientes ? 'warning' : 'neutral') as any,
+    cedula: e.verificado_sep ? 'VERIFICADA EN SEP' : 'SIN CÉDULA',
+    cedulaColor: (e.verificado_sep ? 'success' : 'neutral') as any,
     action: 'REVISAR TODO',
     actionColor: 'dark',
     status: e.estatus
   }))
 
   const STATS = [
-    { label: 'EN COLA HOY',       value: QUEUE.length.toString(),  sub: null,           color: 'default' },
-    { label: 'DÍAS PROMEDIO',     value: '1',  sub: 'Tiempo approx. 48h', color: 'default' },
-    { label: 'RECHAZOS PER. SEMANA', value: '0', sub: 'Requieren atención', color: 'default' },
-    { label: 'APROBADOS HOY',    value: '0', sub: '+ 0 validados',  color: 'accent' },
+    { label: vista === 'pendientes' ? 'EN COLA' : 'TÉCNICOS', value: QUEUE.length.toString(), sub: null, color: 'default' },
+    { label: 'DOCUMENTOS POR REVISAR', value: QUEUE.reduce((s, r) => s + r.documentos, 0).toString(), sub: null, color: 'default' },
+    { label: 'CON CÉDULA SEP', value: QUEUE.filter(r => r.cedula === 'VERIFICADA EN SEP').length.toString(), sub: null, color: 'accent' },
   ]
 
   const handleOpenProfile = (row: any) => {
@@ -80,8 +81,14 @@ export default function ValidacionesPage() {
           <p className="dash-page-sub">AUDITORÍA DE IDENTIDAD Y CREDENCIALES (RF-28 A RF-42)</p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button className="dash-export-btn"><RotateCcw size={13} /> PENDIENTES ({QUEUE.length})</button>
-          <button className="dash-export-btn" style={{ background: 'var(--text-dark)', color: '#fff', border: 'none' }}>HISTORIAL</button>
+          <button className="dash-export-btn" onClick={() => setVista('pendientes')}
+            style={vista === 'pendientes' ? { background: 'var(--text-dark)', color: '#fff', border: 'none' } : undefined}>
+            <RotateCcw size={13} /> PENDIENTES
+          </button>
+          <button className="dash-export-btn" onClick={() => setVista('todos')}
+            style={vista === 'todos' ? { background: 'var(--text-dark)', color: '#fff', border: 'none' } : undefined}>
+            HISTORIAL
+          </button>
         </div>
       </div>
 
@@ -120,14 +127,14 @@ export default function ValidacionesPage() {
                 <th>FECHA</th>
                 <th>TÉCNICO / CONTACTO</th>
                 <th>ESPECIALIDAD A VALIDAR</th>
-                <th>MATCH BIOMÉTRICO</th>
+                <th>DOCUMENTOS</th>
                 <th>ESTADO CÉDULA</th>
                 <th>ACCIÓN DE AUDITORÍA</th>
               </tr>
             </thead>
             <tbody>
               {QUEUE.length === 0 && (
-                <tr><td colSpan={6} style={{textAlign: 'center', padding: '1rem'}}>No hay expedientes pendientes</td></tr>
+                <tr><td colSpan={6} style={{textAlign: 'center', padding: '1rem'}}>{vista === 'pendientes' ? 'No hay técnicos pendientes de revisión' : 'Todavía no hay técnicos registrados'}</td></tr>
               )}
               {QUEUE.filter(r => !search || r.name.toLowerCase().includes(search.toLowerCase())).map((row, i) => (
                 <tr key={i}>

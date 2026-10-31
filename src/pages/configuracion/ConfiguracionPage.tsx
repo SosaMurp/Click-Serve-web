@@ -45,7 +45,6 @@ export default function ConfiguracionPage() {
         montoMinimoRetiro: Number(minWithdraw),
         radioMaximoKm: Number(radius),
         toleranciaMinutos: Number(timeoutVal),
-        // other fields if supported by your API
       })
       setDirty(false)
       setSavedSuccess(true)
@@ -53,6 +52,18 @@ export default function ConfiguracionPage() {
     } catch (e) {
       console.error('Error saving settings', e)
       alert('Error al guardar la configuración')
+    }
+  }
+
+  // El modo mantenimiento se guarda al momento: la app empieza a responder 503 a clientes y técnicos.
+  const setMaintenanceRemote = async (on: boolean) => {
+    setMaintenance(on)
+    try {
+      await updateSettingsMutation.mutateAsync({ modoMantenimiento: on })
+    } catch (e) {
+      console.error('Error al cambiar el modo mantenimiento', e)
+      setMaintenance(!on)
+      alert('No se pudo cambiar el modo mantenimiento. Intenta de nuevo.')
     }
   }
 
@@ -195,14 +206,15 @@ export default function ConfiguracionPage() {
             </div>
             <label className="cfg-toggle">
               <input type="checkbox" checked={maintenance}
-                onChange={e => { setMaintenance(e.target.checked); mark() }} />
+                disabled={updateSettingsMutation.isPending}
+                onChange={e => setMaintenanceRemote(e.target.checked)} />
               <span className="cfg-toggle-track" />
             </label>
           </div>
         </div>
       </div>
 
-      <MaintenanceOverlay isActive={maintenance} onDeactivate={() => setMaintenance(false)} />
+      <MaintenanceOverlay isActive={maintenance} onDeactivate={() => setMaintenanceRemote(false)} />
     </div>
   )
 }

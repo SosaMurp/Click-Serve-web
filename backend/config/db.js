@@ -80,13 +80,15 @@ pool.connect(async (err, client, release) => {
     `);
 
     // 5. Tabla configuracion_plataforma
+    // La crea también la migración 005 del backend de la app (Click-Serve-Back), que la lee para la comisión,
+    // el retiro mínimo, el radio, la tolerancia y el mantenimiento. Los valores iniciales deben coincidir.
     await client.query(`
       CREATE TABLE IF NOT EXISTS configuracion_plataforma (
           id INT PRIMARY KEY DEFAULT 1,
-          comision_porcentaje NUMERIC(5,2) DEFAULT 15.00,
+          comision_porcentaje NUMERIC(5,2) DEFAULT 10.00,
           monto_minimo_retiro NUMERIC(10,2) DEFAULT 100.00,
           radio_maximo_km INT DEFAULT 25,
-          tolerancia_minutos INT DEFAULT 15,
+          tolerancia_minutos INT DEFAULT 10,
           sensibilidad_ia VARCHAR(20) DEFAULT 'Media',
           modo_mantenimiento BOOLEAN DEFAULT FALSE,
           mensaje_mantenimiento TEXT DEFAULT 'El sistema se encuentra en mantenimiento programado.',

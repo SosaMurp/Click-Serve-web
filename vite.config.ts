@@ -24,6 +24,12 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
+      // Backend de la app móvil (Click-Serve-Back): técnicos, retiros, incidencias y configuración
+      '/app-api': {
+        target: process.env.APP_API_TARGET || 'http://localhost:3001',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/app-api/, ''),
+      },
     },
   },
 })
