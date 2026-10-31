@@ -1,7 +1,7 @@
 /* ── Root ── */
 .auth-root {
   display: grid;
-  grid-template-columns: 38% 1fr;
+  grid-template-columns: 38% minmax(0, 1fr);
   min-height: 100vh;
 }
 
@@ -88,3 +88,11 @@
 }
 
 .auth-right-inner { width: 100%; max-width: 460px; }
+
+/* Pantallas angostas: el panel de marca pasa a una barra superior y el formulario ocupa todo el ancho */
+@media (max-width: 900px) {
+  .auth-root { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  .auth-left { padding: 18px 24px; }
+  .auth-left-content, .auth-left-footer { display: none; }
+  .auth-right { padding: 32px 24px 48px; align-items: flex-start; }
+}

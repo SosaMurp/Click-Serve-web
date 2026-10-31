@@ -44,19 +44,22 @@ export default function FinanzasPage() {
     amount: `$${Number(r.monto).toFixed(2)}`
   }))
 
-  const toggleSelect = (i: number) => {
+  // La selección guarda el id del retiro, no su posición: si la lista cambia (otro administrador procesa uno)
+  // no queda apuntando a otra fila.
+  const pendientesIds = WITHDRAWALS.filter(w => w.estado === 'Pendiente').map(w => w.realId)
+  const seleccionados = pendientesIds.filter(id => selected.has(id))
+  const todosMarcados = pendientesIds.length > 0 && seleccionados.length === pendientesIds.length
+
+  const toggleSelect = (id: number) => {
     const next = new Set(selected)
-    next.has(i) ? next.delete(i) : next.add(i)
+    next.has(id) ? next.delete(id) : next.add(id)
     setSelected(next)
   }
+  const toggleAll = () => setSelected(todosMarcados ? new Set() : new Set(pendientesIds))
 
   const handleApproveBatch = async () => {
-    if (selected.size === 0) {
-      alert('Selecciona al menos una solicitud para aprobar en lote.')
-      return
-    }
     try {
-      const selectedIds = Array.from(selected).map(i => WITHDRAWALS[i].realId)
+      const selectedIds = seleccionados
       // Uno por uno: si alguno ya fue procesado, los demás siguen y se informa cuántos fallaron
       const results = await Promise.allSettled(selectedIds.map(id => approveMutation.mutateAsync(id)))
       const fallidos = results.filter(r => r.status === 'rejected').length
@@ -100,8 +103,9 @@ export default function FinanzasPage() {
           <button className="dash-export-btn" onClick={handleExportCSV}>
             <Download size={13} /> Exportar CSV
           </button>
-          <button className="fin-approve-batch" onClick={handleApproveBatch}>
-            Aprobar seleccionados ({selected.size})
+          <button className="fin-approve-batch" onClick={handleApproveBatch}
+            disabled={seleccionados.length === 0 || approveMutation.isPending}>
+            Aprobar seleccionados ({seleccionados.length})
           </button>
         </div>
       </div>
@@ -140,10 +144,15 @@ export default function FinanzasPage() {
         ) : isError ? (
            <div style={{ padding: '2rem', textAlign: 'center', color: 'red' }}>Error al cargar los retiros</div>
         ) : (
-          <table className="dash-table fin-table">
+          <div className="table-scroll"><table className="dash-table fin-table">
             <thead>
               <tr>
-                <th style={{ width: 40 }}></th>
+                <th style={{ width: 40 }}>
+                  {pendientesIds.length > 0 && (
+                    <input type="checkbox" className="fin-checkbox" aria-label="Seleccionar todos los retiros pendientes"
+                      checked={todosMarcados} onChange={toggleAll} />
+                  )}
+                </th>
                 <th>SOLICITUD / FECHA</th>
                 <th>TÉCNICO</th>
                 <th>DESTINO BANCARIO</th>
@@ -155,12 +164,13 @@ export default function FinanzasPage() {
               {WITHDRAWALS.length === 0 && (
                 <tr><td colSpan={6} style={{textAlign: 'center', padding: '1rem'}}>{filter === 'pendientes' ? 'No hay retiros pendientes' : 'Todavía no hay retiros'}</td></tr>
               )}
-              {WITHDRAWALS.map((row, i) => (
-                <tr key={i} className={selected.has(i) ? 'fin-row--selected' : ''}>
+              {WITHDRAWALS.map(row => (
+                <tr key={row.realId} className={selected.has(row.realId) ? 'fin-row--selected' : ''}>
                   <td>
                     {row.estado === 'Pendiente' && (
                       <input type="checkbox" className="fin-checkbox"
-                        checked={selected.has(i)} onChange={() => toggleSelect(i)} />
+                        aria-label={`Seleccionar ${row.req}`}
+                        checked={selected.has(row.realId)} onChange={() => toggleSelect(row.realId)} />
                     )}
                   </td>
                   <td>
@@ -202,7 +212,7 @@ export default function FinanzasPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </div>
 

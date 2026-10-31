@@ -10,7 +10,7 @@
   background: var(--accent); animation: dotBlink 2s infinite;
 }
 
-.mapa-layout { display: grid; grid-template-columns: 1fr 320px; gap: 16px; flex: 1; min-height: 0; }
+.mapa-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; flex: 1; min-height: 0; }
 
 /* ── Map Canvas & Leaflet ── */
 .mapa-canvas {
@@ -268,3 +268,11 @@
   margin-top: auto;
 }
 .mapa-filter-btn:hover { background: var(--text-dark); color: #fff; border-color: var(--text-dark); }
+
+/* Pantallas angostas: el mapa va arriba con altura propia y el panel de actividad debajo */
+@media (max-width: 1000px) {
+  .mapa-page { height: auto; }
+  .mapa-layout { grid-template-columns: minmax(0, 1fr); }
+  .mapa-canvas { height: 60vh; min-height: 320px; }
+  .mapa-panel { max-height: 420px; }
+}

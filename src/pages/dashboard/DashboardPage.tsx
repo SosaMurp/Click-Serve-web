@@ -137,10 +137,12 @@ interface KpiProps {
   tone: "orange" | "navy" | "blue" | "green" | "amber"
   delta?: number | string | null
   note: string
+  /** Texto para cuando no hay variación que comparar: `note` habla de una comparación que no se muestra. */
+  fallbackNote?: string
   to?: string
 }
 
-function KpiCard({ label, value, icon, tone, delta, note, to }: KpiProps) {
+function KpiCard({ label, value, icon, tone, delta, note, fallbackNote, to }: KpiProps) {
   const navigate = useNavigate()
   const hasDelta = delta != null && delta !== "" && !isNaN(parseNum(delta))
   const d = parseNum(delta)
@@ -164,7 +166,7 @@ function KpiCard({ label, value, icon, tone, delta, note, to }: KpiProps) {
           </span>
         )}
       </div>
-      <p className="db-kpi-note">{note}</p>
+      <p className="db-kpi-note">{!hasDelta && fallbackNote ? fallbackNote : note}</p>
     </div>
   )
 }
@@ -288,7 +290,7 @@ export default function DashboardPage() {
           <>
             <KpiCard label="Técnicos en línea" tone="navy" icon={<Users size={15} />}
               value={parseNum(stats.data?.tecnicos_online)}
-              delta={stats.data?.variacion_tecnicos_pct} note="vs semana anterior" to="/tecnicos" />
+              delta={stats.data?.variacion_tecnicos_pct} note="vs semana anterior" fallbackNote="Conectados ahora" to="/tecnicos" />
             <KpiCard label="Servicios en curso" tone="blue" icon={<Briefcase size={15} />}
               value={parseNum(stats.data?.servicios_en_curso)}
               note="En toda la ciudad" to="/mapa" />
@@ -297,7 +299,7 @@ export default function DashboardPage() {
               note={pendientes > 0 ? "Pendientes de revisión" : "Todo al día"} to="/validaciones" />
             <KpiCard label="Ingresos de hoy" tone="orange" icon={<Wallet size={15} />}
               value={fmtCurrency(stats.data?.ingresos_hoy)}
-              delta={stats.data?.variacion_ingresos_pct} note="vs ayer" to="/finanzas" />
+              delta={stats.data?.variacion_ingresos_pct} note="vs ayer" fallbackNote="Pagos confirmados hoy" to="/finanzas" />
             <KpiCard label="Completados" tone="green" icon={<CheckCircle2 size={15} />}
               value={parseNum(stats.data?.servicios_completados_mes)}
               note="En este mes" />

@@ -123,3 +123,14 @@
 
 .cfg-load-error { display: flex; align-items: center; gap: 12px; color: var(--danger-ink); }
 .cfg-load-error p { flex: 1; margin: 0; font-size: 14px; color: var(--text-dark); }
+
+/* Control deslizante: pista visible con el tramo elegido relleno (el fondo anterior casi no se distinguía del blanco) */
+.cfg-slider { background: linear-gradient(to right, var(--accent) var(--fill, 50%), var(--border-light) var(--fill, 50%)); }
+.cfg-slider:disabled, .cfg-toggle input:disabled + .cfg-toggle-track { cursor: not-allowed; opacity: .55; }
+.cfg-slider:focus-visible { box-shadow: 0 0 0 3px var(--accent-glow); }
+
+/* Las etiquetas con aviso no empujan al campo hacia abajo: el aviso va debajo del campo */
+.cfg-hint--chip { display: inline-flex; align-items: center; gap: 6px; }
+.cfg-badge-pill--soon { background: var(--warning-soft); color: var(--warning); }
+.cfg-card--soon .cfg-card-head { margin-bottom: 14px; }
+.cfg-card--soon .cfg-card-head > div:nth-child(2) { flex: 1; }

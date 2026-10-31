@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { Search, Filter, FileText, Eye, RotateCcw } from 'lucide-react'
+import { Search, Filter, FileText, Eye } from 'lucide-react'
 import { Badge } from '@components/ui'
 import TechProfileModal from '@components/modals/TechProfileModal'
 import ValidationDecisionModal from '@components/modals/ValidationDecisionModal'
 import AdvancedFiltersModal from '@components/modals/AdvancedFiltersModal'
 import './validaciones.css'
+import { SIN_FILTROS, filtrosActivos, pasaFiltros, type Filtros } from '../../lib/filtros'
 import { useVerifications, useApproveTechnician, useRejectTechnician } from '../../hooks/useAdminQueries'
 
 export default function ValidacionesPage() {
@@ -14,6 +15,7 @@ export default function ValidacionesPage() {
   const [isDecisionOpen, setIsDecisionOpen] = useState(false)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [vista, setVista] = useState<'pendientes' | 'todos'>('pendientes')
+  const [filters, setFilters] = useState<Filtros>(SIN_FILTROS)
 
   // Técnicos que se registraron en la app (backend de la app): pendientes de revisión o el historial completo
   const { data: expedientes, isLoading, isError } = useVerifications(vista)
@@ -35,13 +37,20 @@ export default function ValidacionesPage() {
     cedulaColor: (e.verificado_sep ? 'success' : 'neutral') as any,
     action: 'REVISAR TODO',
     actionColor: 'dark',
-    status: e.estatus
+    status: e.estatus,
+    calificacion: e.metricas?.calificacion != null ? Number(e.metricas.calificacion) : null,
+    fechaIso: e.fecha_solicitud,
+    sepOk: !!e.verificado_sep,
   }))
+
+  const visibles = QUEUE.filter(r =>
+    (!search || r.name.toLowerCase().includes(search.toLowerCase())) &&
+    pasaFiltros(filters, { specialty: r.specialty, rating: r.calificacion, verificado: r.sepOk, fecha: r.fechaIso }))
 
   const STATS = [
     { label: vista === 'pendientes' ? 'EN COLA' : 'TÉCNICOS', value: QUEUE.length.toString(), sub: null, color: 'default' },
     { label: 'DOCUMENTOS POR REVISAR', value: QUEUE.reduce((s, r) => s + r.documentos, 0).toString(), sub: null, color: 'default' },
-    { label: 'CON CÉDULA SEP', value: QUEUE.filter(r => r.cedula === 'VERIFICADA EN SEP').length.toString(), sub: null, color: 'accent' },
+    { label: 'CON CÉDULA SEP', value: QUEUE.filter(r => r.cedula === 'VERIFICADA EN SEP').length.toString(), sub: null, color: QUEUE.some(r => r.sepOk) ? 'accent' : 'default' },
   ]
 
   const handleOpenProfile = (row: any) => {
@@ -80,15 +89,11 @@ export default function ValidacionesPage() {
           <h1 className="dash-page-title">Centro de Validaciones</h1>
           <p className="dash-page-sub">AUDITORÍA DE IDENTIDAD Y CREDENCIALES</p>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button className="dash-export-btn" onClick={() => setVista('pendientes')}
-            style={vista === 'pendientes' ? { background: 'var(--text-dark)', color: '#fff', border: 'none' } : undefined}>
-            <RotateCcw size={13} /> PENDIENTES
-          </button>
-          <button className="dash-export-btn" onClick={() => setVista('todos')}
-            style={vista === 'todos' ? { background: 'var(--text-dark)', color: '#fff', border: 'none' } : undefined}>
-            HISTORIAL
-          </button>
+        <div className="fin-filter-tabs" style={{ padding: 0 }} role="tablist" aria-label="Vista de la cola">
+          <button role="tab" aria-selected={vista === 'pendientes'} className={`fin-filter-tab ${vista === 'pendientes' ? 'active' : ''}`}
+            onClick={() => setVista('pendientes')}>Pendientes</button>
+          <button role="tab" aria-selected={vista === 'todos'} className={`fin-filter-tab ${vista === 'todos' ? 'active' : ''}`}
+            onClick={() => setVista('todos')}>Historial</button>
         </div>
       </div>
 
@@ -110,7 +115,7 @@ export default function ValidacionesPage() {
           <input placeholder="Buscar técnico o ID..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <button className="dash-export-btn" onClick={() => setIsFilterOpen(true)}>
-          <Filter size={13} /> FILTRAR
+          <Filter size={13} /> FILTRAR{filtrosActivos(filters) > 0 ? ` (${filtrosActivos(filters)})` : ''}
         </button>
       </div>
 
@@ -121,7 +126,7 @@ export default function ValidacionesPage() {
         ) : isError ? (
           <div style={{ padding: '2rem', textAlign: 'center', color: 'red' }}>Error al cargar los expedientes</div>
         ) : (
-          <table className="dash-table val-table">
+          <div className="table-scroll"><table className="dash-table val-table">
             <thead>
               <tr>
                 <th>FECHA</th>
@@ -133,10 +138,13 @@ export default function ValidacionesPage() {
               </tr>
             </thead>
             <tbody>
-              {QUEUE.length === 0 && (
-                <tr><td colSpan={6} style={{textAlign: 'center', padding: '1rem'}}>{vista === 'pendientes' ? 'No hay técnicos pendientes de revisión' : 'Todavía no hay técnicos registrados'}</td></tr>
+              {visibles.length === 0 && (
+                <tr><td colSpan={6} style={{textAlign: 'center', padding: '1rem'}}>
+                  {QUEUE.length > 0 ? 'Ningún técnico coincide con la búsqueda o los filtros'
+                    : vista === 'pendientes' ? 'No hay técnicos pendientes de revisión' : 'Todavía no hay técnicos registrados'}
+                </td></tr>
               )}
-              {QUEUE.filter(r => !search || r.name.toLowerCase().includes(search.toLowerCase())).map((row, i) => (
+              {visibles.map((row, i) => (
                 <tr key={i}>
                   <td>
                     <p className="val-date">{row.date}</p>
@@ -171,7 +179,7 @@ export default function ValidacionesPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </div>
 
@@ -193,6 +201,10 @@ export default function ValidacionesPage() {
       <AdvancedFiltersModal
         isOpen={isFilterOpen}
         onClose={() => setIsFilterOpen(false)}
+        value={filters}
+        onApply={setFilters}
+        showStatus={false}
+        verificationLabel="cédula validada en SEP"
       />
     </div>
   )

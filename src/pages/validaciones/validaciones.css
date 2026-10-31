@@ -1,7 +1,7 @@
 /* Validaciones page */
 .val-page { display: flex; flex-direction: column; gap: 20px; }
 
-.val-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.val-stats-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .val-stat {
   background: #fff; border: 1px solid var(--border-light);
   border-radius: var(--radius-lg); padding: 18px 20px;
@@ -49,3 +49,10 @@
 .val-action-btn--outline { background: none; border: 1px solid var(--border-light); color: var(--text-dark); }
 .val-action-btn--danger  { background: var(--danger); color: #fff; border: none; }
 .val-action-btn--danger:hover { opacity: .85; }
+
+/* Barra de búsqueda y filtros: en pantallas angostas los controles pasan a otra línea */
+.val-toolbar { flex-wrap: wrap; }
+.val-search { min-width: 220px; }
+@media (max-width: 720px) {
+  .val-stats-grid { grid-template-columns: 1fr; }
+}

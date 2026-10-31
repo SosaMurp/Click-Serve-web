@@ -104,7 +104,7 @@ export default function SoportePage() {
       </div>
 
       <div className="dash-card" style={{ padding: 0, overflow: 'hidden' }}>
-        <table className="dash-table sop-table">
+        <div className="table-scroll"><table className="dash-table sop-table">
           <thead>
             <tr>
               <th>FOLIO / FECHA</th>
@@ -153,7 +153,7 @@ export default function SoportePage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       </div>
 
       </>

@@ -38,7 +38,7 @@ export default function TicketsPanel() {
       </div>
 
       <div className="dash-card" style={{ padding: 0, overflow: 'hidden' }}>
-        <table className="dash-table sop-table">
+        <div className="table-scroll"><table className="dash-table sop-table">
           <thead>
             <tr>
               <th>FOLIO / ACTUALIZADO</th>
@@ -85,7 +85,7 @@ export default function TicketsPanel() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       </div>
 
       {abierto != null && <TicketChat key={abierto} id={abierto} onClose={() => setAbierto(null)} />}

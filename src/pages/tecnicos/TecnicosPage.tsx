@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Search, Star, ChevronLeft, ChevronRight, Filter, UserPlus } from 'lucide-react'
+import { Search, Star, Filter, UserPlus } from 'lucide-react'
 import { Badge } from '@components/ui'
 import TechProfileModal from '@components/modals/TechProfileModal'
 import AdvancedFiltersModal from '@components/modals/AdvancedFiltersModal'
@@ -8,15 +8,15 @@ import CoAdminModal from '@components/modals/CoAdminModal'
 import './tecnicos.css'
 
 import { useAdminUsers } from '../../hooks/useAdminQueries'
+import { CATEGORIAS, SIN_FILTROS, filtrosActivos, pasaFiltros, type Filtros } from '../../lib/filtros'
 
-// Categorías de servicio de la app (tabla categorias_servicio)
-const CATEGORIAS = ['Cómputo y redes', 'Electricidad', 'Plomería', 'Climatización', 'Línea blanca', 'Cerrajería', 'Pintura e impermeabilización', 'Mecánica automotriz']
-
-// estado_cuenta de la app → etiqueta del filtro
-function estadoLegible(estado?: string | null) {
+// estado_cuenta de la app → etiqueta del filtro. Un técnico sin identidad verificada sigue en revisión
+// aunque su cuenta figure como activa.
+function estadoLegible(estado?: string | null, sinVerificar = false) {
   const e = (estado || '').toUpperCase()
-  if (e === 'ACTIVO' || e === 'APROBADO') return 'ACTIVO'
   if (e === 'SUSPENDIDO' || e === 'RECHAZADO') return e
+  if (sinVerificar) return 'EN REVISIÓN'
+  if (e === 'ACTIVO' || e === 'APROBADO') return 'ACTIVO'
   return 'EN REVISIÓN'
 }
 
@@ -31,8 +31,8 @@ export default function TecnicosPage() {
     const q = (location.state as { q?: string } | null)?.q
     if (q) setSearch(q)
   }, [location.key])
-  const [statusFilter, setStatusFilter] = useState('ALL')
-  const [specFilter, setSpecFilter] = useState('ALL')
+  const [filters, setFilters] = useState<Filtros>(SIN_FILTROS)
+  const setFiltro = (k: keyof Filtros, v: string) => setFilters(f => ({ ...f, [k]: v }))
   const [selectedItem, setSelectedItem] = useState<any>(null)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
@@ -42,25 +42,31 @@ export default function TecnicosPage() {
   })
 
   // Normalize API data to component structure
-  const data = (usersData || []).map(u => ({
-    id: `ID-${u.id_usuario}`,
-    realId: u.id_usuario,
-    name: `${u.nombre} ${u.apellido}`,
-    phone: u.telefono,
-    email: u.correo,
-    specialty: u.especialidad || (tab === 'clientes' ? 'Cliente' : tab === 'admins' ? 'Administrador' : 'Sin especialidades'),
-    status: estadoLegible(u.estado_cuenta),
-    statusV: ['activo', 'aprobado'].includes(u.estado_cuenta?.toLowerCase() ?? '') ? 'success' : u.estado_cuenta?.toLowerCase() === 'suspendido' ? 'danger' : 'warning',
-    rating: u.metricas?.calificacion || null,
-    jobs: u.metricas?.trabajos ?? null
-  }))
+  const data = (usersData || []).map(u => {
+    const status = estadoLegible(u.estado_cuenta, u.id_rol === 2 && !u.identidad_verificada)
+    return {
+      id: `ID-${u.id_usuario}`,
+      realId: u.id_usuario,
+      name: `${u.nombre} ${u.apellido}`,
+      phone: u.telefono,
+      email: u.correo,
+      specialty: u.especialidad || (tab === 'clientes' ? 'Cliente' : tab === 'admins' ? 'Administrador' : 'Sin especialidades'),
+      status,
+      statusV: status === 'ACTIVO' ? 'success' : status === 'EN REVISIÓN' ? 'warning' : 'danger',
+      rating: u.metricas?.calificacion || null,
+      jobs: u.metricas?.trabajos ?? null,
+      verificado: !!u.identidad_verificada,
+      registro: u.fecha_registro ?? null,
+    }
+  })
 
   const filtered = data.filter(r => {
     const s = search.toLowerCase()
     const matchSearch = !search || r.name.toLowerCase().includes(s) || r.id.toLowerCase().includes(s) || (r.email ?? '').toLowerCase().includes(s)
-    const matchStatus = statusFilter === 'ALL' || r.status === statusFilter
-    const matchSpec = specFilter === 'ALL' || r.specialty.includes(specFilter)
-    return matchSearch && matchStatus && matchSpec
+    return matchSearch && pasaFiltros(filters, {
+      specialty: r.specialty, rating: r.rating != null ? Number(r.rating) : null,
+      verificado: r.verificado, fecha: r.registro, status: r.status,
+    })
   })
 
   const handleOpenProfile = (row: any) => {
@@ -99,19 +105,19 @@ export default function TecnicosPage() {
           <Search size={14} />
           <input placeholder="Buscar por ID, nombre o correo..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <select className="tec-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+        <select className="tec-select" aria-label="Filtrar por estado" value={filters.status} onChange={e => setFiltro('status', e.target.value)}>
           <option value="ALL">Estado: Todo</option>
           <option value="ACTIVO">Activo</option>
           <option value="EN REVISIÓN">En revisión</option>
           <option value="RECHAZADO">Rechazado</option>
           <option value="SUSPENDIDO">Suspendido</option>
         </select>
-        <select className="tec-select" value={specFilter} onChange={e => setSpecFilter(e.target.value)}>
+        <select className="tec-select" aria-label="Filtrar por especialidad" value={filters.specialty} onChange={e => setFiltro('specialty', e.target.value)}>
           <option value="ALL">Especialidad: Todo</option>
           {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
         <button className="dash-export-btn" onClick={() => setIsFilterOpen(true)}>
-          <Filter size={13} /> FILTROS AVANZADOS
+          <Filter size={13} /> FILTROS AVANZADOS{filtrosActivos(filters) > 0 ? ` (${filtrosActivos(filters)})` : ''}
         </button>
       </div>
 
@@ -122,7 +128,7 @@ export default function TecnicosPage() {
         ) : isError ? (
           <div style={{ padding: '2rem', textAlign: 'center', color: 'red' }}>Error al cargar los datos</div>
         ) : (
-          <table className="dash-table tec-table">
+          <div className="table-scroll"><table className="dash-table tec-table">
             <thead>
               <tr>
                 <th>{tab === 'tecnicos' ? 'TÉCNICO / CONTACTO' : tab === 'clientes' ? 'CLIENTE / CONTACTO' : 'ADMINISTRADOR / CONTACTO'}</th>
@@ -160,7 +166,7 @@ export default function TecnicosPage() {
                       <div className="tec-rating">
                         <Star size={12} fill="currentColor" />
                         <strong>{row.rating}</strong>
-                        <span>{row.jobs}</span>
+                        <span>{row.jobs} {row.jobs === 1 ? 'trabajo' : 'trabajos'}</span>
                       </div>
                     ) : <span className="dash-table-id">Sin historial</span>}
                   </td>
@@ -172,19 +178,12 @@ export default function TecnicosPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
 
-        {/* Pagination */}
+        {/* El servidor entrega hasta 1000 cuentas por pestaña y la lista se filtra aquí: no hay páginas */}
         <div className="tec-pagination">
-          <p className="tec-page-info">MOSTRANDO {filtered.length} REGISTROS</p>
-          <div className="tec-page-controls">
-            <button className="tec-page-btn"><ChevronLeft size={13} /></button>
-            {[1].map(n => (
-              <button key={n} className={`tec-page-btn ${n === 1 ? 'tec-page-btn--active' : ''}`}>{n}</button>
-            ))}
-            <button className="tec-page-btn"><ChevronRight size={13} /></button>
-          </div>
+          <p className="tec-page-info">MOSTRANDO {filtered.length} DE {data.length} REGISTROS</p>
         </div>
       </div>
 
@@ -200,10 +199,9 @@ export default function TecnicosPage() {
       <AdvancedFiltersModal
         isOpen={isFilterOpen}
         onClose={() => setIsFilterOpen(false)}
-        onApplyFilters={f => {
-          if (f.status) setStatusFilter(f.status)
-          if (f.specialty) setSpecFilter(f.specialty)
-        }}
+        value={filters}
+        onApply={setFilters}
+        verificationLabel="identidad verificada"
       />
     </div>
   )

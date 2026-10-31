@@ -211,7 +211,6 @@ export default function PerfilPage() {
                   <p className="perfil-security-sub">Protegido mediante Verificación por Correo</p>
                 </div>
               </div>
-              <button className="perfil-action-btn">RECONFIGURAR</button>
             </div>
 
             <div className="perfil-security-row">

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Fingerprint, RefreshCw } from 'lucide-react'
-import { Button } from '@components/ui'
+import { Badge, Button } from '@components/ui'
 import { compareBiometricImages, getBiometricVerification, requestBiometricVerification } from '@api/biometrics'
 
 export default function BiometriaPage() {
@@ -72,31 +72,53 @@ export default function BiometriaPage() {
   }
 
   return (
-    <div style={{ maxWidth: 560, margin: '0 auto', padding: '48px 24px' }}>
-      <Fingerprint size={36} aria-hidden="true" />
-      <h1>Verificación biométrica</h1>
-      <p>Solicita un desafío para que el adaptador OpenCV procese la captura facial de forma segura.</p>
-      {!verification ? (
-        <Button onClick={requestVerification} loading={loading}>INICIAR VERIFICACIÓN</Button>
-      ) : (
-        <>
-          <label>
-            Rostro de referencia
-            <input type="file" accept="image/*" onChange={event => setReference(event.target.files?.[0] || null)} />
-          </label>
-          <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', marginTop: 16 }} />
-          <p>Estado: <strong>{verification.estado}</strong></p>
-          <p>Proveedor: {verification.proveedor}</p>
-          {!cameraActive && <Button onClick={startCamera}>ACTIVAR CÁMARA</Button>}
-          {cameraActive && <Button onClick={captureLiveAndCompare} loading={loading} disabled={!reference}>
-            <Fingerprint size={14} /> CAPTURAR Y COMPARAR
-          </Button>}
-          <Button variant="outline" onClick={refreshStatus} loading={loading}>
-            <RefreshCw size={14} /> ACTUALIZAR ESTADO
-          </Button>
-        </>
-      )}
-      {error && <p role="alert">{error}</p>}
+    <div className="dash-page fade-in">
+      <div className="dash-page-header">
+        <div>
+          <h1 className="dash-page-title">Verificación biométrica</h1>
+          <p className="dash-page-sub">Compara el rostro de una persona con su foto de referencia</p>
+        </div>
+      </div>
+
+      <div className="dash-card" style={{ maxWidth: 560, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {!verification ? (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span className="cfg-icon cfg-icon--navy"><Fingerprint size={16} aria-hidden="true" /></span>
+              <p style={{ fontSize: 13.5, color: 'var(--text-mid)' }}>
+                Solicita un desafío de verificación; después sube la foto de referencia y toma una captura con la cámara.
+              </p>
+            </div>
+            <div><Button onClick={requestVerification} loading={loading}>INICIAR VERIFICACIÓN</Button></div>
+          </>
+        ) : (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <Badge variant="info">{verification.estado}</Badge>
+              <span className="dash-table-id">Proveedor: {verification.proveedor}</span>
+            </div>
+            <div className="field">
+              <label className="field-label" htmlFor="bio-ref">Rostro de referencia</label>
+              <input id="bio-ref" className="field-input" type="file" accept="image/*"
+                onChange={event => setReference(event.target.files?.[0] || null)} />
+            </div>
+            <video ref={videoRef} autoPlay playsInline muted
+              style={{ width: '100%', borderRadius: 12, background: 'var(--bg-sunk)', display: cameraActive ? 'block' : 'none' }} />
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {!cameraActive && <Button onClick={startCamera}>ACTIVAR CÁMARA</Button>}
+              {cameraActive && (
+                <Button onClick={captureLiveAndCompare} loading={loading} disabled={!reference}>
+                  <Fingerprint size={14} /> CAPTURAR Y COMPARAR
+                </Button>
+              )}
+              <Button variant="outline" onClick={refreshStatus} loading={loading}>
+                <RefreshCw size={14} /> ACTUALIZAR ESTADO
+              </Button>
+            </div>
+          </>
+        )}
+        {error && <p role="alert" style={{ fontSize: 13, color: 'var(--danger-ink)' }}>{error}</p>}
+      </div>
     </div>
   )
 }

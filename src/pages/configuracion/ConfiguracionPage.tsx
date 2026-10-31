@@ -121,13 +121,13 @@ export default function ConfiguracionPage() {
           </div>
           <div className="cfg-row">
             <div className="cfg-field">
-              <label className="cfg-label">Comisión Click &amp; Serve <span className="cfg-badge-pill">Afecta a todos los servicios</span></label>
+              <label className="cfg-label">Comisión Click &amp; Serve</label>
               <div className="cfg-input-suffix">
                 <input className="cfg-input" type="number" value={commission}
                   onChange={e => { setCommission(e.target.value); mark() }} />
                 <span className="cfg-suffix">%</span>
               </div>
-              <p className="cfg-hint">Porcentaje deducido automáticamente de cada servicio completado.</p>
+              <p className="cfg-hint">Porcentaje deducido de cada servicio completado. Afecta a todos los servicios que se liquiden desde que guardes el cambio.</p>
             </div>
             <div className="cfg-field">
               <label className="cfg-label">Retiro mínimo permitido</label>
@@ -176,8 +176,8 @@ export default function ConfiguracionPage() {
           <div className="cfg-card-head">
             <div className="cfg-icon cfg-icon--navy"><Shield size={16} /></div>
             <div>
-              <p className="cfg-card-title">Verificación de identidad</p>
-              <p className="cfg-card-sub">Tolerancia de la biometría y validación en SEP.</p>
+              <p className="cfg-card-title">Verificación de identidad <span className="cfg-badge-pill cfg-badge-pill--soon">Próximamente</span></p>
+              <p className="cfg-card-sub">Todavía no modifican la app: se activarán junto con la verificación de INE y biometría.</p>
             </div>
           </div>
 
@@ -190,7 +190,9 @@ export default function ConfiguracionPage() {
               </div>
               <input
                 className="cfg-slider"
-                type="range" min={50} max={100} value={threshold}
+                type="range" min={50} max={100} value={threshold} disabled
+                aria-label="Umbral de aprobación automática"
+                style={{ '--fill': `${(threshold - 50) * 2}%` } as React.CSSProperties}
                 onChange={e => { setThreshold(Number(e.target.value)); mark() }}
               />
               <div className="cfg-slider-ticks">
@@ -204,7 +206,7 @@ export default function ConfiguracionPage() {
             <div className="cfg-field cfg-toggle-field">
               <label className="cfg-label">Validación obligatoria en SEP</label>
               <label className="cfg-toggle">
-                <input type="checkbox" checked={sepValidation}
+                <input type="checkbox" checked={sepValidation} disabled
                   onChange={e => { setSepValidation(e.target.checked); mark() }} />
                 <span className="cfg-toggle-track" />
               </label>

@@ -62,3 +62,7 @@
 }
 .tec-page-btn:hover { background: var(--bg-input); }
 .tec-page-btn--active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.tec-tabs { overflow-x: auto; }
+.tec-tab { white-space: nowrap; }
+.tec-select { max-width: 100%; }

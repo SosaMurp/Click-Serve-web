@@ -278,3 +278,19 @@
 @media (max-width: 720px) {
   .db-kpis, .db-grid-3 { grid-template-columns: 1fr; }
 }
+
+/* Tablas anchas: se desplazan dentro de su tarjeta en lugar de romper la página */
+.table-scroll { overflow-x: auto; }
+.table-scroll > .dash-table { min-width: 720px; }
+
+/* Con 5 tarjetas de KPI en filas de 3 quedaba un hueco: 3 arriba y 2 abajo repartidas a todo el ancho */
+@media (max-width: 1280px) {
+  .db-kpis { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .db-kpis > .db-kpi { grid-column: span 2; }
+  .db-kpis > .db-kpi:nth-child(n+4) { grid-column: span 3; }
+  .db-kpis > .db-kpis-error { grid-column: 1 / -1; }
+}
+@media (max-width: 720px) {
+  .db-kpis { grid-template-columns: 1fr; }
+  .db-kpis > .db-kpi, .db-kpis > .db-kpi:nth-child(n+4) { grid-column: auto; }
+}

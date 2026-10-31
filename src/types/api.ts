@@ -13,6 +13,8 @@ export interface UsuarioRow {
   especialidad?: string | null
   estatus_expediente?: string | null
   metricas?: any
+  identidad_verificada?: boolean
+  fecha_registro?: string
 }
 
 export interface ExpedienteTecnicoRow {

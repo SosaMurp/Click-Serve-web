@@ -57,3 +57,6 @@
   color: #fff; transition: all var(--transition);
 }
 .fin-btn-approve:hover { opacity: .85; transform: translateY(-1px); }
+
+.fin-approve-batch:disabled { background: #fff; color: var(--text-muted); border: 1px solid var(--border-light); cursor: default; }
+.fin-queue-header { flex-wrap: wrap; gap: 8px; }

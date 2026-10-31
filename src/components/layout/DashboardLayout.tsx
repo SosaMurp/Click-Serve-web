@@ -9,6 +9,7 @@ import { NetworkStatusBanner } from '@components/ui/NetworkStatusBanner'
 import ServiceDetailModal from '@components/modals/ServiceDetailModal'
 import { getServicioById } from '@api/servicios'
 import { useDashboardStats } from '@hooks/useDashboard'
+import { useWithdrawals, useIncidencias, useTickets } from '@hooks/useAdminQueries'
 import { LogoMark } from '@components/ui/Logo'
 import type { RecentService } from '@/types/dashboard'
 import './dashboard-layout.css'
@@ -31,6 +32,29 @@ export default function DashboardLayout() {
   const { user, logout } = useAuthStore()
   // Pendientes reales de validación (antes era un 3 fijo)
   const pendientes = useDashboardStats().data?.validaciones_pendientes ?? 0
+
+  // ── Campana: lo que espera una decisión del administrador ──
+  const [bellOpen, setBellOpen] = useState(false)
+  const bellRef = useRef<HTMLDivElement>(null)
+  const retiros = useWithdrawals('Pendiente').data?.length ?? 0
+  const incidencias = useIncidencias('ABIERTA').data?.length ?? 0
+  const ticketsSinResponder = (useTickets('ACTIVOS').data ?? []).filter(t => !t.ultimo_es_asesor).length
+  const porAtender = [
+    { label: 'Técnicos por validar', n: pendientes, to: '/validaciones' },
+    { label: 'Retiros por autorizar', n: retiros, to: '/finanzas' },
+    { label: 'Incidencias abiertas', n: incidencias, to: '/soporte' },
+    { label: 'Tickets sin responder', n: ticketsSinResponder, to: '/soporte' },
+  ]
+  const totalPorAtender = porAtender.reduce((s, p) => s + p.n, 0)
+
+  useEffect(() => {
+    if (!bellOpen) return
+    const fuera = (e: MouseEvent) => { if (!bellRef.current?.contains(e.target as Node)) setBellOpen(false) }
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setBellOpen(false) }
+    document.addEventListener('mousedown', fuera)
+    document.addEventListener('keydown', esc)
+    return () => { document.removeEventListener('mousedown', fuera); document.removeEventListener('keydown', esc) }
+  }, [bellOpen])
 
   const handleLogout = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -115,11 +139,28 @@ export default function DashboardLayout() {
         </div>
 
         <div className="dash-topbar-right">
-          <button className="dash-notif-btn" title="Alertas del sistema">
-            <Bell size={16} />
-            <span className="dash-notif-dot" />
-          </button>
-          <div className="dash-topbar-user" onClick={() => navigate('/perfil')}>
+          <div className="dash-notif-wrap" ref={bellRef}>
+            <button className="dash-notif-btn" title="Pendientes" aria-haspopup="true" aria-expanded={bellOpen}
+              aria-label={totalPorAtender > 0 ? `Pendientes: ${totalPorAtender} por atender` : 'Pendientes: todo al día'}
+              onClick={() => setBellOpen(o => !o)}>
+              <Bell size={16} />
+              {totalPorAtender > 0 && <span className="dash-notif-dot" />}
+            </button>
+            {bellOpen && (
+              <div className="dash-notif-menu" role="menu">
+                <p className="dash-notif-title">Por atender</p>
+                {totalPorAtender === 0 && <p className="dash-notif-empty">Todo al día: no hay nada pendiente.</p>}
+                {porAtender.map(p => (
+                  <button key={p.label} role="menuitem" className={`dash-notif-item ${p.n === 0 ? 'dash-notif-item--zero' : ''}`}
+                    onClick={() => { setBellOpen(false); navigate(p.to) }}>
+                    <span className="dash-notif-count">{p.n}</span>{p.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="dash-topbar-user" role="button" tabIndex={0} aria-label="Mi perfil" onClick={() => navigate('/perfil')}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/perfil') } }}>
             <div className="dash-avatar">{user?.nombre ? user.nombre[0] : 'A'}</div>
             <div className="dash-user-info">
               <p className="dash-user-name">{fullName}</p>
