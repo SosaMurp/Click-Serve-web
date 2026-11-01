@@ -7,7 +7,7 @@ const { rateLimit, byIpAndEmail } = require('../middleware/rateLimit');
 const { fail } = require('../lib/http');
 const { audit } = require('../lib/audit');
 const { sanitizeText } = require('../lib/sanitize');
-const { isEmail, isStrongPassword, isPhoneMx, onlyDigits } = require('../lib/validators');
+const { isEmail, isStrongPassword, normalizeEmail, normalizePhoneMx, normalizePersonName, onlyDigits } = require('../lib/validators');
 const { verifyTotp } = require('../lib/totp');
 const { sendCode, sendMail } = require('../lib/mailer');
 const { saveFile, uploader, IMAGE_TYPES } = require('../lib/files');
@@ -31,7 +31,7 @@ const sendLimiter = rateLimit({ windowMs: minutes(10), max: 4, keyFn: byIpAndEma
 const registerLimiter = rateLimit({ windowMs: minutes(60), max: 10 });
 
 const newCode = () => String(crypto.randomInt(0, 1000000)).padStart(6, '0');
-const normEmail = (value) => String(value || '').trim().toLowerCase();
+const normEmail = normalizeEmail;
 
 async function issueCode(db, idUsuario, tipo, canal = 'EMAIL') {
   await db.query(
@@ -170,20 +170,21 @@ const registroUpload = uploader({ maxFiles: 3 }).fields([
 router.post('/api/register', registerLimiter, registroUpload, async (req, res) => {
   const b = req.body || {};
   const email = normEmail(b.email);
-  const nombre = sanitizeText(b.nombre, 100);
-  const apellido = sanitizeText(b.apellidos ?? b.apellido, 100);
-  const telefono = onlyDigits(b.telefono);
+  const nombre = normalizePersonName(sanitizeText(b.nombre, 100));
+  const apellido = normalizePersonName(sanitizeText(b.apellidos ?? b.apellido, 100), 80);
+  const telefono = normalizePhoneMx(b.telefono);
   const fecha = String(b.fechaNacimiento || b.fecha_nacimiento || '').trim();
   const password = String(b.password || '');
   const perfil = String(b.perfil ?? '1').toLowerCase();
   const idRol = perfil === '2' || perfil === 'tecnico' ? 2 : 1;
 
-  if (!nombre || !apellido) return fail(res, 400, 'VALIDATION_ERROR', 'Escribe tu nombre y apellidos.');
+  if (!nombre) return fail(res, 400, 'VALIDATION_ERROR', 'Escribe tu nombre usando solo letras (2 a 60 caracteres).', { field: 'nombre' });
+  if (!apellido) return fail(res, 400, 'VALIDATION_ERROR', 'Escribe tus apellidos usando solo letras (2 a 80 caracteres).', { field: 'apellidos' });
   if (!isEmail(email)) return fail(res, 400, 'VALIDATION_ERROR', 'Escribe un correo electrónico válido.', { field: 'email' });
-  if (!isPhoneMx(telefono)) return fail(res, 400, 'VALIDATION_ERROR', 'El teléfono debe tener 10 dígitos.', { field: 'telefono' });
+  if (!telefono) return fail(res, 400, 'VALIDATION_ERROR', 'Escribe un teléfono de 10 dígitos, por ejemplo 753 123 4567.', { field: 'telefono' });
   if (!isStrongPassword(password)) return fail(res, 400, 'WEAK_PASSWORD', WEAK, { field: 'password' });
   const age = ageFrom(fecha);
-  if (age == null) return fail(res, 400, 'VALIDATION_ERROR', 'Selecciona una fecha de nacimiento válida.', { field: 'fechaNacimiento' });
+  if (age == null || age > 110) return fail(res, 400, 'VALIDATION_ERROR', 'Selecciona una fecha de nacimiento válida.', { field: 'fechaNacimiento' });
   if (age < 18) return fail(res, 400, 'UNDERAGE', 'Debes ser mayor de edad para usar Click & Serve.', { field: 'fechaNacimiento' });
   if (!['true', '1', 'si', 'sí', true].includes(typeof b.acepta_privacidad === 'string' ? b.acepta_privacidad.toLowerCase() : b.acepta_privacidad)) {
     return fail(res, 400, 'CONSENT_REQUIRED', 'Debes aceptar el aviso de privacidad y los términos para crear tu cuenta.');

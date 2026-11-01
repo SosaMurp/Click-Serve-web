@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { X, UserPlus } from 'lucide-react'
 import { Button, Input } from '@components/ui'
 import { useCreateCoAdmin } from '../../hooks/useAdminQueries'
+import { contrasenaFuerte, correoValido, normalizarCorreo, normalizarTelefono, nombreValido } from '../../lib/formatos'
 import './modals.css'
 
 // RF-26: un administrador da de alta a otro. El registro público no crea administradores.
@@ -20,13 +21,20 @@ export default function CoAdminModal({ isOpen, onClose }: { isOpen: boolean; onC
 
   const guardar = async (e: React.FormEvent) => {
     e.preventDefault()
+    const nombre = nombreValido(form.nombre)
+    const apellidos = nombreValido(form.apellidos, 80)
+    const telefono = form.telefono.trim() ? normalizarTelefono(form.telefono) : undefined
+    if (!nombre || !apellidos) return setError('Escribe nombre y apellidos usando solo letras.')
+    if (!correoValido(form.email)) return setError('Escribe un correo electrónico válido, por ejemplo ana@correo.mx.')
+    if (telefono === null) return setError('El teléfono debe tener 10 dígitos, por ejemplo 753 123 4567.')
+    if (!contrasenaFuerte(form.password)) return setError('La contraseña necesita de 8 a 64 caracteres con mayúscula, minúscula y número.')
     if (form.password !== form.confirmar) return setError('Las contraseñas no coinciden.')
     try {
       const res = await crear.mutateAsync({
-        nombre: form.nombre.trim(),
-        apellidos: form.apellidos.trim(),
-        email: form.email.trim().toLowerCase(),
-        telefono: form.telefono.trim() || undefined,
+        nombre,
+        apellidos,
+        email: normalizarCorreo(form.email),
+        telefono: telefono ?? undefined,
         password: form.password,
       })
       setHecho(res.mensaje)

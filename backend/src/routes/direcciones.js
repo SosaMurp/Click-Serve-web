@@ -4,6 +4,7 @@ const { auth } = require('../middleware/auth');
 const { fail } = require('../lib/http');
 const { sanitizeText } = require('../lib/sanitize');
 const { parseCoord } = require('../lib/geo');
+const { normalizeCp } = require('../lib/validators');
 
 const router = express.Router();
 const db = () => getPool();
@@ -16,15 +17,15 @@ function parseAddress(body) {
     numero: sanitizeText(body?.numero, 50),
     interior: sanitizeText(body?.interior, 50) || null,
     colonia: sanitizeText(body?.colonia, 100),
-    cp: sanitizeText(body?.cp, 10),
+    cp: sanitizeText(body?.cp, 10).replace(/\s+/g, ''),
     ciudad: sanitizeText(body?.ciudad, 100) || 'Lázaro Cárdenas',
     referencias: sanitizeText(body?.referencias, 300) || null,
     latitud: parseCoord(body?.latitud, -90, 90),
     longitud: parseCoord(body?.longitud, -180, 180),
   };
   if (data.calle.length < 3) return { error: ['Escribe la calle.', 'calle'] };
-  if (!data.numero) return { error: ['Escribe el número exterior.', 'numero'] };
-  if (data.cp && !/^\d{5}$/.test(data.cp)) return { error: ['El código postal tiene 5 dígitos.', 'cp'] };
+  if (!data.numero || !/^(?:S\/N|s\/n|[0-9A-Za-z][0-9A-Za-z .\-/]{0,19})$/.test(data.numero)) return { error: ['Escribe el número exterior (por ejemplo 123, 45-B o S/N).', 'numero'] };
+  if (data.cp && !normalizeCp(data.cp)) return { error: ['El código postal tiene 5 dígitos.', 'cp'] };
   return { data };
 }
 

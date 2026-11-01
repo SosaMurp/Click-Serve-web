@@ -6,7 +6,7 @@ const { fail, HttpError } = require('../lib/http');
 const { audit } = require('../lib/audit');
 const { idempotent } = require('../lib/idempotency');
 const { sanitizeText } = require('../lib/sanitize');
-const { isValidClabe, bankFromClabe, maskClabe, onlyDigits } = require('../lib/validators');
+const { isValidClabe, bankFromClabe, maskClabe, onlyDigits, normalizePersonName } = require('../lib/validators');
 const S = require('../services/solicitudes');
 const { getConfig } = require('../services/config');
 
@@ -53,12 +53,12 @@ async function saveCard(req, res) {
   const token = String(b.token || '');
   const marca = String(b.marca || '').toUpperCase();
   const ultimos = String(b.ultimos_4 || '');
-  const titular = sanitizeText(b.titular, 100);
+  const titular = normalizePersonName(sanitizeText(b.titular, 100), 60);
   const expiracion = String(b.expiracion || b.vencimiento || '');
   if (!/^tok_[A-Za-z0-9_]{6,64}$/.test(token)) return fail(res, 400, 'VALIDATION_ERROR', 'No se pudo validar la tarjeta. Intenta de nuevo.');
   if (!MARCAS.includes(marca)) return fail(res, 400, 'VALIDATION_ERROR', 'Marca de tarjeta no soportada.');
   if (!/^\d{4}$/.test(ultimos)) return fail(res, 400, 'VALIDATION_ERROR', 'Datos de la tarjeta incompletos.');
-  if (titular.length < 3) return fail(res, 400, 'VALIDATION_ERROR', 'Escribe el nombre del titular como aparece en la tarjeta.', { field: 'titular' });
+  if (!titular) return fail(res, 400, 'VALIDATION_ERROR', 'Escribe el nombre del titular como aparece en la tarjeta.', { field: 'titular' });
   if (isExpired(expiracion)) return fail(res, 400, 'CARD_EXPIRED', 'La tarjeta está vencida o la fecha no es válida (MM/AA).', { field: 'expiracion' });
 
   const card = await withTransaction(async (tx) => {

@@ -6,7 +6,7 @@ import { goBack } from '@/src/lib/nav';
 import { AppBar, Banner, Button, color, radius, Screen, space, Text, TextField } from '@/src/design';
 import { errorMessage } from '@/src/api/client';
 import { pagosApi } from '@/src/api/endpoints';
-import { cardBrand, formatCardNumber, isExpiryValid, luhn, onlyDigits } from '@/src/lib/validators';
+import { cardBrand, filterNameInput, formatCardNumber, isExpiryValid, luhn, normalizePersonName, onlyDigits } from '@/src/lib/validators';
 import { isSandboxPayments, tokenizeCard } from '@/src/lib/tokenizer';
 import { toast } from '@/src/ui/toast';
 
@@ -33,7 +33,7 @@ export default function TarjetaNueva() {
   async function save() {
     const e: Partial<Record<Field, string>> = {};
     if (digits.length < 15 || !luhn(digits)) e.number = 'Revisa el número de la tarjeta.';
-    if (name.trim().length < 3) e.name = 'Escribe el nombre como aparece en la tarjeta.';
+    if (!normalizePersonName(name)) e.name = 'Escribe el nombre como aparece en la tarjeta, solo letras.';
     if (!isExpiryValid(expiry)) e.expiry = 'Fecha inválida o vencida (MM/AA).';
     if (!/^\d{3,4}$/.test(cvc)) e.cvc = 'El CVV tiene 3 o 4 dígitos.';
     setErrors(e);
@@ -81,7 +81,7 @@ export default function TarjetaNueva() {
           error={errors.number}
           maxLength={19}
         />
-        <TextField label="Nombre del titular" value={name} onChangeText={(v) => { setName(v); setErrors((x) => ({ ...x, name: undefined })); }} autoCapitalize="characters" autoComplete="cc-name" error={errors.name} maxLength={60} />
+        <TextField label="Nombre del titular" value={name} onChangeText={(v) => { setName(filterNameInput(v)); setErrors((x) => ({ ...x, name: undefined })); }} autoCapitalize="characters" autoComplete="cc-name" error={errors.name} maxLength={60} />
         <View style={styles.row}>
           <View style={styles.flex}><TextField label="Vence (MM/AA)" value={expiry} onChangeText={onExpiry} keyboardType="number-pad" autoComplete="cc-exp" error={errors.expiry} maxLength={5} /></View>
           <View style={styles.flex}><TextField label="CVV" value={cvc} onChangeText={(v) => { setCvc(onlyDigits(v).slice(0, 4)); setErrors((x) => ({ ...x, cvc: undefined })); }} keyboardType="number-pad" password autoComplete="cc-csc" error={errors.cvc} maxLength={4} /></View>

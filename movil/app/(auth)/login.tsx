@@ -7,7 +7,7 @@ import { SocialButtons } from '@/src/features/auth/SocialButtons';
 import { authApi, SocialResult } from '@/src/api/endpoints';
 import { ApiError, errorMessage } from '@/src/api/client';
 import { useSession } from '@/src/state/session';
-import { isEmail } from '@/src/lib/validators';
+import { isEmail, normalizeEmail } from '@/src/lib/validators';
 import { handOff } from '@/src/features/auth/handoff';
 
 // Login (referencia "Click & Serve · Acceso a servicios técnicos"). RF-01/03/04.
@@ -55,7 +55,7 @@ export default function Login() {
     if (!password) errs.password = 'Escribe tu contraseña.';
     setFieldErrors(errs);
     if (Object.keys(errs).length) return;
-    run(() => authApi.login(email.trim(), password), email.trim());
+    run(() => authApi.login(normalizeEmail(email), password), normalizeEmail(email));
   };
 
   return (

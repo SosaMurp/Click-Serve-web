@@ -10,7 +10,7 @@ import { PasswordChecklist } from '@/src/features/auth/PasswordChecklist';
 import { authApi } from '@/src/api/endpoints';
 import { ApiError, errorMessage } from '@/src/api/client';
 import type { LocalFile } from '@/src/api/types';
-import { isEmail, isPhoneMx, onlyDigits, passwordIssues } from '@/src/lib/validators';
+import { filterNameInput, formatPhone, isEmail, isPhoneMx, normalizeEmail, normalizePersonName, passwordIssues, phoneDigitsFromInput } from '@/src/lib/validators';
 
 type Rol = 'cliente' | 'tecnico';
 const STEP_TITLES = ['Crear Cuenta', 'Tu contacto', 'Verifica tu identidad'];
@@ -61,15 +61,15 @@ export default function Registro() {
   const validate = (s: number) => {
     const e: Record<string, string> = {};
     if (s === 0) {
-      if (nombre.trim().length < 2) e.nombre = 'Escribe tu nombre.';
-      if (apellidos.trim().length < 2) e.apellidos = 'Escribe tus apellidos.';
+      if (!normalizePersonName(nombre)) e.nombre = 'Escribe tu nombre, solo letras.';
+      if (!normalizePersonName(apellidos, 80)) e.apellidos = 'Escribe tus apellidos, solo letras.';
       if (!isEmail(email)) e.email = 'Escribe un correo válido, por ejemplo ana@correo.mx.';
       if (!fecha) e.fecha = 'Selecciona tu fecha de nacimiento.';
       else if (fecha > maxBirthDate()) e.fecha = 'Debes ser mayor de edad para usar Click & Serve.';
       if (passwordIssues(password).length) e.password = `A tu contraseña le falta: ${passwordIssues(password).join(', ')}.`;
     }
     if (s === 1) {
-      if (!isPhoneMx(telefono)) e.telefono = 'El teléfono debe tener 10 dígitos.';
+      if (!isPhoneMx(telefono)) e.telefono = 'Escribe un teléfono de 10 dígitos, por ejemplo 753 123 4567.';
       if (confirm !== password) e.confirm = 'Las contraseñas no coinciden.';
     }
     if (s === 2) {
@@ -89,14 +89,14 @@ export default function Registro() {
     try {
       await authApi.register(
         {
-          nombre: nombre.trim(), apellidos: apellidos.trim(), telefono: onlyDigits(telefono), email: email.trim().toLowerCase(),
+          nombre: normalizePersonName(nombre) ?? nombre.trim(), apellidos: normalizePersonName(apellidos, 80) ?? apellidos.trim(), telefono, email: normalizeEmail(email),
           fechaNacimiento: fecha, password, perfil: rol === 'tecnico' ? '2' : '1', acepta_privacidad: 'true',
           ticket_ine_frente: ineFrente.ticket, ticket_ine_reverso: ineReverso.ticket,
         },
         { ine_frente: ineFrente.file, ine_reverso: ineReverso.file, rostro }
       );
       // RF-06: la cuenta se crea y se pasa de inmediato a la verificación del correo.
-      router.replace({ pathname: '/verificar', params: { email: email.trim().toLowerCase() } });
+      router.replace({ pathname: '/verificar', params: { email: normalizeEmail(email) } });
     } catch (e) {
       if (e instanceof ApiError && e.code === 'INE_NOT_VERIFIED') {
         setIneFrente(null);
@@ -147,10 +147,10 @@ export default function Registro() {
       {step === 0 ? (
         <>
           <View style={styles.row}>
-            <View style={styles.flex}><TextField label="Nombre" icon="user" placeholder="Ej. Juan" value={nombre} onChangeText={(t) => { setNombre(t); clear('nombre'); }} error={errors.nombre} autoComplete="given-name" /></View>
-            <View style={styles.flex}><TextField label="Apellidos" placeholder="Ej. Pérez" value={apellidos} onChangeText={(t) => { setApellidos(t); clear('apellidos'); }} error={errors.apellidos} autoComplete="family-name" /></View>
+            <View style={styles.flex}><TextField label="Nombre" icon="user" placeholder="Ej. Juan" value={nombre} onChangeText={(t) => { setNombre(filterNameInput(t)); clear('nombre'); }} error={errors.nombre} autoComplete="given-name" autoCapitalize="words" maxLength={60} /></View>
+            <View style={styles.flex}><TextField label="Apellidos" placeholder="Ej. Pérez" value={apellidos} onChangeText={(t) => { setApellidos(filterNameInput(t)); clear('apellidos'); }} error={errors.apellidos} autoComplete="family-name" autoCapitalize="words" maxLength={80} /></View>
           </View>
-          <TextField label="Email" icon="mail" placeholder="tu@email.com" keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={(t) => { setEmail(t); clear('email'); }} error={errors.email} autoComplete="email" />
+          <TextField label="Email" icon="mail" placeholder="tu@email.com" keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={(t) => { setEmail(t.replace(/\s/g, '')); clear('email'); }} error={errors.email} autoComplete="email" autoCorrect={false} maxLength={254} />
           <DateField label="Fecha de nacimiento" value={fecha} onChange={(v) => { setFecha(v); clear('fecha'); }} max={maxBirthDate()} min="1920-01-01" initialYear={1995} error={errors.fecha} helper="Debes ser mayor de 18 años." />
           <TextField label="Contraseña" icon="lock" placeholder="Crea una contraseña" password value={password} onChangeText={(t) => { setPassword(t); clear('password'); }} error={errors.password} autoComplete="new-password" />
           <PasswordChecklist value={password} />
@@ -168,7 +168,7 @@ export default function Registro() {
 
       {step === 1 ? (
         <>
-          <TextField label="Teléfono celular" icon="phone" placeholder="10 dígitos" keyboardType="phone-pad" maxLength={14} value={telefono} onChangeText={(t) => { setTelefono(t); clear('telefono'); }} error={errors.telefono} autoComplete="tel" />
+          <TextField label="Teléfono celular" icon="phone" placeholder="753 123 4567" keyboardType="phone-pad" maxLength={18} value={formatPhone(telefono)} onChangeText={(t) => { setTelefono(phoneDigitsFromInput(t)); clear('telefono'); }} error={errors.telefono} autoComplete="tel" />
           <TextField label="Confirma tu contraseña" icon="lock" password value={confirm} onChangeText={(t) => { setConfirm(t); clear('confirm'); }} error={errors.confirm} autoComplete="new-password" />
         </>
       ) : null}

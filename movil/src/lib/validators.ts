@@ -80,10 +80,67 @@ export function passwordIssues(value: string): string[] {
   return out;
 }
 
+// Los formatos de abajo son los mismos que valida el backend (backend/src/lib/validators.js): al cambiar uno hay que
+// cambiar el otro.
+
+export function normalizeEmail(value: string | null | undefined): string {
+  return String(value ?? '').trim().toLowerCase();
+}
+
+const EMAIL_LOCAL = /^[a-z0-9!#$%&'*+/=?^_`{|}~.-]+$/;
+const DNS_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+const DNS_TLD = /^(?:[a-z]{2,63}|xn--[a-z0-9-]{2,59})$/;
+
 export function isEmail(value: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(value ?? '').trim());
+  const email = normalizeEmail(value);
+  if (email.length > 254) return false;
+  const at = email.lastIndexOf('@');
+  if (at < 1 || email.indexOf('@') !== at) return false;
+  const local = email.slice(0, at);
+  const labels = email.slice(at + 1).split('.');
+  if (local.length > 64 || !EMAIL_LOCAL.test(local) || local.startsWith('.') || local.endsWith('.') || local.includes('..')) return false;
+  return labels.length >= 2 && labels.every((l) => DNS_LABEL.test(l)) && DNS_TLD.test(labels[labels.length - 1]);
+}
+
+// Teléfono de México a 10 dígitos: acepta espacios, guiones, paréntesis y el prefijo +52 / 52 / 521.
+export function normalizePhoneMx(value: string | null | undefined): string | null {
+  if (!/^[\d\s()+.-]+$/.test(String(value ?? ''))) return null;
+  let digits = onlyDigits(value);
+  if (digits.length === 13 && digits.startsWith('521')) digits = digits.slice(3);
+  else if (digits.length === 12 && digits.startsWith('52')) digits = digits.slice(2);
+  if (!/^[2-9]\d{9}$/.test(digits) || /^(\d)\1{9}$/.test(digits)) return null;
+  return digits;
 }
 
 export function isPhoneMx(value: string): boolean {
-  return onlyDigits(value).length === 10;
+  return normalizePhoneMx(value) !== null;
+}
+
+// Lo que va quedando en el campo mientras se escribe o se pega: solo dígitos, sin el prefijo del país, máximo 10.
+export function phoneDigitsFromInput(value: string | null | undefined): string {
+  let digits = onlyDigits(String(value ?? '').trim());
+  if (digits.length > 10) {
+    if (digits.startsWith('521') && digits.length === 13) digits = digits.slice(3);
+    else if (digits.startsWith('52') && digits.length === 12) digits = digits.slice(2);
+  }
+  return digits.slice(0, 10);
+}
+
+// 7531234567 → "753 123 4567"
+export function formatPhone(value: string | null | undefined): string {
+  const d = onlyDigits(value).slice(0, 10);
+  return [d.slice(0, 3), d.slice(3, 6), d.slice(6)].filter(Boolean).join(' ');
+}
+
+// Nombres y apellidos: letras, espacios, apóstrofo, punto y guion. Devuelve el texto limpio o null.
+export function normalizePersonName(value: string | null | undefined, max = 60): string | null {
+  const s = String(value ?? '').normalize('NFC').replace(/\s+/g, ' ').trim();
+  if (s.length < 2 || s.length > max) return null;
+  if (!/^\p{L}[\p{L}\p{M}' .-]*$/u.test(s) || !/\p{L}.*\p{L}/u.test(s)) return null;
+  return s;
+}
+
+// Quita al escribir lo que no puede ir en un nombre (números y símbolos).
+export function filterNameInput(value: string): string {
+  return String(value ?? '').replace(/[^\p{L}\p{M}' .-]/gu, '').replace(/\s{2,}/g, ' ');
 }

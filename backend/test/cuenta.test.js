@@ -257,3 +257,32 @@ test('eliminar cuenta exige contraseña y anonimiza los datos', async () => {
   const relogin = await api(server.url, 'POST', '/api/login', { body: { email: user.email, password: user.password } });
   assert.equal(relogin.status, 401);
 });
+
+test('registro: nombre con números o correo mal formado se rechazan con su campo', async () => {
+  const nombre = await api(server.url, 'POST', '/api/register', { form: registroForm({ nombre: 'Ana123' }).form });
+  assert.equal(nombre.status, 400);
+  assert.equal(nombre.body.field, 'nombre');
+  const correo = await api(server.url, 'POST', '/api/register', { form: registroForm({ email: 'ana..perez@prueba.test' }).form });
+  assert.equal(correo.status, 400);
+  assert.equal(correo.body.field, 'email');
+  const tel = await api(server.url, 'POST', '/api/register', { form: registroForm({ telefono: '0000000000' }).form });
+  assert.equal(tel.status, 400);
+  assert.equal(tel.body.field, 'telefono');
+});
+
+test('teléfono con +52 y espacios se guarda con 10 dígitos', async () => {
+  const user = await createUser();
+  const token = await login(server.url, user);
+  const res = await api(server.url, 'PUT', '/api/usuarios/perfil', { token, body: { telefono: '+52 753 123 4567' } });
+  assert.equal(res.status, 200);
+  const me = await api(server.url, 'GET', '/api/me', { token });
+  assert.equal(me.body.usuario.telefono, '7531234567');
+});
+
+test('perfil: un nombre con números o símbolos responde 400', async () => {
+  const user = await createUser();
+  const token = await login(server.url, user);
+  const res = await api(server.url, 'PUT', '/api/usuarios/perfil', { token, body: { nombre: 'Rosa_99' } });
+  assert.equal(res.status, 400);
+  assert.equal(res.body.field, 'nombre');
+});

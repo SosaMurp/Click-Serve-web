@@ -5,7 +5,7 @@ const { auth } = require('../middleware/auth');
 const { fail } = require('../lib/http');
 const { audit } = require('../lib/audit');
 const { sanitizeText } = require('../lib/sanitize');
-const { isPhoneMx, onlyDigits, maskClabe } = require('../lib/validators');
+const { normalizePhoneMx, normalizePersonName, onlyDigits, maskClabe } = require('../lib/validators');
 const { generateSecret, verifyTotp, otpauthUri } = require('../lib/totp');
 const { saveFile, uploader } = require('../lib/files');
 const { findUserById, publicUser } = require('../services/users');
@@ -27,20 +27,21 @@ router.put('/api/usuarios/perfil', auth, async (req, res) => {
   const locked = req.user.identidad_verificada;
   const identityLocked = () => fail(res, 409, 'IDENTITY_LOCKED', 'Tu nombre está ligado a tu identidad verificada. Si hay un error, escríbenos a soporte.', { field: 'nombre' });
   if (b.nombre !== undefined) {
-    const nombre = sanitizeText(b.nombre, 100);
-    if (!nombre) return fail(res, 400, 'VALIDATION_ERROR', 'El nombre no puede quedar vacío.', { field: 'nombre' });
+    const nombre = normalizePersonName(sanitizeText(b.nombre, 100));
+    if (!nombre) return fail(res, 400, 'VALIDATION_ERROR', 'Escribe tu nombre usando solo letras (2 a 60 caracteres).', { field: 'nombre' });
     if (locked && nombre !== req.user.nombre) return identityLocked();
     set('nombre', nombre);
   }
   if (b.apellido !== undefined || b.apellidos !== undefined) {
-    const apellido = sanitizeText(b.apellido ?? b.apellidos, 100);
-    if (!apellido) return fail(res, 400, 'VALIDATION_ERROR', 'Los apellidos no pueden quedar vacíos.', { field: 'apellido' });
+    const apellido = normalizePersonName(sanitizeText(b.apellido ?? b.apellidos, 100), 80);
+    if (!apellido) return fail(res, 400, 'VALIDATION_ERROR', 'Escribe tus apellidos usando solo letras (2 a 80 caracteres).', { field: 'apellido' });
     if (locked && apellido !== req.user.apellido) return identityLocked();
     set('apellido', apellido);
   }
   if (b.telefono !== undefined) {
-    if (!isPhoneMx(b.telefono)) return fail(res, 400, 'VALIDATION_ERROR', 'El teléfono debe tener 10 dígitos.', { field: 'telefono' });
-    set('telefono', onlyDigits(b.telefono));
+    const telefono = normalizePhoneMx(b.telefono);
+    if (!telefono) return fail(res, 400, 'VALIDATION_ERROR', 'Escribe un teléfono de 10 dígitos, por ejemplo 753 123 4567.', { field: 'telefono' });
+    set('telefono', telefono);
   }
   if (b.bio !== undefined) set('bio', sanitizeText(b.bio, 500) || null);
 

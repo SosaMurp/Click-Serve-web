@@ -6,6 +6,7 @@ import {
   useExpediente, useSuspendUser, useReactivateUser, useDeleteUser, descargarExpediente,
 } from '../../hooks/useAdminQueries'
 import MensajeModal from './MensajeModal'
+import { formatearTelefono } from '../../lib/formatos'
 import './modals.css'
 
 // Expediente real de la cuenta (RF-20, RF-31, RF-36) y acciones del administrador (RF-16, RF-17, RF-32, RF-33).
@@ -120,7 +121,7 @@ export default function TechProfileModal({ isOpen, onClose, userId }: TechProfil
                     {exp.verificado_sep && <Badge variant="info">CÉDULA SEP</Badge>}
                   </div>
                   <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-mid)' }}>
-                    {exp.correo} · {exp.telefono || 'Sin teléfono'} · Registro: {fecha(exp.fecha_registro)}
+                    {exp.correo} · {exp.telefono ? formatearTelefono(exp.telefono) : 'Sin teléfono'} · Registro: {fecha(exp.fecha_registro)}
                   </p>
                 </div>
               </div>

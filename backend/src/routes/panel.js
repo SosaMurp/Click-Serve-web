@@ -6,7 +6,7 @@ const { ROL, requireRole } = require('../middleware/roles');
 const { fail, HttpError } = require('../lib/http');
 const { audit } = require('../lib/audit');
 const { sanitizeText } = require('../lib/sanitize');
-const { isStrongPassword } = require('../lib/validators');
+const { isStrongPassword, isEmail, normalizeEmail, normalizePhoneMx, normalizePersonName } = require('../lib/validators');
 const realtime = require('../lib/realtime');
 const { sendPush } = require('../lib/push');
 const { deletionBlocker, anonymizeUser } = require('../services/bajas');
@@ -260,11 +260,15 @@ router.get('/api/admin/users', ...adminOnly, async (req, res) => {
 
 // RF-26: alta de coadministrador por un administrador (el registro público no crea administradores).
 router.post('/api/admin/co-admins', ...adminOnly, async (req, res) => {
-  const nombre = sanitizeText(req.body?.nombre, 100);
-  const apellido = sanitizeText(req.body?.apellidos ?? req.body?.apellido, 100);
-  const correo = String(req.body?.email || req.body?.correo || '').trim().toLowerCase();
+  const nombre = normalizePersonName(sanitizeText(req.body?.nombre, 100));
+  const apellido = normalizePersonName(sanitizeText(req.body?.apellidos ?? req.body?.apellido, 100), 80);
+  const correo = normalizeEmail(req.body?.email || req.body?.correo);
+  const telefonoRaw = req.body?.telefono;
+  const telefono = telefonoRaw ? normalizePhoneMx(telefonoRaw) : null;
   const password = String(req.body?.password || '');
-  if (!nombre || !apellido) return fail(res, 400, 'VALIDATION_ERROR', 'Escribe nombre y apellidos.', { field: 'nombre' });
+  if (!nombre || !apellido) return fail(res, 400, 'VALIDATION_ERROR', 'Escribe nombre y apellidos usando solo letras.', { field: 'nombre' });
+  if (!isEmail(correo)) return fail(res, 400, 'VALIDATION_ERROR', 'Escribe un correo electrónico válido.', { field: 'email' });
+  if (telefonoRaw && !telefono) return fail(res, 400, 'VALIDATION_ERROR', 'Escribe un teléfono de 10 dígitos, por ejemplo 753 123 4567.', { field: 'telefono' });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) return fail(res, 400, 'VALIDATION_ERROR', 'Escribe un correo válido.', { field: 'email' });
   if (!isStrongPassword(password)) {
     return fail(res, 400, 'WEAK_PASSWORD', 'La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número.', { field: 'password' });
@@ -273,7 +277,7 @@ router.post('/api/admin/co-admins', ...adminOnly, async (req, res) => {
     const { rows } = await db().query(
       `INSERT INTO usuarios (nombre, apellido, correo, contrasena, telefono, id_rol, estado, estado_cuenta, identidad_verificada)
        VALUES ($1, $2, $3, $4, $5, 3, 'APROBADO', 'Activo', true) RETURNING id_usuario`,
-      [nombre, apellido, correo, await bcrypt.hash(password, 10), sanitizeText(req.body?.telefono, 15) || null]
+      [nombre, apellido, correo, await bcrypt.hash(password, 10), telefono]
     );
     audit(req, 'COADMIN_CREADO', 'usuario', rows[0].id_usuario, { correo });
     res.status(201).json({ mensaje: 'Coadministrador registrado. Ya puede iniciar sesión en el panel.', id_usuario: rows[0].id_usuario });

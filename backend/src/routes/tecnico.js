@@ -5,6 +5,7 @@ const { ROL, requireRole, requireApproved } = require('../middleware/roles');
 const { fail } = require('../lib/http');
 const { audit } = require('../lib/audit');
 const { sanitizeText } = require('../lib/sanitize');
+const { normalizeCedula } = require('../lib/validators');
 const { saveFile, uploader, signFileUrl, DOCUMENT_TYPES } = require('../lib/files');
 const { parseCoord, haversineKm, etaMinutes } = require('../lib/geo');
 const realtime = require('../lib/realtime');
@@ -287,8 +288,8 @@ const normalize = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, ''
 // Consulta al Registro Nacional de Profesionistas con timeout de 5 s (RNF-36). Nunca aprueba por formato.
 // Solo con identidad verificada: el nombre contra el que se compara la cédula debe ser el del INE revisado.
 router.post('/api/tecnicos/validar-cedula', ...techOnly, requireApproved, async (req, res) => {
-  const cedula = String(req.body?.cedula || '').trim();
-  if (!/^\d{7,8}$/.test(cedula)) return fail(res, 400, 'VALIDATION_ERROR', 'La cédula profesional tiene 7 u 8 dígitos.', { field: 'cedula' });
+  const cedula = normalizeCedula(req.body?.cedula);
+  if (!cedula) return fail(res, 400, 'VALIDATION_ERROR', 'La cédula profesional tiene 7 u 8 dígitos.', { field: 'cedula' });
   const url = process.env.SEP_URL || 'https://www.cedulaprofesional.sep.gob.mx/cedula/buscaCedulaJson.action';
 
   let items;

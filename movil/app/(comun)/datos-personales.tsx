@@ -5,7 +5,7 @@ import { goBack } from '@/src/lib/nav';
 import { AppBar, Avatar, Button, color, Icon, Screen, Sheet, space, Surface, Text, TextField } from '@/src/design';
 import { ApiError, errorMessage, fileUrl } from '@/src/api/client';
 import { cuentaApi } from '@/src/api/endpoints';
-import { isPhoneMx, onlyDigits } from '@/src/lib/validators';
+import { filterNameInput, formatPhone, isPhoneMx, normalizePersonName, phoneDigitsFromInput } from '@/src/lib/validators';
 import { formatDate } from '@/src/lib/format';
 import { hapticSuccess, MediaPermissionError, pickImages } from '@/src/lib/media';
 import { useSession } from '@/src/state/session';
@@ -28,7 +28,7 @@ export default function DatosPersonales() {
 
   const dirty = f.nombre !== user.nombre || f.apellido !== user.apellido || f.telefono !== (user.telefono || '') || f.bio !== (user.bio || '');
   const set = (k: Field) => (v: string) => {
-    setF((x) => ({ ...x, [k]: k === 'telefono' ? onlyDigits(v).slice(0, 10) : v }));
+    setF((x) => ({ ...x, [k]: k === 'telefono' ? phoneDigitsFromInput(v) : k === 'nombre' || k === 'apellido' ? filterNameInput(v) : v }));
     setErrors((e) => ({ ...e, [k]: undefined }));
   };
 
@@ -51,9 +51,9 @@ export default function DatosPersonales() {
   async function save() {
     const e: Partial<Record<Field, string>> = {};
     // Con identidad verificada el nombre no se muestra como editable ni se envía: no se valida.
-    if (!nameLocked && f.nombre.trim().length < 2) e.nombre = 'Escribe tu nombre.';
-    if (!nameLocked && f.apellido.trim().length < 2) e.apellido = 'Escribe tu apellido.';
-    if (f.telefono && !isPhoneMx(f.telefono)) e.telefono = 'Escribe un teléfono de 10 dígitos.';
+    if (!nameLocked && !normalizePersonName(f.nombre)) e.nombre = 'Escribe tu nombre, solo letras.';
+    if (!nameLocked && !normalizePersonName(f.apellido, 80)) e.apellido = 'Escribe tus apellidos, solo letras.';
+    if (f.telefono && !isPhoneMx(f.telefono)) e.telefono = 'Escribe un teléfono de 10 dígitos, por ejemplo 753 123 4567.';
     setErrors(e);
     if (Object.keys(e).length) return;
     setSaving(true);
@@ -90,7 +90,7 @@ export default function DatosPersonales() {
           <TextField label="Apellido" value={f.apellido} onChangeText={set('apellido')} error={errors.apellido} maxLength={60} autoComplete="family-name" />
         </>
       )}
-      <TextField label="Teléfono" value={f.telefono} onChangeText={set('telefono')} error={errors.telefono} keyboardType="phone-pad" icon="phone" maxLength={10} autoComplete="tel" helper="Lo ve tu técnico o cliente solo durante un servicio activo." />
+      <TextField label="Teléfono" value={formatPhone(f.telefono)} onChangeText={set('telefono')} error={errors.telefono} keyboardType="phone-pad" icon="phone" maxLength={18} autoComplete="tel" helper="Lo ve tu técnico o cliente solo durante un servicio activo." />
       {user.rol === 'tecnico' ? (
         <TextField label="Sobre mí" value={f.bio} onChangeText={set('bio')} multiline maxLength={500} counter placeholder="Experiencia, especialidades y forma de trabajo" />
       ) : null}
