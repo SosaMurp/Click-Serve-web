@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 
 interface AdminUser {
   id_usuario: number
@@ -20,7 +20,10 @@ interface AuthState {
   updateToken: (token: string) => void
 }
 
-// Store principal de autenticación usando Zustand.
+const STORAGE_KEY = 'admin-auth'
+
+// Una sola copia de la sesión, en sessionStorage: dura lo que la pestaña y no queda en el disco
+// del equipo al cerrar el navegador (el token de administrador da acceso a datos personales).
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
@@ -28,39 +31,27 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       isAuthenticated: false,
 
-      // Función que se ejecuta cuando el login (y el 2FA) fue exitoso
-      login: (user, token) => {
-        localStorage.setItem('admin_token', token)
-        // Limpieza de historial sensible (RNF-40)
-        if (typeof window !== 'undefined' && window.history) {
-          window.history.replaceState(null, '', '/dashboard')
-        }
-        set({ user, token, isAuthenticated: true })
-      },
+      login: (user, token) => set({ user, token, isAuthenticated: true }),
 
-      // Actualizar token sin cerrar sesión (ej. tras cambio de contraseña)
-      updateToken: (token: string) => {
-        localStorage.setItem('admin_token', token)
-        set({ token })
-      },
+      // Tras cambiar la contraseña el servidor entrega un token nuevo para esta sesión.
+      updateToken: (token) => set({ token }),
 
-      // Función que se ejecuta para cerrar la sesión
-      logout: () => {
-        localStorage.removeItem('admin_token')
-        localStorage.removeItem('admin_user')
-        localStorage.clear()
-        sessionStorage.clear()
-
-        if (typeof window !== 'undefined' && window.history) {
-          window.history.replaceState(null, '', '/login')
-        }
-
-        set({ user: null, token: null, isAuthenticated: false })
-      },
+      // Solo borra el estado local; el cierre completo (revocar en el servidor, limpiar caché) está en lib/sesion.
+      logout: () => set({ user: null, token: null, isAuthenticated: false }),
     }),
     {
-      name: 'admin-auth',
+      name: STORAGE_KEY,
+      storage: createJSONStorage(() => sessionStorage),
       partialize: (state) => ({ user: state.user, token: state.token, isAuthenticated: state.isAuthenticated }),
     }
   )
 )
+
+// Limpia restos de versiones anteriores, que guardaban el token en localStorage.
+try {
+  localStorage.removeItem(STORAGE_KEY)
+  localStorage.removeItem('admin_token')
+  localStorage.removeItem('admin_user')
+} catch {
+  /* almacenamiento bloqueado: nada que limpiar */
+}

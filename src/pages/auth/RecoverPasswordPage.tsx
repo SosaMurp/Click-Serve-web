@@ -4,6 +4,8 @@ import { ArrowLeft, KeyRound, CheckCircle, Mail, Eye, EyeOff } from 'lucide-reac
 import AuthLayout from '@components/layout/AuthLayout'
 import { Button, Input, Badge } from '@components/ui'
 import { requestRecovery, verifyRecovery, resetPassword } from '@api/auth'
+import { contrasenaFuerte, correoValido } from '@/lib/formatos'
+import { mensajeDeError, codigoDeError } from '@/lib/errores'
 import './auth.css'
 
 export default function RecoverPasswordPage() {
@@ -19,13 +21,17 @@ export default function RecoverPasswordPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  // Token de un solo uso que entrega el servidor al verificar el código. Se conserva si la contraseña nueva
+  // es rechazada, para no gastar el código (vale 10 minutos).
+  const [resetToken, setResetToken] = useState<string | null>(null)
+  const CODE_LENGTH = 6
 
   // Paso 1: Enviar código al correo (Anti-User Enumeration)
   const handleRequest = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     const cleanEmail = email.trim().toLowerCase()
-    if (!cleanEmail || !cleanEmail.includes('@')) {
+    if (!correoValido(cleanEmail)) {
       setError('Por favor ingresa un correo electrónico válido.')
       return
     }
@@ -36,24 +42,23 @@ export default function RecoverPasswordPage() {
       setMessage(res?.mensaje || `Si el correo está registrado y activo, se ha enviado un código a ${cleanEmail}`)
       setStep('reset')
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
-      setError(msg || 'No se pudo procesar la solicitud de recuperación.')
+      setError(mensajeDeError(err, 'No se pudo procesar la solicitud de recuperación.'))
     } finally {
       setLoading(false)
     }
   }
 
-  // Paso 2: Verificar código de 4 dígitos y guardar nueva contraseña
+  // Paso 2: verificar el código de 6 dígitos y guardar la nueva contraseña
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
 
-    if (code.length !== 4) {
-      setError('El código de seguridad debe tener 4 dígitos.')
+    if (!resetToken && code.length !== CODE_LENGTH) {
+      setError(`El código de seguridad tiene ${CODE_LENGTH} dígitos.`)
       return
     }
-    if (newPassword.length < 8) {
-      setError('La nueva clave debe tener al menos 8 caracteres.')
+    if (!contrasenaFuerte(newPassword)) {
+      setError('La contraseña debe tener de 8 a 64 caracteres, con mayúscula, minúscula y número.')
       return
     }
     if (newPassword !== confirmPassword) {
@@ -62,15 +67,24 @@ export default function RecoverPasswordPage() {
     }
 
     setLoading(true)
+    const correo = email.trim().toLowerCase()
+    let token = resetToken
     try {
-      // 1. Verificar el código: el servidor devuelve un reset_token de un solo uso
-      const { reset_token } = await verifyRecovery(email.trim().toLowerCase(), code.trim())
-      // 2. Restablecer clave con ese reset_token
-      await resetPassword(email.trim().toLowerCase(), reset_token, newPassword)
+      // 1. Verificar el código (una sola vez): el servidor devuelve un reset_token de un solo uso
+      if (!token) {
+        token = (await verifyRecovery(correo, code.trim())).reset_token
+        setResetToken(token)
+      }
+      // 2. Restablecer la clave con ese reset_token
+      await resetPassword(correo, token, newPassword)
       setStep('success')
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
-      setError(msg || 'Código inválido o error al restablecer la contraseña.')
+      // Si el token venció, hay que pedir un código nuevo.
+      if (codigoDeError(err) === 'RESET_NOT_VERIFIED') {
+        setResetToken(null)
+        setCode('')
+      }
+      setError(mensajeDeError(err, 'Código inválido o error al restablecer la contraseña.'))
     } finally {
       setLoading(false)
     }
@@ -82,6 +96,8 @@ export default function RecoverPasswordPage() {
     setLoading(true)
     try {
       await requestRecovery(email.trim().toLowerCase())
+      setResetToken(null)
+      setCode('')
       setMessage('Si el correo está registrado y activo, se ha enviado un nuevo código de recuperación.')
     } catch {
       setError('Error al reenviar el código. Intenta más tarde.')
@@ -109,7 +125,7 @@ export default function RecoverPasswordPage() {
 
           <form className="auth-form" onSubmit={handleRequest} noValidate style={{ marginTop: 20 }}>
             <p className="auth-hint" style={{ marginBottom: 16 }}>
-              Ingresa el correo registrado asociado a tu cuenta de operador. Si el correo cuenta con un rol asignado y activo, te enviaremos un código temporal de 4 dígitos.
+              Ingresa el correo registrado asociado a tu cuenta de operador. Si el correo cuenta con un rol asignado y activo, te enviaremos un código temporal de 6 dígitos.
             </p>
 
             <Input
@@ -143,61 +159,71 @@ export default function RecoverPasswordPage() {
             <p className="auth-form-subtitle">VALIDACIÓN DE ACCESO PARA {email}</p>
           </div>
 
-          <Badge variant="online" dot>CÓDIGO DE 4 DÍGITOS ACTIVO</Badge>
+          <Badge variant="online" dot>{resetToken ? 'CÓDIGO VERIFICADO' : 'CÓDIGO DE 6 DÍGITOS ACTIVO'}</Badge>
 
           {message && (
-            <p className="auth-hint" style={{ marginTop: 12, color: 'var(--accent-teal)' }}>
+            <p className="auth-hint" style={{ marginTop: 12, color: 'var(--success)' }}>
               ✓ {message}
             </p>
           )}
 
           <form className="auth-form" onSubmit={handleReset} noValidate style={{ marginTop: 16 }}>
-            <Input
-              label="Código de Seguridad (4 dígitos)"
-              type="text"
-              placeholder="1234"
-              value={code}
-              onChange={e => {
-                const val = e.target.value.replace(/\D/g, '').slice(0, 4)
-                setCode(val)
-                setError('')
-              }}
-              iconRight={<KeyRound size={15} />}
-              required
-              autoFocus
-            />
+            {!resetToken && (
+              <Input
+                label="Código de seguridad (6 dígitos)"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="123456"
+                maxLength={CODE_LENGTH}
+                value={code}
+                onChange={e => {
+                  setCode(e.target.value.replace(/\D/g, '').slice(0, CODE_LENGTH))
+                  setError('')
+                }}
+                iconRight={<KeyRound size={15} />}
+                required
+                autoFocus
+              />
+            )}
 
             <div className="field">
-              <label className="field-label">Nueva Clave de Acceso</label>
+              <label className="field-label" htmlFor="nueva-clave">Nueva clave de acceso</label>
               <div className="field-wrap">
                 <input
                   className="field-input pr-icon"
                   type={showPass ? 'text' : 'password'}
-                  placeholder="Mínimo 8 caracteres"
+                  id="nueva-clave"
+                  autoComplete="new-password"
+                  placeholder="8+ caracteres, mayúscula, minúscula y número"
                   value={newPassword}
                   onChange={e => { setNewPassword(e.target.value); setError('') }}
                   required
                 />
-                <span className="field-icon field-icon--right" onClick={() => setShowPass(!showPass)}>
+                <button type="button" className="field-icon field-icon--right" onClick={() => setShowPass(!showPass)}
+                  aria-label={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'} aria-pressed={showPass}>
                   {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
-                </span>
+                </button>
               </div>
             </div>
 
             <div className="field">
-              <label className="field-label">Confirmar Nueva Clave</label>
+              <label className="field-label" htmlFor="confirmar-clave">Confirmar nueva clave</label>
               <div className="field-wrap">
                 <input
                   className="field-input pr-icon"
                   type={showPass ? 'text' : 'password'}
+                  id="confirmar-clave"
+                  autoComplete="new-password"
                   placeholder="Repite la nueva clave"
                   value={confirmPassword}
                   onChange={e => { setConfirmPassword(e.target.value); setError('') }}
                   required
                 />
-                <span className="field-icon field-icon--right" onClick={() => setShowPass(!showPass)}>
+                <button type="button" className="field-icon field-icon--right" onClick={() => setShowPass(!showPass)}
+                  aria-label={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'} aria-pressed={showPass}>
                   {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
-                </span>
+                </button>
               </div>
             </div>
 
@@ -227,7 +253,7 @@ export default function RecoverPasswordPage() {
       {step === 'success' && (
         <div className="auth-success-wrap" style={{ textAlign: 'center', padding: '20px 0' }}>
           <div className="auth-success-icon" style={{ margin: '0 auto 16px' }}>
-            <CheckCircle size={36} color="var(--accent-teal)" />
+            <CheckCircle size={36} color="var(--success)" />
           </div>
           <h2 className="auth-form-title">¡Clave Restablecida!</h2>
           <p className="auth-form-subtitle" style={{ margin: '8px 0 24px' }}>

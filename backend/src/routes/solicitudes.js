@@ -121,10 +121,10 @@ router.get('/api/solicitudes/tecnico', auth, requireRole(ROL.TECNICO), async (re
     : 'NULL::numeric';
   const params = loc.latitud != null ? [me, loc.latitud, loc.longitud] : [me];
 
-  const nuevasWhere = S.TECH_WHERE.nuevas;
+  const nuevasWhere = S.nuevasWhere(req.user.aprobado);
   const enCursoWhere = S.TECH_WHERE.en_curso;
   const historialWhere = S.TECH_WHERE.historial;
-  const contadores = await S.techCounters(me);
+  const contadores = await S.techCounters(me, undefined, { aprobado: req.user.aprobado });
 
   let where;
   let order;

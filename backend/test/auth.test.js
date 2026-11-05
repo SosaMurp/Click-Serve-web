@@ -49,6 +49,18 @@ test('modo mantenimiento responde 503 MAINTENANCE', async () => {
   }
 });
 
+test('en mantenimiento el administrador todavía puede iniciar sesión en el panel para apagarlo', async () => {
+  process.env.MAINTENANCE = '1';
+  try {
+    const admin = await createUser({ rol: 3 });
+    const res = await api(server.url, 'POST', '/api/login-admin', { body: { email: admin.email, password: admin.password } });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.requiere2FA, true);
+  } finally {
+    delete process.env.MAINTENANCE;
+  }
+});
+
 test('el login se limita tras demasiados intentos fallidos', async () => {
   const user = await createUser();
   let last;

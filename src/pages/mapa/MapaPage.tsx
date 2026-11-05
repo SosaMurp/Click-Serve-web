@@ -12,7 +12,7 @@ import ServiceDetailModal from '@components/modals/ServiceDetailModal'
 import { useServiciosUbicados } from '@hooks/useServicios'
 import { useActividad, useDashboardStats } from '@hooks/useDashboard'
 import { getServicioById, type ServicioUbicado } from '@api/servicios'
-import type { RecentService } from '@/types/dashboard'
+import type { ServicioDetalle } from '@/types/servicios'
 import 'leaflet/dist/leaflet.css'
 import './mapa.css'
 
@@ -104,7 +104,7 @@ export default function MapaPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [flyTarget, setFlyTarget] = useState<[number, number] | null>(null)
   const [flyZoom, setFlyZoom] = useState<number | undefined>(undefined)
-  const [detalle, setDetalle] = useState<RecentService | null>(null)
+  const [detalle, setDetalle] = useState<ServicioDetalle | null>(null)
   const [detalleError, setDetalleError] = useState('')
 
   const nodos = useMemo(
@@ -278,10 +278,6 @@ export default function MapaPage() {
           isOpen
           onClose={() => setDetalle(null)}
           serviceId={detalle.id_servicio}
-          title={detalle.titulo}
-          clientName={`${detalle.cliente_nombre ?? ''} ${detalle.cliente_apellido ?? ''}`.trim() || 'Sin cliente'}
-          techName={detalle.tecnico_nombre ? `${detalle.tecnico_nombre} ${detalle.tecnico_apellido ?? ''}` : 'Sin asignar'}
-          status={detalle.estatus}
         />
       )}
     </div>

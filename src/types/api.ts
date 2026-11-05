@@ -12,7 +12,7 @@ export interface UsuarioRow {
   id_expediente?: number | null
   especialidad?: string | null
   estatus_expediente?: string | null
-  metricas?: any
+  metricas?: { calificacion?: number | string | null; trabajos?: number | null; cancelados?: number | null }
   identidad_verificada?: boolean
   fecha_registro?: string
 }
@@ -23,8 +23,8 @@ export interface ExpedienteTecnicoRow {
   especialidad: string
   estatus: 'Pendiente' | 'En Revisión' | 'Aprobado' | 'Rechazado'
   fecha_solicitud: string
-  metricas?: any
-  documentos?: any
+  metricas?: { calificacion?: number | string | null; trabajos?: number | null; cancelados?: number | null }
+  documentos?: unknown
   nombre: string
   apellido: string
   correo: string

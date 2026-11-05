@@ -33,7 +33,7 @@ export default function TecnicosPage() {
   }, [location.key])
   const [filters, setFilters] = useState<Filtros>(SIN_FILTROS)
   const setFiltro = (k: keyof Filtros, v: string) => setFilters(f => ({ ...f, [k]: v }))
-  const [selectedItem, setSelectedItem] = useState<any>(null)
+  const [selectedItem, setSelectedItem] = useState<{ realId: number } | null>(null)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
 
@@ -52,7 +52,7 @@ export default function TecnicosPage() {
       email: u.correo,
       specialty: u.especialidad || (tab === 'clientes' ? 'Cliente' : tab === 'admins' ? 'Administrador' : 'Sin especialidades'),
       status,
-      statusV: status === 'ACTIVO' ? 'success' : status === 'EN REVISIÓN' ? 'warning' : 'danger',
+      statusV: (status === 'ACTIVO' ? 'success' : status === 'EN REVISIÓN' ? 'warning' : 'danger') as 'success' | 'warning' | 'danger',
       rating: u.metricas?.calificacion || null,
       jobs: u.metricas?.trabajos ?? null,
       verificado: !!u.identidad_verificada,
@@ -69,7 +69,7 @@ export default function TecnicosPage() {
     })
   })
 
-  const handleOpenProfile = (row: any) => {
+  const handleOpenProfile = (row: (typeof data)[number]) => {
     setSelectedItem(row)
     setIsProfileOpen(true)
   }
@@ -159,7 +159,7 @@ export default function TecnicosPage() {
                   </td>
                   <td><span className="dash-table-spec">{row.specialty}</span></td>
                   <td>
-                    <Badge variant={row.statusV as any}>▲ {row.status}</Badge>
+                    <Badge variant={row.statusV}>▲ {row.status}</Badge>
                   </td>
                   <td>
                     {row.rating ? (

@@ -56,3 +56,7 @@
 @media (max-width: 720px) {
   .val-stats-grid { grid-template-columns: 1fr; }
 }
+
+/* La celda del técnico abre su expediente: es un botón para poder usarla con teclado */
+.val-tech-btn { background: none; border: none; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.val-tech-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }

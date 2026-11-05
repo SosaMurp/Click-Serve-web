@@ -7,13 +7,13 @@ import {
 } from "recharts"
 import {
   Download, Users, Briefcase, ShieldCheck, Wallet, CheckCircle2, CalendarDays,
-  Eye, Pencil, RefreshCw, AlertTriangle, WifiOff, ArrowUpRight,
+  Eye, XCircle, RefreshCw, AlertTriangle, WifiOff, ArrowUpRight,
   TrendingUp, TrendingDown, Activity, PieChart as PieIcon, Award,
 } from "lucide-react"
 import { Badge } from "@components/ui"
 import ReportGeneratorModal from "@components/modals/ReportGeneratorModal"
 import ServiceDetailModal from "@components/modals/ServiceDetailModal"
-import UpdateServiceStatusModal from "@components/modals/UpdateServiceStatusModal"
+import CancelServiceModal from "@components/modals/CancelServiceModal"
 import {
   useDashboardStats,
   useServiciosMes,
@@ -22,6 +22,7 @@ import {
   useEspecialidadStats,
 } from "@hooks/useDashboard"
 import type { RecentService, ActividadItem } from "@/types/dashboard"
+import { esErrorDeRed, mensajeDeError } from "@/lib/errores"
 import "./dashboard.css"
 
 // ── Paleta (azul marino + naranja de la app móvil, sin neón) ────────────────
@@ -229,7 +230,10 @@ export default function DashboardPage() {
   const actividad = useActividad()
   const especialidades = useEspecialidadStats()
 
-  const hasAnyError = stats.isError || mes.isError || recents.isError
+  const consultas = [stats, mes, recents, actividad, especialidades]
+  const primerError = consultas.find(q => q.isError)?.error
+  const hasAnyError = Boolean(primerError)
+  const sinRed = esErrorDeRed(primerError)
   const pendientes = parseNum(stats.data?.validaciones_pendientes)
   const totalEsp = (Array.isArray(especialidades.data) ? especialidades.data : []).reduce((acc, e) => acc + parseNum(e.total), 0)
 
@@ -266,9 +270,13 @@ export default function DashboardPage() {
 
       {hasAnyError && (
         <div className="db-error-banner" role="alert">
-          <WifiOff size={16} />
-          <span>No se pudo cargar la información. Verifica tu conexión con el servidor.</span>
-          <button className="db-retry-btn" onClick={() => { stats.refetch(); mes.refetch(); recents.refetch() }}>
+          {sinRed ? <WifiOff size={16} /> : <AlertTriangle size={16} />}
+          <span>
+            {sinRed
+              ? 'No hay conexión con el servidor. Revisa tu red o que el backend esté encendido.'
+              : `Parte del tablero no se pudo cargar: ${mensajeDeError(primerError, 'error del servidor.')}`}
+          </span>
+          <button className="db-retry-btn" onClick={() => consultas.forEach(q => { if (q.isError) q.refetch() })}>
             <RefreshCw size={13} /> Reintentar
           </button>
         </div>
@@ -478,14 +486,16 @@ export default function DashboardPage() {
                     <td className="db-muted">{fmtRelTime(srv.fecha_creacion)}</td>
                     <td>
                       <div className="db-row-actions">
-                        <button id={`btn-ver-srv-${srv.id_servicio}`} className="db-icon-btn" title="Ver detalle"
+                        <button id={`btn-ver-srv-${srv.id_servicio}`} className="db-icon-btn" title="Ver detalle" aria-label={`Ver detalle de ${srv.codigo}`}
                           onClick={() => { setSelectedService(srv); setIsDetailOpen(true) }}>
                           <Eye size={15} />
                         </button>
-                        <button id={`btn-resolver-srv-${srv.id_servicio}`} className="db-icon-btn" title="Cambiar estado"
-                          onClick={() => { setSelectedService(srv); setIsStatusModalOpen(true) }}>
-                          <Pencil size={14} />
-                        </button>
+                        {(srv.estatus === 'Pendiente' || srv.estatus === 'En Curso') && (
+                          <button id={`btn-cancelar-srv-${srv.id_servicio}`} className="db-icon-btn" title="Cancelar sin cargo" aria-label={`Cancelar ${srv.codigo} sin cargo`}
+                            onClick={() => { setSelectedService(srv); setIsStatusModalOpen(true) }}>
+                            <XCircle size={14} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -505,22 +515,14 @@ export default function DashboardPage() {
             isOpen={isDetailOpen}
             onClose={() => setIsDetailOpen(false)}
             serviceId={selectedService.id_servicio}
-            title={selectedService.titulo}
-            clientName={`${selectedService.cliente_nombre} ${selectedService.cliente_apellido}`}
-            techName={selectedService.tecnico_nombre ? `${selectedService.tecnico_nombre} ${selectedService.tecnico_apellido ?? ''}` : 'Sin asignar'}
-            status={selectedService.estatus}
-            onStatusUpdated={() => {
-              // React Query invalidará automáticamente las listas
-            }}
           />
-          <UpdateServiceStatusModal
+          <CancelServiceModal
             isOpen={isStatusModalOpen}
             onClose={() => setIsStatusModalOpen(false)}
             serviceId={selectedService.id_servicio}
             serviceCode={selectedService.codigo}
             serviceTitle={selectedService.titulo}
-            currentStatus={selectedService.estatus}
-            clientName={`${selectedService.cliente_nombre} ${selectedService.cliente_apellido}`}
+            clientName={`${selectedService.cliente_nombre ?? ''} ${selectedService.cliente_apellido ?? ''}`.trim() || undefined}
           />
         </>
       )}

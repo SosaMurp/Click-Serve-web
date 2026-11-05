@@ -3,17 +3,42 @@ import { Download, Clock, Wallet, Percent, X, Check } from 'lucide-react'
 import { StatCard } from '@components/ui'
 import WithdrawalDetailModal from '@components/modals/WithdrawalDetailModal'
 import './finanzas.css'
+import { toast } from '@components/ui/Toaster'
 
 import { useWithdrawals, useApproveWithdrawal, useRejectWithdrawal, usePlatformSettings } from '../../hooks/useAdminQueries'
 import { useDashboardStats } from '@hooks/useDashboard'
+import type { SolicitudRetiroRow } from '../../types/api'
 
 const fmtMXN = (n: number) =>
   new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n)
 
+function aRetiro(r: SolicitudRetiroRow) {
+  return {
+    realId: r.id_retiro,
+    req: r.folio_trx || `#${r.id_retiro}`,
+    estado: r.estado,
+    motivoRechazo: r.motivo_rechazo,
+    date: new Date(r.fecha_solicitud).toLocaleString(),
+    name: `${r.nombre} ${r.apellido}`,
+    techId: `ID: #TEC-${r.id_usuario}`,
+    bank: r.banco || 'Desconocido',
+    // La CLABE llega enmascarada desde el servidor (RNF-09)
+    clabe: String(r.clabe || 'No especificada'),
+    amount: `$${Number(r.monto).toFixed(2)}`
+  }
+}
+type Retiro = ReturnType<typeof aRetiro>
+
+// Celda CSV segura: comillas escapadas y sin fórmulas (=, +, -, @) que Excel ejecutaría al abrir el archivo.
+const celdaCsv = (v: unknown) => {
+  const t = String(v ?? '')
+  return `"${(/^[=+\-@\t\r]/.test(t) ? `'${t}` : t).replace(/"/g, '""')}"`
+}
+
 export default function FinanzasPage() {
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [filter, setFilter] = useState<'todos' | 'pendientes'>('pendientes')
-  const [selectedWithdrawal, setSelectedWithdrawal] = useState<any | null>(null)
+  const [selectedWithdrawal, setSelectedWithdrawal] = useState<Retiro | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   const statusFilter = filter === 'pendientes' ? 'Pendiente' : undefined
@@ -29,20 +54,7 @@ export default function FinanzasPage() {
   const ingresosHoy = Number(stats.data?.ingresos_hoy ?? 0)
   const comisionPct = Number(settings.data?.comision_porcentaje ?? 0)
 
-  const WITHDRAWALS = (retirosData || []).map(r => ({
-    realId: r.id_retiro,
-    req: r.folio_trx || `#${r.id_retiro}`,
-    estado: r.estado,
-    motivoRechazo: r.motivo_rechazo,
-    date: new Date(r.fecha_solicitud).toLocaleString(),
-    name: `${r.nombre} ${r.apellido}`,
-    techId: `ID: #TEC-${r.id_usuario}`,
-    bank: r.banco || 'Desconocido',
-    bankColor: '#1565c0', // Using a default generic color for now
-    // La CLABE llega enmascarada desde el servidor (RNF-09)
-    clabe: String(r.clabe || 'No especificada'),
-    amount: `$${Number(r.monto).toFixed(2)}`
-  }))
+  const WITHDRAWALS: Retiro[] = (retirosData || []).map(aRetiro)
 
   // La selección guarda el id del retiro, no su posición: si la lista cambia (otro administrador procesa uno)
   // no queda apuntando a otra fila.
@@ -58,30 +70,24 @@ export default function FinanzasPage() {
   const toggleAll = () => setSelected(todosMarcados ? new Set() : new Set(pendientesIds))
 
   const handleApproveBatch = async () => {
-    try {
-      const selectedIds = seleccionados
-      // Uno por uno: si alguno ya fue procesado, los demás siguen y se informa cuántos fallaron
-      const results = await Promise.allSettled(selectedIds.map(id => approveMutation.mutateAsync(id)))
-      const fallidos = results.filter(r => r.status === 'rejected').length
-      alert(fallidos === 0
-        ? `Se autorizaron ${selectedIds.length} retiros.`
-        : `Se autorizaron ${selectedIds.length - fallidos} retiros; ${fallidos} no se pudieron procesar.`)
-      setSelected(new Set())
-    } catch (e) {
-       console.error("Error batch approving withdrawals", e)
-       alert("Ocurrió un error al aprobar en lote")
-    }
+    const selectedIds = seleccionados
+    // Uno por uno: si alguno ya fue procesado, los demás siguen y se informa cuántos fallaron
+    const results = await Promise.allSettled(selectedIds.map(id => approveMutation.mutateAsync(id)))
+    const fallidos = results.filter(r => r.status === 'rejected').length
+    if (fallidos === 0) toast.success(`Se autorizaron ${selectedIds.length} retiros.`)
+    else toast.error(`Se autorizaron ${selectedIds.length - fallidos} retiros; ${fallidos} no se pudieron procesar (quizá otro administrador ya los atendió).`)
+    setSelected(new Set())
   }
 
-  const handleOpenDetail = (row: any) => {
+  const handleOpenDetail = (row: Retiro) => {
     setSelectedWithdrawal(row)
     setIsModalOpen(true)
   }
 
   const handleExportCSV = () => {
-    const csvHeader = "Solicitud,Fecha,Técnico,Banco,CLABE,Monto\n"
-    const csvRows = WITHDRAWALS.map(w => `${w.req},${w.date},"${w.name}",${w.bank},${w.clabe},"${w.amount}"`).join("\n")
-    const blob = new Blob([csvHeader + csvRows], { type: 'text/csv' })
+    const csvHeader = ['Solicitud', 'Fecha', 'Técnico', 'Banco', 'CLABE', 'Monto'].map(celdaCsv).join(',') + '\n'
+    const csvRows = WITHDRAWALS.map(w => [w.req, w.date, w.name, w.bank, w.clabe, w.amount].map(celdaCsv).join(',')).join('\n')
+    const blob = new Blob(['﻿' + csvHeader + csvRows], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -183,7 +189,7 @@ export default function FinanzasPage() {
                   </td>
                   <td>
                     <div className="fin-bank-cell">
-                      <div className="fin-bank-logo" style={{ background: row.bankColor }}>
+                      <div className="fin-bank-logo">
                         {getBankInitials(row.bank)}
                       </div>
                       <div>

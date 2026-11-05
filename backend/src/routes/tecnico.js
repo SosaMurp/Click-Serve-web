@@ -115,7 +115,7 @@ router.get('/api/tecnico/resumen', ...techOnly, async (req, res) => {
        FROM usuarios u WHERE u.id_usuario = $1`,
       [me]
     ),
-    S.techCounters(me),
+    S.techCounters(me, undefined, { aprobado: req.user.aprobado }),
   ]);
   const r = stats.rows[0];
   res.json({

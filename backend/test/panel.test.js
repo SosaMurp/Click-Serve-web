@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { resetDb, startServer, createUser, api, login, getPool, closePool } = require('./helpers');
+const { outbox } = require('../src/lib/mailer');
 
 let server;
 test.before(async () => { await resetDb(); server = await startServer(); });
@@ -25,11 +26,15 @@ test('el panel inicia sesión con código por correo y recibe el perfil del admi
   const paso1 = await api(server.url, 'POST', '/api/login-admin', { body: { email: admin.email, password: admin.password } });
   assert.equal(paso1.status, 200);
   assert.equal(paso1.body.requiere2FA, true);
+  // El código viaja por correo (outbox en pruebas); en la base solo queda su HMAC.
+  const correo = outbox.filter((m) => m.to === admin.email).at(-1);
   const { rows } = await getPool().query(
     "SELECT token FROM tokens_temporales WHERE id_usuario = $1 AND tipo_accion = 'login_admin' AND estado_uso = 'sin usar'",
     [admin.id]
   );
-  const paso2 = await api(server.url, 'POST', '/api/verify-login-admin', { body: { email: admin.email, token: rows[0].token } });
+  assert.notEqual(rows[0].token, correo.code, 'el código no debe guardarse en claro');
+  assert.equal(rows[0].token.length, 64);
+  const paso2 = await api(server.url, 'POST', '/api/verify-login-admin', { body: { email: admin.email, token: correo.code } });
   assert.equal(paso2.status, 200);
   assert.equal(paso2.body.usuario.nombre, 'Ana');
   assert.equal(paso2.body.usuario.correo, admin.email);
@@ -185,4 +190,57 @@ test('reportes: CSV por partes, Excel con una hoja por dimensión y expediente d
   assert.equal(exp.status, 200);
   assert.equal(exp.body.incidencia.folio, rep.body.incidencia.folio);
   assert.ok(Array.isArray(exp.body.evidencias));
+});
+
+test('el detalle del servicio en el panel trae tareas, evidencias, calificación, pago e incidencias reales', async () => {
+  const admin = await as(3);
+  const cliente = await createUser({ rol: 1, nombre: 'Lucia' });
+  const tecnico = await createUser({ rol: 2, nombre: 'Mario' });
+  const id = await solicitud(cliente.id, tecnico.id, 'EN_PROCESO');
+  await getPool().query("INSERT INTO tareas_servicio (id_solicitud, descripcion, origen, orden, completada) VALUES ($1, 'Cerrar la llave de paso', 'PLANTILLA', 1, true)", [id]);
+
+  const res = await api(server.url, 'GET', `/api/admin/solicitudes/${id}`, { token: admin.token });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.cliente_nombre, 'Lucia');
+  assert.equal(res.body.tecnico_nombre, 'Mario');
+  assert.equal(res.body.descripcion, 'Fuga en el baño');
+  assert.equal(res.body.tareas.length, 1);
+  assert.equal(res.body.tareas[0].completada, true);
+  assert.deepEqual(res.body.evidencias, []);
+  assert.equal(res.body.calificacion, null);
+  assert.equal(res.body.pago, null);
+  assert.deepEqual(res.body.incidencias, []);
+});
+
+test('el tablero responde aunque no haya pagos (tabla pagos con el esquema de la app)', async () => {
+  const admin = await as(3);
+  const res = await api(server.url, 'GET', '/api/admin/dashboard/stats', { token: admin.token });
+  assert.equal(res.status, 200);
+  assert.ok('ingresos_hoy' in res.body);
+});
+
+test('un técnico en revisión no ve solicitudes pendientes ajenas; uno aprobado sí', async () => {
+  const cliente = await createUser({ rol: 1 });
+  const id = await solicitud(cliente.id, null, 'PENDIENTE');
+  const pendiente = await as(2, { aprobado: false });
+  const aprobado = await as(2);
+  assert.equal((await api(server.url, 'GET', `/api/solicitudes/${id}`, { token: pendiente.token })).status, 404);
+  assert.equal((await api(server.url, 'GET', `/api/solicitudes/${id}`, { token: aprobado.token })).status, 200);
+});
+
+test('los cuerpos JSON de más de 1 MB se rechazan fuera del registro', async () => {
+  const admin = await as(3);
+  const res = await api(server.url, 'POST', '/api/admin/comunicados', { token: admin.token, body: { id_usuario: admin.id, mensaje: 'x'.repeat(1_200_000) } });
+  assert.equal(res.status, 413);
+  assert.equal(res.body.code, 'PAYLOAD_TOO_LARGE');
+});
+
+test('a un técnico en revisión la lista de nuevas le sale vacía', async () => {
+  const cliente = await createUser({ rol: 1 });
+  await solicitud(cliente.id, null, 'PENDIENTE');
+  const pendiente = await as(2, { aprobado: false });
+  const res = await api(server.url, 'GET', '/api/solicitudes/tecnico?vista=nuevas', { token: pendiente.token });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.solicitudes.length, 0);
+  assert.equal(res.body.contadores.nuevas, 0);
 });

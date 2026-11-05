@@ -7,10 +7,36 @@ import AdvancedFiltersModal from '@components/modals/AdvancedFiltersModal'
 import './validaciones.css'
 import { SIN_FILTROS, filtrosActivos, pasaFiltros, type Filtros } from '../../lib/filtros'
 import { useVerifications, useApproveTechnician, useRejectTechnician } from '../../hooks/useAdminQueries'
+import type { ExpedienteTecnicoRow } from '../../types/api'
+
+// Fila de la cola de validación a partir del expediente del técnico.
+function aFila(e: ExpedienteTecnicoRow) {
+  return {
+    date: new Date(e.fecha_solicitud).toLocaleDateString(),
+    time: new Date(e.fecha_solicitud).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    name: `${e.nombre} ${e.apellido}`,
+    id: `ID-${e.id_usuario}`,
+    realId: e.id_usuario,
+    contact: e.telefono || e.correo,
+    specialty: e.especialidad || 'Sin especialidades',
+    documentos: e.documentos_pendientes ?? 0,
+    matchLabel: e.documentos_pendientes ? `${e.documentos_pendientes} POR REVISAR` : 'SIN PENDIENTES',
+    matchColor: (e.documentos_pendientes ? 'warning' : 'neutral') as 'warning' | 'neutral',
+    cedula: e.verificado_sep ? 'VERIFICADA EN SEP' : 'SIN CÉDULA',
+    cedulaColor: (e.verificado_sep ? 'success' : 'neutral') as 'success' | 'neutral',
+    action: 'REVISAR TODO',
+    actionColor: 'dark',
+    status: e.estatus,
+    calificacion: e.metricas?.calificacion != null ? Number(e.metricas.calificacion) : null,
+    fechaIso: e.fecha_solicitud,
+    sepOk: !!e.verificado_sep,
+  }
+}
+type Fila = ReturnType<typeof aFila>
 
 export default function ValidacionesPage() {
   const [search, setSearch] = useState('')
-  const [selectedTech, setSelectedTech] = useState<any>(null)
+  const [selectedTech, setSelectedTech] = useState<Fila | null>(null)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isDecisionOpen, setIsDecisionOpen] = useState(false)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
@@ -22,26 +48,7 @@ export default function ValidacionesPage() {
   const approveMutation = useApproveTechnician()
   const rejectMutation = useRejectTechnician()
 
-  const QUEUE = (expedientes || []).map(e => ({
-    date: new Date(e.fecha_solicitud).toLocaleDateString(),
-    time: new Date(e.fecha_solicitud).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    name: `${e.nombre} ${e.apellido}`,
-    id: `ID-${e.id_usuario}`,
-    realId: e.id_usuario, // Using realId to identify the technician correctly
-    contact: e.telefono || e.correo,
-    specialty: e.especialidad || 'Sin especialidades',
-    documentos: e.documentos_pendientes ?? 0,
-    matchLabel: e.documentos_pendientes ? `${e.documentos_pendientes} POR REVISAR` : 'SIN PENDIENTES',
-    matchColor: (e.documentos_pendientes ? 'warning' : 'neutral') as any,
-    cedula: e.verificado_sep ? 'VERIFICADA EN SEP' : 'SIN CÉDULA',
-    cedulaColor: (e.verificado_sep ? 'success' : 'neutral') as any,
-    action: 'REVISAR TODO',
-    actionColor: 'dark',
-    status: e.estatus,
-    calificacion: e.metricas?.calificacion != null ? Number(e.metricas.calificacion) : null,
-    fechaIso: e.fecha_solicitud,
-    sepOk: !!e.verificado_sep,
-  }))
+  const QUEUE: Fila[] = (expedientes || []).map(aFila)
 
   const visibles = QUEUE.filter(r =>
     (!search || r.name.toLowerCase().includes(search.toLowerCase())) &&
@@ -53,32 +60,27 @@ export default function ValidacionesPage() {
     { label: 'CON CÉDULA SEP', value: QUEUE.filter(r => r.cedula === 'VERIFICADA EN SEP').length.toString(), sub: null, color: QUEUE.some(r => r.sepOk) ? 'accent' : 'default' },
   ]
 
-  const handleOpenProfile = (row: any) => {
+  const handleOpenProfile = (row: Fila) => {
     setSelectedTech(row)
     setIsProfileOpen(true)
   }
 
-  const handleOpenDecision = (row: any) => {
+  const handleOpenDecision = (row: Fila) => {
     setSelectedTech(row)
     setIsDecisionOpen(true)
   }
 
+  // Lanza el error para que el modal lo muestre y siga abierto.
   const handleResolve = async (approved: boolean, reason?: string, blockUser?: boolean) => {
     if (!selectedTech) return
     const id = selectedTech.realId
-    try {
-      if (approved) {
-        await approveMutation.mutateAsync(id)
-      } else {
-        await rejectMutation.mutateAsync({
-          id,
-          payload: { motivoRechazo: reason || 'Rechazado', bloquearUsuario: blockUser || false }
-        })
-      }
-      setIsDecisionOpen(false)
-    } catch (error) {
-      console.error('Error on resolve', error)
-      alert('Hubo un error al procesar la resolución.')
+    if (approved) {
+      await approveMutation.mutateAsync(id)
+    } else {
+      await rejectMutation.mutateAsync({
+        id,
+        payload: { motivoRechazo: reason || 'Rechazado', bloquearUsuario: blockUser || false },
+      })
     }
   }
 
@@ -151,13 +153,13 @@ export default function ValidacionesPage() {
                     <p className="val-time">{row.time}</p>
                   </td>
                   <td>
-                    <div className="val-tech-cell" style={{ cursor: 'pointer' }} onClick={() => handleOpenProfile(row)}>
+                    <button type="button" className="val-tech-cell val-tech-btn" onClick={() => handleOpenProfile(row)} aria-label={`Ver expediente de ${row.name}`}>
                       <div className="val-avatar">{row.name[0]}</div>
                       <div>
                         <p className="dash-table-name">{row.name}</p>
                         <p className="dash-table-id">{row.id} · {row.contact}</p>
                       </div>
-                    </div>
+                    </button>
                   </td>
                   <td><span className="dash-table-spec">{row.specialty}</span></td>
                   <td>

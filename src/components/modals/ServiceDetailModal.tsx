@@ -1,281 +1,251 @@
 import { useState } from 'react'
-import { X, MapPin, Calendar, Clock, Star, Plus, Eye, AlertTriangle, ShieldCheck, CheckSquare, UserCheck, RefreshCw, XCircle, BellRing } from 'lucide-react'
+import { X, MapPin, Calendar, Star, Eye, AlertTriangle, CheckSquare, Square, XCircle, RefreshCw, CreditCard, Siren } from 'lucide-react'
 import { Badge, Button } from '@components/ui'
-import UpdateServiceStatusModal from './UpdateServiceStatusModal'
+import CancelServiceModal from './CancelServiceModal'
+import { useServicioDetalle } from '@hooks/useServicios'
+import { fileUrl } from '@/lib/archivos'
+import { mensajeDeError } from '@/lib/errores'
+import { formatearTelefono } from '@/lib/formatos'
+import type { ServicioDetalle } from '@/types/servicios'
 import './modals.css'
 
 interface ServiceDetailModalProps {
   isOpen: boolean
   onClose: () => void
-  serviceId?: string | number
-  clientName?: string
-  clientPhone?: string
-  clientEmail?: string
-  techName?: string
-  status?: string
-  title?: string
-  onStatusUpdated?: (newStatus: string) => void
+  serviceId: number
+  onStatusUpdated?: () => void
 }
 
-export default function ServiceDetailModal({
-  isOpen,
-  onClose,
-  serviceId = 'SRV-108',
-  clientName = 'José López',
-  clientPhone = '+52 753 102 9918',
-  clientEmail = 'jose.lopez@example.com',
-  techName = 'Roberto García',
-  status = 'En Progreso',
-  title = 'Soporte e Instalación de Redes',
-  onStatusUpdated,
-}: ServiceDetailModalProps) {
-  const [activeTab, setActiveTab] = useState<'detalles' | 'evidencias' | 'rating' | 'acciones'>('detalles')
-  const [serviceStatus, setServiceStatus] = useState(status)
-  const [isUpdateStatusOpen, setIsUpdateStatusOpen] = useState(false)
-  const [arrived, setArrived] = useState(true)
-  const [evidences, setEvidences] = useState([
-    'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=400&q=80',
-    'https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=400&q=80',
-  ])
-  const [activities, setActivities] = useState([
-    { text: 'Inspección física de cableado UTP Cat6', done: true },
-    { text: 'Reemplazo de conector RJ45 dañado', done: true },
-    { text: 'Prueba de velocidad de ancha de banda', done: false },
-  ])
-  const [selectedImage, setSelectedImage] = useState<string | null>(null)
-  const [clientRating, setClientRating] = useState(5)
-  const [techRating, setTechRating] = useState(5)
+const ESTADO_APP: Record<string, string> = {
+  PENDIENTE: 'Buscando técnico', ASIGNADA: 'Técnico asignado', EN_CAMINO: 'Técnico en camino', EN_SITIO: 'Técnico en el domicilio',
+  ESPERANDO_APROBACION: 'Cotización por aprobar', EN_PROCESO: 'Trabajo en proceso', POR_CONFIRMAR: 'Esperando confirmación y pago',
+  SUSPENDIDA: 'Suspendido por incidencia', FINALIZADA: 'Finalizado y pagado', CANCELADA: 'Cancelado',
+}
+const EVIDENCIA: Record<string, string> = { PRE_TRABAJO: 'Antes', EN_PROCESO: 'Durante', POST_TRABAJO: 'Después' }
+const BADGE = { Completado: 'success', Cancelado: 'danger', Pendiente: 'neutral', 'En Curso': 'warning' } as const
+
+const fechaHora = (iso?: string | null) =>
+  iso ? new Date(iso).toLocaleString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'
+const dinero = (v?: string | number | null) =>
+  v == null || v === '' ? '—' : Number(v).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+const nombre = (n?: string | null, a?: string | null) => `${n ?? ''} ${a ?? ''}`.trim() || null
+
+const caja = { padding: 14, border: '1px solid var(--border-light)', borderRadius: 8 } as const
+const etiqueta = { fontSize: 11, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', margin: '0 0 6px' } as const
+
+function Estrellas({ valor }: { valor: number | null }) {
+  if (valor == null) return <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Sin calificar</span>
+  return (
+    <span role="img" aria-label={`${valor} de 5 estrellas`} style={{ display: 'inline-flex', gap: 2 }}>
+      {[1, 2, 3, 4, 5].map(n => <Star key={n} size={16} color="#F2A91E" fill={n <= valor ? '#F2A91E' : 'none'} aria-hidden />)}
+    </span>
+  )
+}
+
+export default function ServiceDetailModal({ isOpen, onClose, serviceId, onStatusUpdated }: ServiceDetailModalProps) {
+  const [tab, setTab] = useState<'detalles' | 'evidencias' | 'calificaciones'>('detalles')
+  const [ampliada, setAmpliada] = useState<string | null>(null)
+  const [cancelOpen, setCancelOpen] = useState(false)
+  const { data: s, isLoading, isError, error, refetch } = useServicioDetalle(isOpen ? serviceId : null)
 
   if (!isOpen) return null
 
-  const handleAddEvidence = () => {
-    const mockNewImage = 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=400&q=80'
-    setEvidences([...evidences, mockNewImage])
-    alert('Nueva evidencia fotográfica agregada al expediente del servicio.')
-  }
-
-  const toggleActivity = (index: number) => {
-    const next = [...activities]
-    next[index].done = !next[index].done
-    setActivities(next)
-  }
+  const cerrado = s ? ['FINALIZADA', 'CANCELADA'].includes(s.estado_app) : true
+  const conCobro = s ? ['PROCESANDO', 'PAGADO'].includes(String(s.estado_pago)) : false
 
   return (
     <div className="modal-backdrop">
       <div className="modal-container modal-container--lg modal-container--fixed fade-in">
         <div className="modal-header">
           <div className="modal-title-wrap">
-            <h3 className="modal-title">Detalle del Servicio #{serviceId}</h3>
-            <p className="modal-subtitle">SEGUIMIENTO EN TIEMPO REAL</p>
+            <h3 className="modal-title">Detalle del servicio {s?.codigo ?? `#${serviceId}`}</h3>
+            <p className="modal-subtitle">{s ? ESTADO_APP[s.estado_app] ?? s.estado_app : 'Cargando…'}</p>
           </div>
-          <button className="modal-close-btn" onClick={onClose}>
-            <X size={18} />
-          </button>
+          <button type="button" className="modal-close-btn" onClick={onClose}><X size={18} /></button>
         </div>
 
-        {/* Modal Tabs */}
-        <div className="modal-tabs">
-          <button className={`modal-tab-btn ${activeTab === 'detalles' ? 'modal-tab-btn--active' : ''}`} onClick={() => setActiveTab('detalles')}>
-            RESUMEN Y LABORES
-          </button>
-          <button className={`modal-tab-btn ${activeTab === 'evidencias' ? 'modal-tab-btn--active' : ''}`} onClick={() => setActiveTab('evidencias')}>
-            DOCUMENTACIÓN Y EVIDENCIAS ({evidences.length})
-          </button>
-          <button className={`modal-tab-btn ${activeTab === 'rating' ? 'modal-tab-btn--active' : ''}`} onClick={() => setActiveTab('rating')}>
-            CALIFICACIÓN BIDIRECCIONAL
-          </button>
-          <button className={`modal-tab-btn ${activeTab === 'acciones' ? 'modal-tab-btn--active' : ''}`} onClick={() => setActiveTab('acciones')}>
-            GESTIÓN Y CONTINGENCIAS
-          </button>
+        <div className="modal-tabs" role="tablist">
+          {([['detalles', 'RESUMEN Y TAREAS'], ['evidencias', `EVIDENCIAS (${s?.evidencias.length ?? 0})`], ['calificaciones', 'CALIFICACIONES']] as const).map(([id, label]) => (
+            <button key={id} type="button" role="tab" aria-selected={tab === id}
+              className={`modal-tab-btn ${tab === id ? 'modal-tab-btn--active' : ''}`} onClick={() => setTab(id)}>
+              {label}
+            </button>
+          ))}
         </div>
 
         <div className="modal-body">
-          {activeTab === 'detalles' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-              {/* Header Status Card */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F7F8F9', padding: 16, borderRadius: 8, border: '1px solid #E6E9EE', flexWrap: 'wrap', gap: 12 }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <Badge variant={serviceStatus.toUpperCase() === 'FINALIZADO' || serviceStatus.toUpperCase() === 'COMPLETADO' ? 'success' : serviceStatus.toUpperCase() === 'CANCELADO' ? 'danger' : 'warning'}>
-                      {serviceStatus}
-                    </Badge>
-                    <button
-                      type="button"
-                      onClick={() => setIsUpdateStatusOpen(true)}
-                      style={{
-                        background: '#E8EBF2',
-                        border: '1px solid #CDD3E0',
-                        color: '#0C1C40',
-                        fontSize: 11,
-                        fontWeight: 700,
-                        padding: '3px 8px',
-                        borderRadius: 6,
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                      }}
-                    >
-                      <BellRing size={12} /> CAMBIAR ESTADO
-                    </button>
-                  </div>
-                  <p style={{ fontSize: 14, fontWeight: 700, margin: '6px 0 0', color: 'var(--text-dark)' }}>{title}</p>
-                  <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '2px 0 0' }}>Zona Centro, Lázaro Cárdenas, Michoacán</p>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-mid)', margin: 0 }}>CHECK-IN EN SITIO</p>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: arrived ? '#0B6235' : '#7A4F00', display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                    <MapPin size={13} /> {arrived ? 'Técnico en Sitio' : 'En Traslado (ETA 10 min)'}
-                  </span>
-                </div>
-              </div>
+          {isLoading && <p style={{ fontSize: 13, color: 'var(--text-mid)' }}>Cargando el expediente del servicio…</p>}
 
-              {/* Participants */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <div style={{ padding: 14, border: '1px solid #E6E9EE', borderRadius: 8 }}>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', margin: '0 0 6px' }}>CLIENTE SOLICITANTE</p>
-                  <p style={{ fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--text-dark)' }}>{clientName}</p>
-                  <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '2px 0 0' }}>Tel: +52 753 102 9918</p>
-                </div>
-                <div style={{ padding: 14, border: '1px solid #E6E9EE', borderRadius: 8 }}>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', margin: '0 0 6px' }}>TÉCNICO ASIGNADO</p>
-                  <p style={{ fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--text-dark)' }}>{techName}</p>
-                  <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '2px 0 0' }}>ID: PTEC-0041 • ★ 4.9</p>
-                </div>
-              </div>
-
-              {/* Checklist de Actividades (RF-62) */}
-              <div>
-                <h5 style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', marginBottom: 10 }}>
-                  Gestión de Labores e Imprevistos
-                </h5>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {activities.map((act, idx) => (
-                    <label key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, background: '#F7F8F9', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>
-                      <input type="checkbox" checked={act.done} onChange={() => toggleActivity(idx)} />
-                      <span style={{ textDecoration: act.done ? 'line-through' : 'none', color: act.done ? '#667085' : '#0C1C40' }}>{act.text}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+          {isError && (
+            <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--danger-ink)' }}>
+              <AlertTriangle size={16} /> {mensajeDeError(error, 'No se pudo cargar el servicio.')}
+              <Button size="sm" variant="outline" onClick={() => refetch()}><RefreshCw size={13} /> Reintentar</Button>
             </div>
           )}
 
-          {activeTab === 'evidencias' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h5 style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', margin: 0 }}>
-                  Galería de Fotos y Evidencias de Trabajo
-                </h5>
-                <Button size="sm" onClick={handleAddEvidence}>
-                  <Plus size={13} /> AGREGAR FOTO
-                </Button>
-              </div>
+          {s && tab === 'detalles' && <Resumen s={s} />}
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 14 }}>
-                {evidences.map((url, idx) => (
-                  <div key={idx} style={{ position: 'relative', border: '1px solid #E6E9EE', borderRadius: 8, overflow: 'hidden', background: '#F7F8F9' }}>
-                    <img src={url} alt={`Evidencia ${idx + 1}`} style={{ width: '100%', height: 130, objectFit: 'cover' }} />
-                    <button
-                      onClick={() => setSelectedImage(url)}
-                      style={{ position: 'absolute', bottom: 8, right: 8, padding: '4px 8px', fontSize: 11, background: 'rgba(15,23,42,0.8)', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                    >
-                      <Eye size={11} /> Inspeccionar
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              {selectedImage && (
+          {s && tab === 'evidencias' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {s.evidencias.length === 0 ? (
+                <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>El técnico todavía no sube fotos de este servicio.</p>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 12 }}>
+                  {s.evidencias.map(e => (
+                    <figure key={e.id_evidencia} style={{ margin: 0, border: '1px solid var(--border-light)', borderRadius: 8, overflow: 'hidden', background: 'var(--bg-sunk)' }}>
+                      <button type="button" onClick={() => setAmpliada(fileUrl(e.url))} aria-label={`Ampliar evidencia ${EVIDENCIA[e.tipo_evidencia] ?? ''}`}
+                        style={{ display: 'block', width: '100%', padding: 0, border: 'none', cursor: 'zoom-in', background: 'none' }}>
+                        <img src={fileUrl(e.url)} alt={e.descripcion || `Evidencia ${EVIDENCIA[e.tipo_evidencia] ?? ''}`} style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }} />
+                      </button>
+                      <figcaption style={{ padding: '6px 8px', fontSize: 11, color: 'var(--text-mid)' }}>
+                        <strong>{EVIDENCIA[e.tipo_evidencia] ?? e.tipo_evidencia}</strong> · {fechaHora(e.fecha_subida)}
+                        {e.descripcion && <><br />{e.descripcion}</>}
+                      </figcaption>
+                    </figure>
+                  ))}
+                </div>
+              )}
+              {ampliada && (
                 <div className="doc-preview-box">
                   <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                    <strong style={{ fontSize: 13 }}>Lupa de Inspección de Evidencia</strong>
-                    <button style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12 }} onClick={() => setSelectedImage(null)}>✕ Cerrar Lupa</button>
+                    <strong style={{ fontSize: 13 }}>Evidencia ampliada</strong>
+                    <Button size="sm" variant="ghost" onClick={() => setAmpliada(null)}><Eye size={13} /> Cerrar</Button>
                   </div>
-                  <img src={selectedImage} alt="Evidencia Ampliada" className="doc-img" />
+                  <img src={ampliada} alt="Evidencia ampliada" className="doc-img" />
                 </div>
               )}
             </div>
           )}
 
-          {activeTab === 'rating' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <h5 style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', margin: 0 }}>
-                Sistema de Calificación Bidireccional
-              </h5>
-
-              <div style={{ padding: 16, border: '1px solid #E6E9EE', borderRadius: 8, background: '#F7F8F9' }}>
-                <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 8px' }}>Evaluación del Cliente sobre el Técnico</p>
-                <div style={{ display: 'flex', gap: 4, marginBottom: 8, color: '#F2A91E' }}>
-                  {[1, 2, 3, 4, 5].map(star => (
-                    <Star key={star} size={18} fill={star <= clientRating ? '#F2A91E' : 'none'} onClick={() => setClientRating(star)} style={{ cursor: 'pointer' }} />
-                  ))}
-                </div>
-                <p style={{ fontSize: 12, color: '#4B5563', fontStyle: 'italic', margin: 0 }}>"Excelente atención, puntualidad y diagnóstico certero."</p>
-              </div>
-
-              <div style={{ padding: 16, border: '1px solid #E6E9EE', borderRadius: 8, background: '#F7F8F9' }}>
-                <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 8px' }}>Evaluación del Técnico sobre el Cliente</p>
-                <div style={{ display: 'flex', gap: 4, marginBottom: 8, color: '#F2A91E' }}>
-                  {[1, 2, 3, 4, 5].map(star => (
-                    <Star key={star} size={18} fill={star <= techRating ? '#F2A91E' : 'none'} onClick={() => setTechRating(star)} style={{ cursor: 'pointer' }} />
-                  ))}
-                </div>
-                <p style={{ fontSize: 12, color: '#4B5563', fontStyle: 'italic', margin: 0 }}>"Trato respetuoso y facilidades de acceso al lugar."</p>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'acciones' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <h5 style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', margin: 0 }}>
-                Acciones de Contingencia Operativa
-              </h5>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <Button variant="outline" size="sm" onClick={() => alert('Solicitud de Reasignación Prioritaria enviada al algoritmo.')}>
-                  <RefreshCw size={13} /> Reasignación Prioritaria
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => alert('Reporte registrado: El prestador no se presentó.')}>
-                  <AlertTriangle size={13} /> Denegación por Inasistencia
-                </Button>
-                <Button variant="outline" size="sm" style={{ color: 'var(--danger)' }} onClick={() => { setServiceStatus('CANCELADO'); alert('Servicio revocatorio cancelado sin cargos adicionales.'); }}>
-                  <XCircle size={13} /> Revocación Total sin Cargos
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => alert('Labor en ruta abortada exitosamente.')}>
-                  <XCircle size={13} /> Abortar Labor en Ruta
-                </Button>
-              </div>
+          {s && tab === 'calificaciones' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {!s.calificacion ? (
+                <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Aún no hay calificaciones: se registran al finalizar el servicio.</p>
+              ) : (
+                <>
+                  <div style={caja}>
+                    <p style={etiqueta}>El cliente calificó al técnico</p>
+                    <Estrellas valor={s.calificacion.puntuacion_tecnico} />
+                    {s.calificacion.comentario_cliente && <p style={{ fontSize: 13, margin: '8px 0 0', fontStyle: 'italic' }}>“{s.calificacion.comentario_cliente}”</p>}
+                  </div>
+                  <div style={caja}>
+                    <p style={etiqueta}>El técnico calificó al cliente</p>
+                    <Estrellas valor={s.calificacion.puntuacion_cliente} />
+                    {s.calificacion.comentario_tecnico && <p style={{ fontSize: 13, margin: '8px 0 0', fontStyle: 'italic' }}>“{s.calificacion.comentario_tecnico}”</p>}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
 
         <div className="modal-footer">
-          <Button variant="secondary" onClick={onClose}>
-            CERRAR DETALLES
-          </Button>
-          <Button variant="primary" onClick={() => setIsUpdateStatusOpen(true)}>
-            <BellRing size={14} /> CAMBIAR ESTADO DEL SERVICIO
-          </Button>
+          {s && !cerrado && (
+            <Button variant="outline" onClick={() => setCancelOpen(true)} disabled={conCobro}
+              title={conCobro ? 'Ya tiene un cobro: atiéndelo como incidencia desde Soporte.' : undefined}
+              style={{ color: 'var(--danger)', marginRight: 'auto' }}>
+              <XCircle size={14} /> Cancelar sin cargo
+            </Button>
+          )}
+          <Button variant="secondary" onClick={onClose}>CERRAR</Button>
         </div>
       </div>
 
-      {/* Modal reactivo de actualización de estado y notificaciones */}
-      <UpdateServiceStatusModal
-        isOpen={isUpdateStatusOpen}
-        onClose={() => setIsUpdateStatusOpen(false)}
-        serviceId={serviceId}
-        serviceCode={typeof serviceId === 'string' ? serviceId : `SRV-${String(serviceId).padStart(3, '0')}`}
-        serviceTitle={title}
-        currentStatus={serviceStatus}
-        clientName={clientName}
-        clientPhone={clientPhone}
-        clientEmail={clientEmail}
-        onStatusUpdated={(newSt) => {
-          setServiceStatus(newSt)
-          if (onStatusUpdated) onStatusUpdated(newSt)
-        }}
-      />
+      {s && (
+        <CancelServiceModal
+          isOpen={cancelOpen}
+          onClose={() => setCancelOpen(false)}
+          serviceId={s.id_servicio}
+          serviceCode={s.codigo}
+          serviceTitle={s.titulo}
+          clientName={nombre(s.cliente_nombre, s.cliente_apellido) ?? undefined}
+          onCancelled={onStatusUpdated}
+        />
+      )}
+    </div>
+  )
+}
+
+function Resumen({ s }: { s: ServicioDetalle }) {
+  const cliente = nombre(s.cliente_nombre, s.cliente_apellido) ?? 'Cliente eliminado'
+  const tecnico = nombre(s.tecnico_nombre, s.tecnico_apellido)
+  const hechas = s.tareas.filter(t => t.completada).length
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ ...caja, background: 'var(--bg-sunk)', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Badge variant={BADGE[s.estatus] ?? 'neutral'}>{s.estatus}</Badge>
+            {s.alerta_sos && <Badge variant="danger"><Siren size={11} /> SOS activado</Badge>}
+          </div>
+          <p style={{ fontSize: 14, fontWeight: 700, margin: '6px 0 0' }}>{s.titulo}</p>
+          {s.descripcion && <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '4px 0 0' }}>{s.descripcion}</p>}
+          <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '6px 0 0', display: 'flex', gap: 4, alignItems: 'center' }}>
+            <MapPin size={13} /> {s.direccion || 'Sin dirección'}{s.referencias ? ` · ${s.referencias}` : ''}
+          </p>
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--text-mid)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span><Calendar size={12} /> Creado: {fechaHora(s.fecha_creacion)}</span>
+          {s.fecha_preferida && <span>Preferido: {s.fecha_preferida}{s.hora_preferida ? ` ${s.hora_preferida}` : ''}</span>}
+          {s.fecha_llegada && <span>Llegada: {fechaHora(s.fecha_llegada)}</span>}
+          {s.fecha_finalizacion && <span>Finalizado: {fechaHora(s.fecha_finalizacion)}</span>}
+        </div>
+      </div>
+
+      {s.estatus === 'Cancelado' && s.motivo_cancelacion && (
+        <div style={{ ...caja, borderColor: 'var(--danger-soft)', background: 'var(--danger-soft)', fontSize: 13 }}>
+          <strong>Cancelado{s.cancelado_por ? ` por ${s.cancelado_por.toLowerCase()}` : ''}:</strong> {s.motivo_cancelacion}
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+        <div style={caja}>
+          <p style={etiqueta}>Cliente</p>
+          <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>{cliente}</p>
+          {s.cliente_telefono && <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '2px 0 0' }}>Tel. {formatearTelefono(s.cliente_telefono)}</p>}
+          {s.cliente_correo && <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '2px 0 0' }}>{s.cliente_correo}</p>}
+        </div>
+        <div style={caja}>
+          <p style={etiqueta}>Técnico</p>
+          <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>{tecnico ?? 'Sin asignar'}</p>
+          {s.id_tecnico && <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '2px 0 0' }}>ID-{s.id_tecnico}{s.tecnico_telefono ? ` · Tel. ${formatearTelefono(s.tecnico_telefono)}` : ''}</p>}
+        </div>
+        <div style={caja}>
+          <p style={etiqueta}><CreditCard size={11} /> Cobro</p>
+          <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>{dinero(s.pago?.monto ?? s.monto)}</p>
+          <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '2px 0 0' }}>
+            {s.pago ? `${s.pago.estado} · ${s.pago.modo}${Number(s.pago.monto_reembolsado) > 0 ? ` · reembolsado ${dinero(s.pago.monto_reembolsado)}` : ''}` : `Estado: ${s.estado_pago ?? 'PENDIENTE'}`}
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <p style={etiqueta}>Tareas del técnico ({hechas}/{s.tareas.length})</p>
+        {s.tareas.length === 0 ? (
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>Se generan cuando un técnico acepta el servicio.</p>
+        ) : (
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {s.tareas.map(t => (
+              <li key={t.id_tarea} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '8px 10px', background: 'var(--bg-sunk)', borderRadius: 6, fontSize: 13 }}>
+                {t.completada ? <CheckSquare size={15} color="var(--success)" aria-label="Completada" /> : <Square size={15} color="var(--text-muted)" aria-label="Pendiente" />}
+                <span style={{ textDecoration: t.completada ? 'line-through' : 'none', color: t.completada ? 'var(--text-muted)' : 'inherit' }}>{t.descripcion}</span>
+                {t.norma && <Badge variant="info">{t.norma}</Badge>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {s.incidencias.length > 0 && (
+        <div>
+          <p style={etiqueta}>Incidencias</p>
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
+            {s.incidencias.map(i => (
+              <li key={i.id_incidencia}>{i.folio} · {i.tipo.replace(/_/g, ' ').toLowerCase()} · <strong>{i.estado}</strong> ({i.prioridad})</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }

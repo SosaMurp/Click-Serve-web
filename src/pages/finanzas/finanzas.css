@@ -33,7 +33,7 @@
 .fin-bank-logo {
   width: 34px; height: 34px; border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 10px; font-weight: 800; color: #fff; flex-shrink: 0;
+  font-size: 10px; font-weight: 800; color: #fff; flex-shrink: 0; background: var(--navy, #0C1C40);
 }
 
 .fin-amount { font-size: 15px; font-weight: 700; color: var(--text-dark); }

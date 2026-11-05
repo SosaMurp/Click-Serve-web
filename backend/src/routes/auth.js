@@ -11,7 +11,7 @@ const { isEmail, isStrongPassword, normalizeEmail, normalizePhoneMx, normalizePe
 const { verifyTotp } = require('../lib/totp');
 const { sendCode, sendMail } = require('../lib/mailer');
 const { saveFile, uploader, IMAGE_TYPES } = require('../lib/files');
-const { signSession } = require('../lib/tokens');
+const { signSession, jwtSecret } = require('../lib/tokens');
 const { findUserByEmail, findUserById, publicUser, createSession } = require('../services/users');
 const { finishLogin } = require('../services/login');
 const { readTicket, registroKey, sha256 } = require('../lib/ine/ticket');
@@ -31,6 +31,8 @@ const sendLimiter = rateLimit({ windowMs: minutes(10), max: 4, keyFn: byIpAndEma
 const registerLimiter = rateLimit({ windowMs: minutes(60), max: 10 });
 
 const newCode = () => String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+// Los códigos se guardan como HMAC (con la llave del servidor), nunca en claro.
+const codeHash = (code) => crypto.createHmac('sha256', jwtSecret()).update(`codigo:${code}`).digest('hex');
 const normEmail = normalizeEmail;
 
 async function issueCode(db, idUsuario, tipo, canal = 'EMAIL') {
@@ -42,7 +44,7 @@ async function issueCode(db, idUsuario, tipo, canal = 'EMAIL') {
   const code = newCode();
   await db.query(
     `INSERT INTO tokens_temporales (id_usuario, token, tipo_accion, estado_uso, canal) VALUES ($1, $2, $3, 'sin usar', $4)`,
-    [idUsuario, code, tipo, canal]
+    [idUsuario, codeHash(code), tipo, canal]
   );
   return code;
 }
@@ -57,8 +59,9 @@ async function checkCode(db, idUsuario, tipo, code) {
   );
   const row = rows[0];
   if (!row) return null;
-  const given = onlyDigits(code);
-  const ok = given.length === row.token.length && crypto.timingSafeEqual(Buffer.from(given), Buffer.from(row.token));
+  const given = Buffer.from(codeHash(onlyDigits(code)));
+  const stored = Buffer.from(String(row.token));
+  const ok = given.length === stored.length && crypto.timingSafeEqual(given, stored);
   if (!ok) {
     await db.query(
       `UPDATE tokens_temporales SET intentos = intentos + 1,
@@ -414,6 +417,9 @@ router.post('/api/login-admin', loginLimiter, async (req, res) => {
 router.post('/api/verify-login-admin', codeLimiter, async (req, res) => {
   const user = await findUserByEmail(req.body?.email);
   if (!user || Number(user.id_rol) !== 3) return fail(res, 404, 'NOT_FOUND', 'Usuario administrador no encontrado.');
+  if (String(user.estado_cuenta).toUpperCase() === 'SUSPENDIDO' || user.anonimizado) {
+    return fail(res, 403, 'ACCOUNT_SUSPENDED', 'Tu cuenta administrativa está suspendida. Contacta a otro administrador.');
+  }
   const idToken = await checkCode(getPool(), user.id_usuario, 'login_admin', req.body?.token);
   if (!idToken) return fail(res, 400, 'CODE_INVALID', 'Código de seguridad incorrecto o expirado.');
   await getPool().query("UPDATE tokens_temporales SET estado_uso = 'usado' WHERE id_token = $1", [idToken]);

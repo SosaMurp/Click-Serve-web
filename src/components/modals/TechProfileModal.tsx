@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { X, FileText, Download, AlertTriangle, Eye, Trash2, ShieldOff, ShieldCheck, ExternalLink, Send } from 'lucide-react'
 import { Badge, Button } from '@components/ui'
-import { env } from '../../config/env'
+import { fileUrl } from '@/lib/archivos'
 import {
   useExpediente, useSuspendUser, useReactivateUser, useDeleteUser, descargarExpediente,
 } from '../../hooks/useAdminQueries'
@@ -28,9 +28,6 @@ const DOC_LABEL: Record<string, string> = {
 }
 const DOC_VARIANT = { APROBADO: 'success', RECHAZADO: 'danger', EN_REVISION: 'warning' } as const
 
-// Las URL firmadas vienen como /api/archivos/...; si el panel habla con otro host, se le antepone.
-const API_ORIGIN = env.VITE_API_BASE_URL.replace(/\/api\/?$/, '')
-const fileUrl = (path: string) => (path.startsWith('http') ? path : `${API_ORIGIN}${path}`)
 const fecha = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : '—')
 const errorDe = (err: unknown) => (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'No se pudo completar la acción.'
 

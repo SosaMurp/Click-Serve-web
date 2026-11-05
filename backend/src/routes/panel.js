@@ -11,6 +11,7 @@ const realtime = require('../lib/realtime');
 const { sendPush } = require('../lib/push');
 const { deletionBlocker, anonymizeUser } = require('../services/bajas');
 const S = require('../services/solicitudes');
+const { signFileUrl } = require('../lib/files');
 
 // Dashboard, directorio de usuarios y detalle de servicios del panel de administrador.
 // Antes los resolvía un backend aparte con tablas propias; ahora leen las mismas tablas que la app.
@@ -149,7 +150,41 @@ router.get('/api/admin/solicitudes/:id', ...adminOnly, async (req, res) => {
   if (!Number.isInteger(id) || id <= 0) return fail(res, 400, 'VALIDATION_ERROR', 'ID de servicio inválido.');
   const { rows } = await db().query(`${SERVICIO_SELECT} WHERE s.id_solicitud = $1`, [id]);
   if (!rows[0]) return fail(res, 404, 'NOT_FOUND', 'Servicio no encontrado.');
-  res.json(rows[0]);
+
+  // Expediente del servicio para el panel: lo mismo que registran cliente y técnico en la app.
+  const [extra, tareas, evidencias, calificacion, pago, incidencias] = await Promise.all([
+    db().query(
+      `SELECT s.id_usuario AS id_cliente, s.id_tecnico, s.descripcion, s.referencias, s.estado_pago,
+              to_char(s.fecha_preferida, 'YYYY-MM-DD') AS fecha_preferida, to_char(s.hora_preferida, 'HH24:MI') AS hora_preferida,
+              s.fecha_asignacion, s.fecha_llegada, s.fecha_finalizacion, s.cancelado_por, s.motivo_cancelacion,
+              COALESCE(s.alerta_sos, false) AS alerta_sos,
+              cl.telefono AS cliente_telefono, cl.correo AS cliente_correo, t.telefono AS tecnico_telefono
+       FROM solicitudes_servicio s
+       LEFT JOIN usuarios cl ON cl.id_usuario = s.id_usuario
+       LEFT JOIN usuarios t ON t.id_usuario = s.id_tecnico
+       WHERE s.id_solicitud = $1`,
+      [id]
+    ),
+    db().query('SELECT id_tarea, descripcion, norma, completada, fecha_completada FROM tareas_servicio WHERE id_solicitud = $1 ORDER BY orden, id_tarea', [id]),
+    db().query('SELECT id_evidencia, tipo_evidencia, descripcion, id_archivo, fecha_subida FROM evidencias_servicio WHERE id_solicitud = $1 ORDER BY id_evidencia', [id]),
+    db().query(
+      `SELECT puntuacion_tecnico, comentario_cliente, puntuacion_cliente, comentario_tecnico, fecha_calificacion
+       FROM calificaciones_servicio WHERE id_solicitud = $1`,
+      [id]
+    ),
+    db().query('SELECT monto, modo, referencia, estado, fecha, monto_reembolsado FROM pagos WHERE id_solicitud = $1', [id]),
+    db().query('SELECT id_incidencia, folio, tipo, estado, prioridad, fecha_creacion FROM incidencias WHERE id_solicitud = $1 ORDER BY id_incidencia DESC', [id]),
+  ]);
+
+  res.json({
+    ...rows[0],
+    ...extra.rows[0],
+    tareas: tareas.rows,
+    evidencias: evidencias.rows.map(({ id_archivo, ...e }) => ({ ...e, url: signFileUrl(id_archivo, 600) })),
+    calificacion: calificacion.rows[0] || null,
+    pago: pago.rows[0] || null,
+    incidencias: incidencias.rows,
+  });
 });
 
 // El avance de la orden lo marcan técnico y cliente en la app; soporte solo puede cancelarla sin cargo.

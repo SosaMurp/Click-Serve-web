@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { LogOut, Shield, Key, Monitor, Smartphone, Globe, X, Lock, CheckCircle, AlertCircle } from 'lucide-react'
 import { Badge, Button } from '@components/ui'
 import { getActiveSessions, revokeSession, revokeAllSessions, updatePassword } from '@api/auth'
 import { useAuthStore } from '@store/authStore'
+import { toast } from '@components/ui/Toaster'
+import { cerrarSesion } from '@/lib/sesion'
+import { contrasenaFuerte } from '@/lib/formatos'
+import { mensajeDeError } from '@/lib/errores'
 import './perfil.css'
 
 // Interfaz para mapear lo que devuelve tu backend
@@ -27,7 +30,6 @@ const parseDevice = (userAgent: string) => {
 }
 
 export default function PerfilPage() {
-  const navigate = useNavigate()
   const user = useAuthStore(s => s.user)
   
   // Estados para manejar las sesiones reales
@@ -51,7 +53,7 @@ export default function PerfilPage() {
         const data = await getActiveSessions()
         setSessions(data.sesiones)
       } catch (error) {
-        console.error('Error al cargar sesiones activas:', error)
+        toast.error(mensajeDeError(error, 'No se pudieron cargar tus sesiones activas.'))
       } finally {
         setLoading(false)
       }
@@ -66,9 +68,9 @@ export default function PerfilPage() {
       await revokeSession(sessionId)
       // Si la API responde con éxito, quitamos la sesión de la vista localmente
       setSessions(prev => prev.filter(s => s.id_sesion !== sessionId))
+      toast.success('Dispositivo desvinculado.')
     } catch (error) {
-      console.error('Error al intentar desvincular el dispositivo:', error)
-      alert('No se pudo desvincular el dispositivo. Intenta de nuevo.')
+      toast.error(mensajeDeError(error, 'No se pudo desvincular el dispositivo. Intenta de nuevo.'))
     }
   }
 
@@ -81,16 +83,13 @@ export default function PerfilPage() {
       await revokeAllSessions()
       // Filtramos el estado local para dejar únicamente la sesión actual en la pantalla
       setSessions(prev => prev.filter(s => s.es_sesion_actual))
+      toast.success('Cerramos tus sesiones en los demás dispositivos.')
     } catch (error) {
-      console.error('Error al cerrar todas las sesiones:', error)
-      alert('No se pudieron cerrar las sesiones. Intenta de nuevo.')
+      toast.error(mensajeDeError(error, 'No se pudieron cerrar las sesiones. Intenta de nuevo.'))
     }
   }
 
-  const handleLogout = () => {
-    useAuthStore.getState().logout()
-    navigate('/login')
-  }
+  const handleLogout = () => { void cerrarSesion() }
 
   // Manejador del cambio de contraseña
   const handleUpdatePassword = async (e: React.FormEvent) => {
@@ -102,8 +101,8 @@ export default function PerfilPage() {
       setPasswordError('Ingresa tu contraseña actual.')
       return
     }
-    if (!newPassword || newPassword.length < 8) {
-      setPasswordError('La nueva contraseña debe tener al menos 8 caracteres.')
+    if (!contrasenaFuerte(newPassword)) {
+      setPasswordError('La nueva contraseña debe tener de 8 a 64 caracteres, con mayúscula, minúscula y número.')
       return
     }
     if (newPassword !== confirmPassword) {
@@ -129,10 +128,8 @@ export default function PerfilPage() {
         setPasswordSuccess(null)
       }, 2000)
 
-    } catch (error: any) {
-      console.error('Error al cambiar contraseña:', error)
-      const msg = error.response?.data?.error || 'Error al intentar cambiar la contraseña. Verifica tus datos.'
-      setPasswordError(msg)
+    } catch (error) {
+      setPasswordError(mensajeDeError(error, 'No se pudo cambiar la contraseña. Verifica tus datos.'))
     } finally {
       setIsSubmitting(false)
     }

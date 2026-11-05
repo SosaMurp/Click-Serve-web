@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@store/authStore'
 import {
@@ -13,7 +13,10 @@ import api from '@api/axios'
 import TechProfileModal from '@components/modals/TechProfileModal'
 import { useWithdrawals, useIncidencias, useTickets } from '@hooks/useAdminQueries'
 import { LogoMark } from '@components/ui/Logo'
-import type { RecentService } from '@/types/dashboard'
+import type { ServicioDetalle } from '@/types/servicios'
+import { cerrarSesion } from '@/lib/sesion'
+import { useInactividad } from '@hooks/useInactividad'
+import { env } from '@/config/env'
 import './dashboard-layout.css'
 
 // "SRV-108", "srv108", "#108" o un número corto → búsqueda por servicio
@@ -41,7 +44,7 @@ const NAV_ITEMS = [
 
 export default function DashboardLayout() {
   const navigate = useNavigate()
-  const { user, logout } = useAuthStore()
+  const user = useAuthStore(s => s.user)
   // Pendientes reales de validación (antes era un 3 fijo)
   const pendientes = useDashboardStats().data?.validaciones_pendientes ?? 0
 
@@ -71,16 +74,21 @@ export default function DashboardLayout() {
   const handleLogout = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    logout()
-    navigate('/login', { replace: true })
+    void cerrarSesion()
   }
+
+  // Cierre automático tras VITE_SESSION_TIMEOUT minutos sin actividad (RNF-05)
+  const porInactividad = useCallback(() => {
+    void cerrarSesion({ motivo: `Cerramos tu sesión tras ${env.VITE_SESSION_TIMEOUT} minutos sin actividad.` })
+  }, [])
+  useInactividad(env.VITE_SESSION_TIMEOUT, porInactividad)
 
   // ── Buscador global (RF-44) ──
   const searchRef = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState('')
   const [searching, setSearching] = useState(false)
   const [searchError, setSearchError] = useState('')
-  const [foundService, setFoundService] = useState<RecentService | null>(null)
+  const [foundService, setFoundService] = useState<ServicioDetalle | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
   const [segmento, setSegmento] = useState<Segmento>('todos')
   const [hallazgos, setHallazgos] = useState<Hallazgos | null>(null)
@@ -297,10 +305,6 @@ export default function DashboardLayout() {
           isOpen
           onClose={() => setFoundService(null)}
           serviceId={foundService.id_servicio}
-          title={foundService.titulo}
-          clientName={`${foundService.cliente_nombre ?? ''} ${foundService.cliente_apellido ?? ''}`.trim() || 'Sin cliente'}
-          techName={foundService.tecnico_nombre ? `${foundService.tecnico_nombre} ${foundService.tecnico_apellido ?? ''}` : 'Sin asignar'}
-          status={foundService.estatus}
         />
       )}
     </div>

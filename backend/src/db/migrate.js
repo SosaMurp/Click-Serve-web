@@ -15,6 +15,9 @@ const STEPS = [
   { id: '004_verificaciones_ine', file: 'migrations/004_verificaciones_ine.sql' },
   { id: '005_panel_admin', file: 'migrations/005_panel_admin.sql' },
   { id: '006_liquidacion_conflictos', file: 'migrations/006_liquidacion_conflictos.sql' },
+  { id: '007_tablas_heredadas', file: 'migrations/007_tablas_heredadas.sql' },
+  { id: '008_codigos_con_hash', file: 'migrations/008_codigos_con_hash.sql' },
+  { id: '009_reconciliar_esquema_heredado', file: 'migrations/009_reconciliar_esquema_heredado.sql' },
 ];
 
 async function migrate(pool = getPool(), { silent = false } = {}) {

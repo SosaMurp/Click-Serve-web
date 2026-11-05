@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { X, ShieldCheck, ShieldAlert, Check, Ban } from 'lucide-react'
 import { Button } from '@components/ui'
+import { toast } from '@components/ui/Toaster'
+import { mensajeDeError } from '@/lib/errores'
 import './modals.css'
 
 interface ValidationDecisionModalProps {
@@ -8,34 +10,41 @@ interface ValidationDecisionModalProps {
   onClose: () => void
   techName?: string
   techId?: string
-  onResolve?: (approved: boolean, reason?: string, blockUser?: boolean) => void
+  /** Debe completar la acción en el servidor; si falla, el modal muestra el error y sigue abierto. */
+  onResolve: (approved: boolean, reason?: string, blockUser?: boolean) => Promise<void>
 }
 
 export default function ValidationDecisionModal({
-  isOpen, onClose, techName = 'Roberto García', techId = 'PTEC-0041', onResolve
+  isOpen, onClose, techName = 'el técnico', techId, onResolve
 }: ValidationDecisionModalProps) {
   const [action, setAction] = useState<'approve' | 'reject'>('approve')
   const [rejectReason, setRejectReason] = useState('Sospecha de fraude')
   const [customReason, setCustomReason] = useState('')
   const [blockUser, setBlockUser] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   if (!isOpen) return null
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
+    const finalReason = (rejectReason === 'Otro' ? customReason : rejectReason).trim()
+    if (action === 'reject' && finalReason.length < 3) {
+      setError('Escribe el motivo del rechazo.')
+      return
+    }
+    setError('')
     setLoading(true)
-    setTimeout(() => {
-      setLoading(false)
-      const finalReason = rejectReason === 'Otro' ? customReason : rejectReason
-      if (onResolve) {
-        onResolve(action === 'approve', action === 'reject' ? finalReason : undefined, blockUser)
-      }
-      alert(action === 'approve' 
-        ? `Técnico ${techName} autorizado exitosamente con firma de sistema.` 
-        : `Expediente de ${techName} rechazado (${finalReason})${blockUser ? ' y usuario bloqueado' : ''}.`
-      )
+    try {
+      await onResolve(action === 'approve', action === 'reject' ? finalReason : undefined, blockUser)
+      toast.success(action === 'approve'
+        ? `${techName} quedó aprobado y ya puede aceptar servicios.`
+        : `Expediente de ${techName} rechazado${blockUser ? ' y cuenta bloqueada' : ''}.`)
       onClose()
-    }, 400)
+    } catch (err) {
+      setError(mensajeDeError(err, 'No se pudo guardar la decisión. Intenta de nuevo.'))
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -44,7 +53,7 @@ export default function ValidationDecisionModal({
         <div className="modal-header">
           <div className="modal-title-wrap">
             <h3 className="modal-title">Resolución de Auditoría</h3>
-            <p className="modal-subtitle">{techId} • {techName}</p>
+            <p className="modal-subtitle">{techId ? `${techId} • ` : ''}{techName}</p>
           </div>
           <button className="modal-close-btn" onClick={onClose}>
             <X size={18} />
@@ -126,6 +135,9 @@ export default function ValidationDecisionModal({
           )}
         </div>
 
+        {error && (
+          <p role="alert" style={{ margin: '0 24px 12px', fontSize: 13, color: 'var(--danger-ink)' }}>{error}</p>
+        )}
         <div className="modal-footer">
           <Button variant="outline" onClick={onClose}>
             CANCELAR

@@ -188,11 +188,12 @@ async function findRow(id, db = getPool(), { lock = false } = {}) {
   return rows[0] || null;
 }
 
-// Puede verla: el cliente dueño, el técnico asignado o propuesto, o un técnico si sigue PENDIENTE.
+// Puede verla: el cliente dueño, el técnico asignado, o un técnico aprobado si sigue PENDIENTE
+// (un técnico en revisión de documentos todavía no ve fotos ni datos de solicitudes ajenas).
 function canView(row, user) {
   if (!row) return false;
   if (row.id_usuario === user.id_usuario || row.id_tecnico === user.id_usuario) return true;
-  if (Number(user.id_rol) === 2 && row.estado === 'PENDIENTE') return true;
+  if (Number(user.id_rol) === 2 && user.aprobado === true && row.estado === 'PENDIENTE') return true;
   return false;
 }
 
@@ -259,9 +260,12 @@ const TECH_WHERE = {
   historial: `s.id_tecnico = $1 AND s.estado IN ('FINALIZADA', 'CANCELADA')`,
 };
 
-async function techCounters(idTecnico, db = getPool()) {
+// Un técnico en revisión de documentos no ve solicitudes nuevas (tampoco puede abrirlas ni aceptarlas).
+const nuevasWhere = (aprobado) => (aprobado ? TECH_WHERE.nuevas : 'FALSE');
+
+async function techCounters(idTecnico, db = getPool(), { aprobado = true } = {}) {
   const { rows } = await db.query(
-    `SELECT (SELECT COUNT(*)::int FROM solicitudes_servicio s WHERE ${TECH_WHERE.nuevas}) AS nuevas,
+    `SELECT (SELECT COUNT(*)::int FROM solicitudes_servicio s WHERE ${nuevasWhere(aprobado)}) AS nuevas,
             (SELECT COUNT(*)::int FROM solicitudes_servicio s WHERE ${TECH_WHERE.en_curso}) AS en_curso,
             (SELECT COUNT(*)::int FROM solicitudes_servicio s WHERE ${TECH_WHERE.historial}) AS historial`,
     [idTecnico]
@@ -279,5 +283,5 @@ function notify(row, aviso, { push } = {}) {
 
 module.exports = {
   ACTIVE_STATES, CLOSED_STATES, LEGACY_CATEGORIES, BASE_SELECT,
-  TECH_WHERE, techCounters, taskTemplate, folio, parseMoney, shape, findRow, canView, detail, notify,
+  TECH_WHERE, nuevasWhere, techCounters, taskTemplate, folio, parseMoney, shape, findRow, canView, detail, notify,
 };

@@ -25,3 +25,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Herramientas locales y pruebas manuales (no forman parte de la app)
+.agents/
+db_carpeta_provicional/
+test-error.cjs
+test-screenshot.png
+
+# Respaldos de bases de datos (contienen datos personales)
+backend/respaldos/
+*.dump

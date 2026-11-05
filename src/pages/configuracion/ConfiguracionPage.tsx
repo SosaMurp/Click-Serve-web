@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { Settings2, Shield, MapPin, AlertTriangle, Save, CheckCircle } from 'lucide-react'
 import MaintenanceOverlay from '@components/layout/MaintenanceOverlay'
 import './configuracion.css'
+import { toast } from '@components/ui/Toaster'
+import { mensajeDeError } from '@/lib/errores'
 
 import { usePlatformSettings, useUpdatePlatformSettings } from '../../hooks/useAdminQueries'
 
@@ -29,8 +31,6 @@ export default function ConfiguracionPage() {
       setRadius(settings.radio_maximo_km.toString())
       setTimeoutVal(settings.tolerancia_minutos.toString())
       setMaintenance(settings.modo_mantenimiento)
-      // threshold and sepValidation could be parsed from sensibilidad_ia if stored there.
-      // For now, let's keep them as local states or mock their DB equivalent if not explicitly modeled.
       setDirty(false)
     }
   }, [settings])
@@ -53,8 +53,7 @@ export default function ConfiguracionPage() {
       setSavedSuccess(true)
       window.setTimeout(() => setSavedSuccess(false), 3000)
     } catch (e) {
-      console.error('Error saving settings', e)
-      alert('Error al guardar la configuración')
+      toast.error(mensajeDeError(e, 'No se pudo guardar la configuración.'))
     }
   }
 
@@ -64,9 +63,8 @@ export default function ConfiguracionPage() {
     try {
       await updateSettingsMutation.mutateAsync({ modoMantenimiento: on })
     } catch (e) {
-      console.error('Error al cambiar el modo mantenimiento', e)
       setMaintenance(!on)
-      alert('No se pudo cambiar el modo mantenimiento. Intenta de nuevo.')
+      toast.error(mensajeDeError(e, 'No se pudo cambiar el modo mantenimiento. Intenta de nuevo.'))
     }
   }
 

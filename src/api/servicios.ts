@@ -1,33 +1,19 @@
 import api from './axios'
-import type {
-  UpdateServiceStatusPayload,
-  UpdateServiceStatusResponse,
-} from '../types/servicios'
-import type { RecentService } from '../types/dashboard'
+import type { CancelServicePayload, CancelServiceResponse, ServicioDetalle } from '../types/servicios'
 
 /**
- * Actualiza el estado operativo de un servicio (ej. 'En Progreso' a 'Finalizado').
- * Opcionalmente envía notificaciones SMS y Correo al cliente solicitante.
- * 
- * Desde el panel solo se puede cancelar sin cargo; el avance lo marcan técnico y cliente en la app.
+ * Cancela un servicio sin cargo. Es la única transición que el panel puede hacer:
+ * el avance lo registran técnico y cliente desde la app.
  * Endpoint: PATCH /api/admin/solicitudes/:id/estado
  */
-export async function updateServiceStatus(
-  idServicio: number | string,
-  payload: UpdateServiceStatusPayload
-): Promise<UpdateServiceStatusResponse> {
-  const { data } = await api.patch<UpdateServiceStatusResponse>(
-    `/admin/solicitudes/${idServicio}/estado`,
-    payload
-  )
+export async function cancelService(idServicio: number, payload: CancelServicePayload): Promise<CancelServiceResponse> {
+  const { data } = await api.patch<CancelServiceResponse>(`/admin/solicitudes/${idServicio}/estado`, payload)
   return data
 }
 
-/**
- * Obtiene los detalles completos de un servicio técnico por su ID
- */
-export async function getServicioById(idServicio: number | string): Promise<RecentService> {
-  const { data } = await api.get<RecentService>(`/admin/solicitudes/${idServicio}`)
+/** Expediente completo de un servicio (participantes, tareas, evidencias, calificaciones, pago e incidencias). */
+export async function getServicioById(idServicio: number | string): Promise<ServicioDetalle> {
+  const { data } = await api.get<ServicioDetalle>(`/admin/solicitudes/${idServicio}`)
   return data
 }
 
@@ -41,12 +27,15 @@ export interface ServicioUbicado {
   longitud: string | number | null
   direccion: string | null
   fecha_creacion: string
+  tecnico_nombre?: string | null
+  tecnico_apellido?: string | null
+  cliente_nombre?: string | null
+  cliente_apellido?: string | null
 }
 
 /**
  * Lista de servicios con sus coordenadas (para el mapa en vivo).
- *
- * Endpoint: GET /api/admin/solicitudes (solicitudes de la app)
+ * Endpoint: GET /api/admin/solicitudes
  */
 export async function getServicios(): Promise<ServicioUbicado[]> {
   const { data } = await api.get<{ servicios: ServicioUbicado[] }>('/admin/solicitudes')

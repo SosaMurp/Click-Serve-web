@@ -1,6 +1,8 @@
 // Documento imprimible en una ventana nueva: el administrador lo guarda como PDF con el diálogo de impresión
 // del navegador (RF-80, RF-96). Todo el texto se escapa antes de insertarlo.
 
+import { toast } from '../components/ui/Toaster'
+
 export const escapeHtml = (v: unknown) =>
   String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
 
@@ -13,7 +15,7 @@ export function tablaHtml(columnas: string[], filas: unknown[][]) {
 export function abrirImprimible(titulo: string, subtitulo: string, cuerpo: string) {
   const w = window.open('', '_blank', 'width=1000,height=800')
   if (!w) {
-    alert('El navegador bloqueó la ventana. Permite ventanas emergentes para este sitio y vuelve a intentarlo.')
+    toast.error('El navegador bloqueó la ventana. Permite ventanas emergentes para este sitio y vuelve a intentarlo.')
     return
   }
   w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${escapeHtml(titulo)}</title>

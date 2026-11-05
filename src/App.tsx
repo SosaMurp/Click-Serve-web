@@ -1,23 +1,26 @@
+import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
-import { useEffect } from 'react'
 import { setNavigate } from './lib/navigation'
 import { ProtectedRoute, GuestRoute } from '@components/layout/ProtectedRoute'
-import LoginPage        from '@pages/auth/LoginPage'
-import RegisterPage     from '@pages/auth/RegisterPage'
-import RequestSentPage  from '@pages/auth/RequestSentPage'
-import TwoFactorPage    from '@pages/auth/TwoFactorPage'
+import { Toaster } from '@components/ui/Toaster'
+import { DialogA11y } from '@components/ui/DialogA11y'
+import LoginPage from '@pages/auth/LoginPage'
+import TwoFactorPage from '@pages/auth/TwoFactorPage'
 import RecoverPasswordPage from '@pages/auth/RecoverPasswordPage'
-import DashboardLayout  from '@components/layout/DashboardLayout'
-import DashboardPage    from '@pages/dashboard/DashboardPage'
-import ValidacionesPage from '@pages/validaciones/ValidacionesPage'
-import TecnicosPage     from '@pages/tecnicos/TecnicosPage'
-import MapaPage         from '@pages/mapa/MapaPage'
-import FinanzasPage     from '@pages/finanzas/FinanzasPage'
-import ConfiguracionPage from '@pages/configuracion/ConfiguracionPage'
-import PerfilPage       from '@pages/perfil/PerfilPage'
-import SoportePage      from '@pages/soporte/SoportePage'
-import BiometriaPage    from '@pages/biometria/BiometriaPage'
+import RegisterPage from '@pages/auth/RegisterPage'
+import RequestSentPage from '@pages/auth/RequestSentPage'
+import DashboardLayout from '@components/layout/DashboardLayout'
 
+// Cada sección del panel se descarga al abrirla: Leaflet (mapa) y Recharts (tablero) no se bajan
+// en el login ni en las pantallas que no los usan.
+const DashboardPage = lazy(() => import('@pages/dashboard/DashboardPage'))
+const ValidacionesPage = lazy(() => import('@pages/validaciones/ValidacionesPage'))
+const TecnicosPage = lazy(() => import('@pages/tecnicos/TecnicosPage'))
+const MapaPage = lazy(() => import('@pages/mapa/MapaPage'))
+const FinanzasPage = lazy(() => import('@pages/finanzas/FinanzasPage'))
+const ConfiguracionPage = lazy(() => import('@pages/configuracion/ConfiguracionPage'))
+const PerfilPage = lazy(() => import('@pages/perfil/PerfilPage'))
+const SoportePage = lazy(() => import('@pages/soporte/SoportePage'))
 
 /** Registra useNavigate en el helper imperativo para que Axios pueda redirigir */
 function NavigationRegistrar() {
@@ -26,10 +29,16 @@ function NavigationRegistrar() {
   return null
 }
 
+const Cargando = () => (
+  <div role="status" aria-live="polite" style={{ padding: 32, fontSize: 13, color: 'var(--text-mid)' }}>Cargando…</div>
+)
+
 export default function App() {
   return (
     <BrowserRouter>
       <NavigationRegistrar />
+      <DialogA11y />
+      <Toaster />
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
 
@@ -45,19 +54,17 @@ export default function App() {
         {/* ── Rutas protegidas (requieren JWT válido) ── */}
         <Route element={<ProtectedRoute />}>
           <Route element={<DashboardLayout />}>
-            <Route path="dashboard"      element={<DashboardPage />} />
-            <Route path="validaciones"   element={<ValidacionesPage />} />
-            <Route path="tecnicos"       element={<TecnicosPage />} />
-            <Route path="soporte"        element={<SoportePage />} />
-            <Route path="mapa"           element={<MapaPage />} />
-            <Route path="finanzas"       element={<FinanzasPage />} />
-            <Route path="configuracion"  element={<ConfiguracionPage />} />
-            <Route path="perfil"         element={<PerfilPage />} />
-            <Route path="biometria"      element={<BiometriaPage />} />
+            <Route path="dashboard"      element={<Suspense fallback={<Cargando />}><DashboardPage /></Suspense>} />
+            <Route path="validaciones"   element={<Suspense fallback={<Cargando />}><ValidacionesPage /></Suspense>} />
+            <Route path="tecnicos"       element={<Suspense fallback={<Cargando />}><TecnicosPage /></Suspense>} />
+            <Route path="soporte"        element={<Suspense fallback={<Cargando />}><SoportePage /></Suspense>} />
+            <Route path="mapa"           element={<Suspense fallback={<Cargando />}><MapaPage /></Suspense>} />
+            <Route path="finanzas"       element={<Suspense fallback={<Cargando />}><FinanzasPage /></Suspense>} />
+            <Route path="configuracion"  element={<Suspense fallback={<Cargando />}><ConfiguracionPage /></Suspense>} />
+            <Route path="perfil"         element={<Suspense fallback={<Cargando />}><PerfilPage /></Suspense>} />
           </Route>
         </Route>
 
-        {/* Fallback */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>

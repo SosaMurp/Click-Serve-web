@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { sondeo } from '../config/queryClient'
 import api from '../api/axios'
 import type {
   UsuarioRow,
@@ -170,7 +171,7 @@ export function useIncidencias(estado?: 'ABIERTA' | 'RESUELTA') {
       const { data } = await api.get<{ incidencias: IncidenciaRow[] }>('/admin/incidencias', { params: { estado } })
       return data.incidencias
     },
-    refetchInterval: 30_000,
+    refetchInterval: sondeo(30_000),
   })
 }
 
@@ -328,7 +329,7 @@ export function useTickets(estado: 'ACTIVOS' | 'CERRADO') {
       const { data } = await api.get<{ tickets: TicketRow[] }>('/admin/soporte/tickets', { params: { estado } })
       return data.tickets
     },
-    refetchInterval: 20_000,
+    refetchInterval: sondeo(20_000),
   })
 }
 
@@ -340,7 +341,7 @@ export function useTicketMensajes(id: number | null) {
       const { data } = await api.get<{ ticket: TicketDetalle; mensajes: TicketMensaje[] }>(`/admin/soporte/tickets/${id}/mensajes`)
       return data
     },
-    refetchInterval: 10_000,
+    refetchInterval: sondeo(10_000),
   })
 }
 

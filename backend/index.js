@@ -3,7 +3,7 @@ require('dotenv').config({ quiet: true });
 const { migrate } = require('./src/db/migrate');
 const { createApp } = require('./src/app');
 const realtime = require('./src/lib/realtime');
-const { getPool } = require('./src/db/pool');
+const { getPool, closePool } = require('./src/db/pool');
 
 // RNF-34: un técnico sin latido en 5 minutos deja de figurar como disponible.
 function startAvailabilitySweep() {
@@ -16,13 +16,36 @@ function startAvailabilitySweep() {
 }
 
 async function start(port = process.env.PORT || 3000) {
-  await migrate();
+  // DB_AUTO_MIGRATE=false evita que el arranque modifique la base (p. ej. una base remota con datos que
+  // todavía no se ha revisado). Las migraciones se aplican entonces a mano con `npm run db:migrate`.
+  if (process.env.DB_AUTO_MIGRATE === 'false') {
+    console.log('DB_AUTO_MIGRATE=false: no se aplican migraciones al arrancar.');
+  } else {
+    await migrate();
+  }
   const server = http.createServer(createApp());
   realtime.attach(server);
   startAvailabilitySweep();
   server.listen(port, () => {
     console.log(`Servidor corriendo en el puerto ${port}`);
   });
+
+  // Apagado ordenado (despliegues y reinicios): deja de aceptar conexiones, cierra los WebSocket,
+  // espera a que terminen las peticiones en curso y cierra el pool de PostgreSQL.
+  let closing = false;
+  const shutdown = (signal) => {
+    if (closing) return;
+    closing = true;
+    console.log(`${signal} recibido: cerrando el servidor…`);
+    realtime.closeAll();
+    const force = setTimeout(() => process.exit(1), 10_000);
+    force.unref();
+    server.close(() => {
+      closePool().finally(() => process.exit(0));
+    });
+  };
+  process.once('SIGTERM', () => shutdown('SIGTERM'));
+  process.once('SIGINT', () => shutdown('SIGINT'));
   return server;
 }
 

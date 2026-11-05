@@ -2,7 +2,7 @@
 //
 //   node scripts/create-test-admin.js       → crea/actualiza el admin de prueba y guarda
 //                                             sus credenciales en backend/test-admin.local
-//   node scripts/create-test-admin.js otp   → muestra el último código 2FA sin usar de ese admin
+//   node scripts/create-test-admin.js otp   → indica dónde ver el código 2FA (en la base solo queda su HMAC)
 //
 // test-admin.local está ignorado por git (*.local).
 require('dotenv').config({ quiet: true });
@@ -46,15 +46,18 @@ async function createAdmin() {
 }
 
 async function showOtp() {
+  // Desde la migración 008 la base guarda el HMAC del código, no el código: no se puede leer de ahí.
   const { rows } = await pool.query(
-    `SELECT t.token, t.fecha_expiracion FROM tokens_temporales t
+    `SELECT t.fecha_expiracion FROM tokens_temporales t
      JOIN usuarios u ON u.id_usuario = t.id_usuario
      WHERE u.correo = $1 AND t.tipo_accion = 'login_admin' AND t.estado_uso = 'sin usar'
        AND t.fecha_expiracion > CURRENT_TIMESTAMP
      ORDER BY t.fecha_expiracion DESC LIMIT 1`,
     [EMAIL]
   );
-  console.log(rows.length ? `Código 2FA: ${rows[0].token}` : 'No hay código vigente. Inicia sesión primero en el panel.');
+  console.log(rows.length
+    ? `Hay un código vigente hasta ${rows[0].fecha_expiracion.toISOString()}. Sin SMTP configurado (NODE_ENV=development) aparece en la consola del backend como "[correo simulado] … código NNNNNN"; con SMTP llega a ${EMAIL}.`
+    : 'No hay código vigente. Inicia sesión primero en el panel.');
 }
 
 (process.argv[2] === 'otp' ? showOtp() : createAdmin())
