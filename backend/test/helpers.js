@@ -8,6 +8,9 @@ process.env.DB_PASSWORD = process.env.TEST_DB_PASSWORD || '';
 process.env.DB_NAME = process.env.TEST_DB_NAME || 'clickyserve_test';
 process.env.JWT_SECRET = 'test-jwt-secret';
 process.env.FILES_SECRET = 'test-files-secret';
+// Las pruebas nunca usan servicios reales aunque backend/.env los tenga configurados (correo, SMS, pagos):
+// valores vacíos, que dotenv no sobrescribe.
+for (const k of ['SMTP_USER', 'SMTP_PASS', 'TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_FROM', 'CONEKTA_PRIVATE_KEY', 'INE_PROVIDER', 'INE_PROVIDER_KEY']) process.env[k] = '';
 
 const http = require('http');
 const { randomUUID } = require('crypto');

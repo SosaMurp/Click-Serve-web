@@ -12,6 +12,7 @@ const { sendPush } = require('../lib/push');
 const { deletionBlocker, anonymizeUser } = require('../services/bajas');
 const S = require('../services/solicitudes');
 const { signFileUrl } = require('../lib/files');
+const { todayMx } = require('../lib/dates');
 
 // Dashboard, directorio de usuarios y detalle de servicios del panel de administrador.
 // Antes los resolvía un backend aparte con tablas propias; ahora leen las mismas tablas que la app.
@@ -41,7 +42,42 @@ const SERVICIO_SELECT = `
   LEFT JOIN usuarios cl ON cl.id_usuario = s.id_usuario`;
 
 // ───────────────────────── Dashboard ─────────────────────────
-router.get('/api/admin/dashboard/stats', ...adminOnly, async (_req, res) => {
+// Rango de fechas que elige el administrador (?desde=YYYY-MM-DD&hasta=YYYY-MM-DD, ambos inclusivos y en la
+// fecha de Lázaro Cárdenas). Sin parámetros se usan los últimos 30 días. Máximo un año.
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const DIA_MS = 86_400_000;
+const MAX_DIAS = 366;
+const aMs = (iso) => Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)));
+const aIso = (ms) => new Date(ms).toISOString().slice(0, 10);
+
+function parseRango(req, { opcional = false } = {}) {
+  const { desde, hasta } = req.query;
+  if (desde == null && hasta == null) {
+    if (opcional) return null;
+    const fin = todayMx();
+    return { desde: aIso(aMs(fin) - 29 * DIA_MS), hasta: fin };
+  }
+  const valida = (v) => ISO_DATE.test(String(v)) && aIso(aMs(String(v))) === String(v);
+  if (!valida(desde) || !valida(hasta)) {
+    throw new HttpError(400, 'VALIDATION_ERROR', 'Las fechas deben tener el formato AAAA-MM-DD.', { field: 'desde' });
+  }
+  const dias = (aMs(hasta) - aMs(desde)) / DIA_MS + 1;
+  if (dias < 1) throw new HttpError(400, 'VALIDATION_ERROR', 'La fecha de inicio no puede ser posterior a la de fin.', { field: 'desde' });
+  if (dias > MAX_DIAS) throw new HttpError(400, 'VALIDATION_ERROR', 'El rango máximo es de un año.', { field: 'hasta' });
+  return { desde: String(desde), hasta: String(hasta) };
+}
+
+// Periodo inmediatamente anterior y de la misma duración (para las variaciones).
+function periodoAnterior({ desde, hasta }) {
+  const dias = (aMs(hasta) - aMs(desde)) / DIA_MS + 1;
+  return { desde: aIso(aMs(desde) - dias * DIA_MS), hasta: aIso(aMs(desde) - DIA_MS) };
+}
+
+const MX = "'America/Mexico_City'";
+
+router.get('/api/admin/dashboard/stats', ...adminOnly, async (req, res) => {
+  const rango = parseRango(req);
+  const previo = periodoAnterior(rango);
   const { rows } = await db().query(`
     WITH
       online AS (SELECT COUNT(*)::int AS n FROM usuarios u WHERE ${EN_LINEA}),
@@ -51,9 +87,18 @@ router.get('/api/admin/dashboard/stats', ...adminOnly, async (_req, res) => {
         WHERE u.id_rol = 2 AND u.anonimizado = false AND u.identidad_verificada = false
           AND UPPER(COALESCE(u.estado_cuenta, '')) NOT IN ('RECHAZADO', 'SUSPENDIDO')
       ),
-      hoy AS (SELECT COALESCE(SUM(monto), 0) AS total FROM pagos WHERE estado = 'PAGADO' AND (fecha AT TIME ZONE 'America/Mexico_City')::date = (NOW() AT TIME ZONE 'America/Mexico_City')::date),
-      ayer AS (SELECT COALESCE(SUM(monto), 0) AS total FROM pagos WHERE estado = 'PAGADO' AND (fecha AT TIME ZONE 'America/Mexico_City')::date = (NOW() AT TIME ZONE 'America/Mexico_City')::date - 1),
-      completados AS (
+      hoy AS (SELECT COALESCE(SUM(monto), 0) AS total FROM pagos WHERE estado = 'PAGADO' AND (fecha AT TIME ZONE ${MX})::date = (NOW() AT TIME ZONE ${MX})::date),
+      periodo AS (SELECT COALESCE(SUM(monto), 0) AS total FROM pagos WHERE estado = 'PAGADO' AND (fecha AT TIME ZONE ${MX})::date BETWEEN $1::date AND $2::date),
+      previo AS (SELECT COALESCE(SUM(monto), 0) AS total FROM pagos WHERE estado = 'PAGADO' AND (fecha AT TIME ZONE ${MX})::date BETWEEN $3::date AND $4::date),
+      completados_periodo AS (
+        SELECT COUNT(*)::int AS n FROM solicitudes_servicio s
+        WHERE s.estado = 'FINALIZADA' AND (COALESCE(s.fecha_finalizacion, s.fecha_creacion) AT TIME ZONE ${MX})::date BETWEEN $1::date AND $2::date
+      ),
+      completados_previo AS (
+        SELECT COUNT(*)::int AS n FROM solicitudes_servicio s
+        WHERE s.estado = 'FINALIZADA' AND (COALESCE(s.fecha_finalizacion, s.fecha_creacion) AT TIME ZONE ${MX})::date BETWEEN $3::date AND $4::date
+      ),
+      completados_mes AS (
         SELECT COUNT(*)::int AS n FROM solicitudes_servicio s
         WHERE s.estado = 'FINALIZADA' AND DATE_TRUNC('month', COALESCE(s.fecha_finalizacion, s.fecha_creacion)) = DATE_TRUNC('month', NOW())
       ),
@@ -62,46 +107,66 @@ router.get('/api/admin/dashboard/stats', ...adminOnly, async (_req, res) => {
            (SELECT n FROM en_curso) AS servicios_en_curso,
            (SELECT n FROM validaciones) AS validaciones_pendientes,
            (SELECT total FROM hoy) AS ingresos_hoy,
-           (SELECT n FROM completados) AS servicios_completados_mes,
+           (SELECT total FROM periodo) AS ingresos_periodo,
+           (SELECT n FROM completados_periodo) AS servicios_completados_periodo,
+           (SELECT n FROM completados_mes) AS servicios_completados_mes,
            (SELECT n FROM clientes) AS total_clientes,
            NULL::numeric AS variacion_tecnicos_pct,
-           CASE WHEN (SELECT total FROM ayer) = 0 THEN NULL
-                ELSE ROUND(((SELECT total FROM hoy) - (SELECT total FROM ayer)) / (SELECT total FROM ayer) * 100, 1) END AS variacion_ingresos_pct`);
-  res.json(rows[0]);
+           CASE WHEN (SELECT total FROM previo) = 0 THEN NULL
+                ELSE ROUND(((SELECT total FROM periodo) - (SELECT total FROM previo)) / (SELECT total FROM previo) * 100, 1) END AS variacion_ingresos_pct,
+           CASE WHEN (SELECT n FROM completados_previo) = 0 THEN NULL
+                ELSE ROUND(((SELECT n FROM completados_periodo) - (SELECT n FROM completados_previo))::numeric / (SELECT n FROM completados_previo) * 100, 1) END AS variacion_completados_pct`,
+    [rango.desde, rango.hasta, previo.desde, previo.hasta]);
+  res.json({ ...rows[0], periodo: rango });
 });
 
-router.get('/api/admin/dashboard/servicios-mes', ...adminOnly, async (_req, res) => {
+router.get('/api/admin/dashboard/servicios-mes', ...adminOnly, async (req, res) => {
+  const rango = parseRango(req);
   const { rows } = await db().query(`
     WITH rango AS (
-      SELECT GENERATE_SERIES(CURRENT_DATE - INTERVAL '29 days', CURRENT_DATE, '1 day'::interval)::date AS fecha
+      SELECT GENERATE_SERIES($1::date, $2::date, '1 day'::interval)::date AS fecha
     ), datos AS (
-      SELECT s.fecha_creacion::date AS fecha,
+      SELECT (s.fecha_creacion AT TIME ZONE ${MX})::date AS fecha,
              COUNT(*) FILTER (WHERE s.estado = 'FINALIZADA') AS completados,
              COUNT(*) FILTER (WHERE s.estado = 'CANCELADA') AS cancelados,
              COUNT(*) FILTER (WHERE ${EN_CURSO}) AS en_curso
       FROM solicitudes_servicio s
-      WHERE s.fecha_creacion >= CURRENT_DATE - INTERVAL '29 days'
+      WHERE (s.fecha_creacion AT TIME ZONE ${MX})::date BETWEEN $1::date AND $2::date
       GROUP BY 1
     )
-    SELECT r.fecha, TO_CHAR(r.fecha, 'DD Mon') AS dia,
+    SELECT TO_CHAR(r.fecha, 'YYYY-MM-DD') AS fecha,
            COALESCE(d.completados, 0)::int AS completados, COALESCE(d.cancelados, 0)::int AS cancelados,
            COALESCE(d.en_curso, 0)::int AS en_curso
     FROM rango r LEFT JOIN datos d ON d.fecha = r.fecha
-    ORDER BY r.fecha`);
+    ORDER BY r.fecha`, [rango.desde, rango.hasta]);
   res.json({
+    periodo: rango,
     puntos: rows,
     total_completados: rows.reduce((s, r) => s + r.completados, 0),
     total_cancelados: rows.reduce((s, r) => s + r.cancelados, 0),
   });
 });
 
-router.get('/api/admin/dashboard/recent-services', ...adminOnly, async (req, res) => {
-  const limit = Math.min(Math.max(parseInt(req.query.limit ?? '8', 10) || 8, 1), 50);
-  const { rows } = await db().query(`${SERVICIO_SELECT} ORDER BY s.fecha_creacion DESC LIMIT $1`, [limit]);
-  res.json({ servicios: rows, total: rows.length });
+// Técnicos con más servicios finalizados en el rango.
+router.get('/api/admin/dashboard/tecnicos-destacados', ...adminOnly, async (req, res) => {
+  const rango = parseRango(req);
+  const { rows } = await db().query(`
+    SELECT t.id_usuario, t.nombre, t.apellido, COUNT(*)::int AS servicios, COALESCE(SUM(s.monto_total), 0) AS monto
+    FROM solicitudes_servicio s JOIN usuarios t ON t.id_usuario = s.id_tecnico
+    WHERE s.estado = 'FINALIZADA'
+      AND (COALESCE(s.fecha_finalizacion, s.fecha_creacion) AT TIME ZONE ${MX})::date BETWEEN $1::date AND $2::date
+    GROUP BY t.id_usuario, t.nombre, t.apellido
+    ORDER BY servicios DESC, monto DESC
+    LIMIT 5`, [rango.desde, rango.hasta]);
+  res.json({ periodo: rango, tecnicos: rows });
 });
 
-router.get('/api/admin/dashboard/actividad', ...adminOnly, async (_req, res) => {
+// Cada elemento trae `tipo` e `id` para que el panel abra el servicio, el técnico o la incidencia.
+// Con ?desde&hasta solo muestra lo ocurrido en el rango; sin ellos, lo más reciente.
+router.get('/api/admin/dashboard/actividad', ...adminOnly, async (req, res) => {
+  const rango = parseRango(req, { opcional: true });
+  const params = rango ? [rango.desde, rango.hasta] : [];
+  const en = (col) => (rango ? `AND (${col} AT TIME ZONE ${MX})::date BETWEEN $1::date AND $2::date` : '');
   const { rows } = await db().query(`
     (SELECT s.id_solicitud AS id, 'servicio' AS tipo,
             CONCAT(CASE s.estado WHEN 'FINALIZADA' THEN 'Servicio completado: ' WHEN 'CANCELADA' THEN 'Servicio cancelado: '
@@ -109,12 +174,13 @@ router.get('/api/admin/dashboard/actividad', ...adminOnly, async (_req, res) => 
                    COALESCE(c.nombre, 'Servicio'), ' (', s.folio, ')') AS descripcion,
             s.direccion AS sub, s.fecha_creacion AS creado_en, (s.estado = 'CANCELADA' OR s.alerta_sos) AS urgente
      FROM solicitudes_servicio s LEFT JOIN categorias_servicio c ON c.codigo = s.categoria
+     WHERE TRUE ${en('s.fecha_creacion')}
      ORDER BY s.fecha_creacion DESC LIMIT 8)
     UNION ALL
     (SELECT u.id_usuario, 'tecnico', CONCAT('Nuevo técnico registrado: ', u.nombre, ' ', u.apellido),
             CASE WHEN u.identidad_verificada THEN 'Aprobado' ELSE 'Pendiente de revisión' END,
             u.fecha_registro, (u.identidad_verificada = false)
-     FROM usuarios u WHERE u.id_rol = 2 AND u.anonimizado = false
+     FROM usuarios u WHERE u.id_rol = 2 AND u.anonimizado = false ${en('u.fecha_registro')}
      ORDER BY u.fecha_registro DESC LIMIT 5)
     UNION ALL
     (SELECT i.id_incidencia, 'alerta', CONCAT('Incidencia ', i.folio, ': ', CASE i.tipo
@@ -122,20 +188,21 @@ router.get('/api/admin/dashboard/actividad', ...adminOnly, async (_req, res) => 
               WHEN 'MALA_CALIDAD' THEN 'mala calidad' WHEN 'DANOS' THEN 'daños' WHEN 'SEGURIDAD' THEN 'seguridad / SOS'
               WHEN 'GARANTIA' THEN 'garantía' ELSE 'otro' END),
             i.descripcion, i.fecha_creacion, (i.prioridad = 'ALTA')
-     FROM incidencias i WHERE i.estado = 'ABIERTA'
+     FROM incidencias i WHERE i.estado = 'ABIERTA' ${en('i.fecha_creacion')}
      ORDER BY i.fecha_creacion DESC LIMIT 5)
     ORDER BY creado_en DESC NULLS LAST
-    LIMIT 20`);
+    LIMIT 20`, params);
   res.json({ items: rows });
 });
 
-router.get('/api/admin/dashboard/especialidades', ...adminOnly, async (_req, res) => {
+router.get('/api/admin/dashboard/especialidades', ...adminOnly, async (req, res) => {
+  const rango = parseRango(req);
   const { rows } = await db().query(`
     SELECT COALESCE(c.nombre, 'Sin categoría') AS especialidad, COUNT(*)::int AS total,
            ROUND(COUNT(*)::numeric / NULLIF(SUM(COUNT(*)) OVER (), 0) * 100, 1) AS porcentaje
     FROM solicitudes_servicio s LEFT JOIN categorias_servicio c ON c.codigo = s.categoria
-    WHERE s.estado = 'FINALIZADA' AND s.fecha_creacion >= CURRENT_DATE - INTERVAL '30 days'
-    GROUP BY 1 ORDER BY total DESC LIMIT 8`);
+    WHERE s.estado = 'FINALIZADA' AND (s.fecha_creacion AT TIME ZONE ${MX})::date BETWEEN $1::date AND $2::date
+    GROUP BY 1 ORDER BY total DESC LIMIT 8`, [rango.desde, rango.hasta]);
   res.json(rows);
 });
 

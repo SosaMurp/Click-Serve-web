@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Search, Inbox, CheckCircle2, AlertTriangle, ShieldAlert, X, Download } from 'lucide-react'
 import { Badge, Button, StatCard } from '@components/ui'
 import { useIncidencias, useUpdateIncidencia } from '../../hooks/useAdminQueries'
@@ -47,6 +48,25 @@ export default function SoportePage() {
   const abiertas = useIncidencias('ABIERTA')
   const resueltas = useIncidencias('RESUELTA')
   const actual = filtro === 'ABIERTA' ? abiertas : resueltas
+
+  // Llegar desde la actividad reciente del tablero: abre directamente esa incidencia (una sola vez)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const pedida = (location.state as { incidencia?: number } | null)?.incidencia
+  const yaAbierta = useRef(false)
+  useEffect(() => {
+    if (pedida == null || yaAbierta.current) return
+    const fila = abiertas.data?.find(i => i.id_incidencia === pedida) ?? resueltas.data?.find(i => i.id_incidencia === pedida)
+    if (fila) {
+      yaAbierta.current = true
+      setFiltro(fila.estado === 'RESUELTA' ? 'RESUELTA' : 'ABIERTA')
+      setSelected(fila)
+      navigate(location.pathname, { replace: true, state: null }) // al recargar no se vuelve a abrir
+    } else if (abiertas.isSuccess && resueltas.isSuccess) {
+      yaAbierta.current = true // ya no existe o no es visible: se queda la lista
+      navigate(location.pathname, { replace: true, state: null })
+    }
+  }, [pedida, abiertas.data, resueltas.data, abiertas.isSuccess, resueltas.isSuccess, navigate, location.pathname])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()

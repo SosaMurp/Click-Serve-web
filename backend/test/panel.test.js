@@ -61,13 +61,8 @@ test('el dashboard cuenta con los datos de la app', async () => {
   assert.equal(stats.body.servicios_completados_mes, 1);
 
   const mes = await api(server.url, 'GET', '/api/admin/dashboard/servicios-mes', { token: admin.token });
-  assert.equal(mes.body.puntos.length, 30);
+  assert.equal(mes.body.puntos.length, 30); // sin rango: últimos 30 días
   assert.equal(mes.body.total_completados, 1);
-
-  const recientes = await api(server.url, 'GET', '/api/admin/dashboard/recent-services?limit=5', { token: admin.token });
-  assert.equal(recientes.body.servicios.length, 2);
-  assert.ok(recientes.body.servicios.every((s) => ['En Curso', 'Completado'].includes(s.estatus)));
-  assert.equal(recientes.body.servicios[0].titulo, 'Plomería');
 
   const actividad = await api(server.url, 'GET', '/api/admin/dashboard/actividad', { token: admin.token });
   assert.ok(actividad.body.items.length >= 3);
@@ -243,4 +238,42 @@ test('a un técnico en revisión la lista de nuevas le sale vacía', async () =>
   assert.equal(res.status, 200);
   assert.equal(res.body.solicitudes.length, 0);
   assert.equal(res.body.contadores.nuevas, 0);
+});
+
+test('el dashboard filtra por el rango de fechas que elige el administrador', async () => {
+  const admin = await as(3);
+  const hoy = require('../src/lib/dates').todayMx();
+  const q = (ruta, qs) => api(server.url, 'GET', `/api/admin/dashboard/${ruta}${qs}`, { token: admin.token });
+
+  // Rango de un solo día = hoy: una sola barra en la gráfica
+  const dia = await q('servicios-mes', `?desde=${hoy}&hasta=${hoy}`);
+  assert.equal(dia.status, 200);
+  assert.equal(dia.body.puntos.length, 1);
+  assert.equal(dia.body.puntos[0].fecha, hoy);
+
+  // Un rango en el pasado no incluye lo creado hoy
+  const pasado = await q('servicios-mes', '?desde=2020-01-01&hasta=2020-01-31');
+  assert.equal(pasado.body.puntos.length, 31);
+  assert.equal(pasado.body.total_completados, 0);
+  const statsPasado = await q('stats', '?desde=2020-01-01&hasta=2020-01-31');
+  assert.equal(statsPasado.body.servicios_completados_periodo, 0);
+  assert.equal(Number(statsPasado.body.ingresos_periodo), 0);
+  assert.deepEqual(statsPasado.body.periodo, { desde: '2020-01-01', hasta: '2020-01-31' });
+  assert.deepEqual((await q('especialidades', '?desde=2020-01-01&hasta=2020-01-31')).body, []);
+  assert.deepEqual((await q('tecnicos-destacados', '?desde=2020-01-01&hasta=2020-01-31')).body.tecnicos, []);
+  assert.deepEqual((await q('actividad', '?desde=2020-01-01&hasta=2020-01-31')).body.items, []);
+
+  // Las filas de actividad traen tipo e id para poder abrirlas
+  const feed = await q('actividad', '');
+  assert.ok(feed.body.items.every((i) => ['servicio', 'tecnico', 'alerta'].includes(i.tipo) && i.id != null));
+});
+
+test('el dashboard rechaza rangos de fechas inválidos', async () => {
+  const admin = await as(3);
+  const q = (qs) => api(server.url, 'GET', `/api/admin/dashboard/stats${qs}`, { token: admin.token });
+  assert.equal((await q('?desde=2026-02-30&hasta=2026-03-01')).status, 400);
+  assert.equal((await q('?desde=ayer&hasta=hoy')).status, 400);
+  assert.equal((await q('?desde=2026-03-10&hasta=2026-03-01')).status, 400);
+  assert.equal((await q('?desde=2024-01-01&hasta=2026-01-01')).status, 400);
+  assert.equal((await q('?desde=2026-03-01')).status, 400);
 });

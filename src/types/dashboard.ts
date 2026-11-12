@@ -12,24 +12,30 @@ export interface DashboardStats {
   servicios_en_curso: number
   /** Expedientes con estatus "En Revision" o "Pendiente" */
   validaciones_pendientes: number
-  /** Suma de pagos procesados hoy (CURRENT_DATE) */
+  /** Suma de pagos procesados hoy */
   ingresos_hoy: number | string
+  /** Suma de pagos procesados dentro del rango elegido */
+  ingresos_periodo: number | string
+  /** Servicios finalizados dentro del rango elegido */
+  servicios_completados_periodo: number
   /** Servicios completados el mes actual */
   servicios_completados_mes: number
+  /** Rango que usó el servidor (AAAA-MM-DD) */
+  periodo: { desde: string; hasta: string }
   /** Total de clientes registrados */
   total_clientes: number
   /** Variacion porcentual de tecnicos online vs semana anterior (puede ser negativo) */
   variacion_tecnicos_pct: number | string | null
-  /** Variacion porcentual de ingresos hoy vs ayer */
+  /** Variacion porcentual de ingresos del rango vs el periodo anterior de la misma duracion */
   variacion_ingresos_pct: number | string | null
+  /** Variacion porcentual de servicios finalizados vs el periodo anterior */
+  variacion_completados_pct: number | string | null
 }
 
 // ── Punto de datos para la grafica de servicios por dia ────────────────────────
 
 export interface ServiciosDiaPoint {
-  /** Formato "DD MMM" ej. "01 Oct" */
-  dia: string
-  /** Fecha ISO para sorting "YYYY-MM-DD" */
+  /** Fecha "YYYY-MM-DD" (el panel la formatea para mostrarla) */
   fecha: string
   completados: number
   cancelados: number
@@ -37,33 +43,12 @@ export interface ServiciosDiaPoint {
 }
 
 export interface ServiciosMesResponse {
-  /** Ultimos 30 dias de actividad */
+  periodo: { desde: string; hasta: string }
+  /** Un punto por dia del rango elegido */
   puntos: ServiciosDiaPoint[]
   /** Totales del periodo */
   total_completados: number
   total_cancelados: number
-}
-
-// ── Servicios recientes (tabla de actividad) ────────────────────────────────────
-
-export interface RecentService {
-  id_servicio: number
-  /** Codigo visible: "SRV-108" */
-  codigo: string
-  titulo: string
-  estatus: "Pendiente" | "En Curso" | "Completado" | "Cancelado"
-  tecnico_nombre: string | null
-  tecnico_apellido: string | null
-  cliente_nombre: string
-  cliente_apellido: string
-  monto: number | null
-  fecha_creacion: string
-  direccion: string | null
-}
-
-export interface RecentServicesResponse {
-  servicios: RecentService[]
-  total: number
 }
 
 // ── Actividad reciente del feed ────────────────────────────────────────────────
@@ -90,4 +75,19 @@ export interface EspecialidadStat {
   especialidad: string
   total: number
   porcentaje: number
+}
+
+// ── Tecnicos con mas servicios en el rango ────────────────────────────────────
+
+export interface TecnicoDestacado {
+  id_usuario: number
+  nombre: string
+  apellido: string | null
+  servicios: number
+  monto: number | string
+}
+
+export interface TecnicosDestacadosResponse {
+  periodo: { desde: string; hasta: string }
+  tecnicos: TecnicoDestacado[]
 }
