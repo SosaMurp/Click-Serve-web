@@ -6,7 +6,7 @@ const { computeApproved } = require('../middleware/auth');
 const USER_COLUMNS = `id_usuario, nombre, apellido, telefono, correo, fecha_nacimiento, id_rol, contrasena,
   estado_cuenta, identidad_verificada, verificado_sep, biometria_estado, version_sesion, "2FA_Activo",
   totp_secreto, disponible, preferencias, foto_archivo, foto_perfil, anonimizado, fecha_registro, bio,
-  consentimiento_privacidad`;
+  consentimiento_privacidad, debe_cambiar_contrasena, contrasena_temporal_expira`;
 
 async function findUserByEmail(email, db = getPool()) {
   const { rows } = await db.query(`SELECT ${USER_COLUMNS} FROM usuarios WHERE correo = $1`, [String(email || '').trim().toLowerCase()]);
@@ -41,6 +41,7 @@ function publicUser(row) {
     '2FA_Activo': row['2FA_Activo'] === true || Boolean(row.totp_secreto),
     disponible: row.disponible === true,
     preferencias: row.preferencias || {},
+    debe_cambiar_contrasena: row.debe_cambiar_contrasena === true,
     foto_url: row.foto_archivo ? signFileUrl(row.foto_archivo, 3600) : null,
     bio: row.bio || null,
     fecha_registro: row.fecha_registro,

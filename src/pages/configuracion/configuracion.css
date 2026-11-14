@@ -134,3 +134,61 @@
 .cfg-badge-pill--soon { background: var(--warning-soft); color: var(--warning); }
 .cfg-card--soon .cfg-card-head { margin-bottom: 14px; }
 .cfg-card--soon .cfg-card-head > div:nth-child(2) { flex: 1; }
+
+/* ── Configuración por secciones ── */
+.cfg-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 18px; align-items: start; }
+.cfg-nav {
+  display: flex; flex-direction: column; gap: 4px; padding: 8px;
+  background: #fff; border: 1px solid var(--border-light); border-radius: var(--radius-lg);
+}
+.cfg-nav-item {
+  display: flex; align-items: flex-start; gap: 11px; padding: 11px 12px; border-radius: 12px; border: none; background: none;
+  cursor: pointer; text-align: left; font-family: inherit; color: var(--text-mid); position: relative;
+  transition: background var(--transition);
+}
+.cfg-nav-item:hover { background: var(--bg-input); }
+.cfg-nav-item--on { background: var(--accent-soft); color: var(--accent-ink); }
+.cfg-nav-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.cfg-nav-item > svg { margin-top: 2px; flex-shrink: 0; }
+.cfg-nav-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.cfg-nav-label { font-size: 13.5px; font-weight: 600; color: var(--text-dark); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.cfg-nav-item--on .cfg-nav-label { color: var(--accent-ink); }
+.cfg-nav-sub { font-size: 11.5px; color: var(--text-muted); }
+.cfg-nav-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); position: absolute; right: 12px; top: 14px; }
+
+.cfg-panel {
+  background: #fff; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 22px 24px;
+  display: flex; flex-direction: column; gap: 18px; min-width: 0;
+}
+.cfg-panel-head { padding-bottom: 14px; border-bottom: 1px solid var(--bg-sunk); }
+.cfg-footer { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; padding-top: 14px; border-top: 1px solid var(--bg-sunk); }
+.cfg-footer .cfg-status { margin-right: auto; }
+.cfg-discard-btn {
+  padding: 9px 14px; border-radius: 10px; border: 1px solid var(--border-light); background: #fff; cursor: pointer;
+  font-family: inherit; font-size: 13px; font-weight: 500; color: var(--text-dark);
+}
+.cfg-discard-btn:hover:not(:disabled) { background: var(--bg-input); }
+.cfg-discard-btn:disabled { opacity: .45; cursor: not-allowed; }
+.cfg-badge-pill--on { background: var(--danger-soft); color: var(--danger-ink); }
+
+.cfg-danger {
+  display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap;
+  padding: 18px; border: 1px solid #F4C7C2; border-radius: 14px; background: #FFF8F7;
+}
+.cfg-danger--on { border-color: var(--danger); background: var(--danger-soft); }
+.cfg-danger-text { flex: 1 1 280px; min-width: 0; }
+.cfg-danger-btn {
+  display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: 10px; border: none; cursor: pointer;
+  background: var(--danger); color: #fff; font-family: inherit; font-size: 13px; font-weight: 600;
+}
+.cfg-danger-btn:hover:not(:disabled) { background: var(--danger-ink); }
+.cfg-danger-btn:disabled { opacity: .6; cursor: not-allowed; }
+.cfg-confirm { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cfg-confirm p { margin: 0; font-size: 13px; font-weight: 600; color: var(--danger-ink); }
+
+@media (max-width: 860px) {
+  .cfg-layout { grid-template-columns: 1fr; }
+  .cfg-nav { flex-direction: row; overflow-x: auto; }
+  .cfg-nav-item { flex: 0 0 auto; }
+  .cfg-nav-sub { display: none; }
+}

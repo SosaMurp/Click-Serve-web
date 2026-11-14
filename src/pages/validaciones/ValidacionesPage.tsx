@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { Search, Filter, FileText, Eye } from 'lucide-react'
 import { Badge } from '@components/ui'
+import PageHeader from '@components/ui/PageHeader'
+import MetricStrip from '@components/ui/MetricStrip'
 import TechProfileModal from '@components/modals/TechProfileModal'
 import ValidationDecisionModal from '@components/modals/ValidationDecisionModal'
 import AdvancedFiltersModal from '@components/modals/AdvancedFiltersModal'
 import './validaciones.css'
-import { SIN_FILTROS, filtrosActivos, pasaFiltros, type Filtros } from '../../lib/filtros'
+import { SIN_FILTROS, CAMPOS_VALIDACION, filtrosActivos, pasaFiltros, type Filtros } from '../../lib/filtros'
 import { useVerifications, useApproveTechnician, useRejectTechnician } from '../../hooks/useAdminQueries'
 import type { ExpedienteTecnicoRow } from '../../types/api'
 
@@ -52,7 +54,7 @@ export default function ValidacionesPage() {
 
   const visibles = QUEUE.filter(r =>
     (!search || r.name.toLowerCase().includes(search.toLowerCase())) &&
-    pasaFiltros(filters, { specialty: r.specialty, rating: r.calificacion, verificado: r.sepOk, fecha: r.fechaIso }))
+    pasaFiltros(filters, { specialty: r.specialty, rating: r.calificacion, verificado: r.sepOk, fecha: r.fechaIso }, CAMPOS_VALIDACION))
 
   const STATS = [
     { label: vista === 'pendientes' ? 'EN COLA' : 'TÉCNICOS', value: QUEUE.length.toString(), sub: null, color: 'default' },
@@ -86,29 +88,19 @@ export default function ValidacionesPage() {
 
   return (
     <div className="val-page fade-in">
-      <div className="dash-page-header">
-        <div>
-          <h1 className="dash-page-title">Centro de Validaciones</h1>
-          <p className="dash-page-sub">AUDITORÍA DE IDENTIDAD Y CREDENCIALES</p>
-        </div>
+      <PageHeader title="Validaciones" sub="Auditoría de identidad y credenciales de técnicos">
         <div className="fin-filter-tabs" style={{ padding: 0 }} role="tablist" aria-label="Vista de la cola">
           <button role="tab" aria-selected={vista === 'pendientes'} className={`fin-filter-tab ${vista === 'pendientes' ? 'active' : ''}`}
             onClick={() => setVista('pendientes')}>Pendientes</button>
           <button role="tab" aria-selected={vista === 'todos'} className={`fin-filter-tab ${vista === 'todos' ? 'active' : ''}`}
             onClick={() => setVista('todos')}>Historial</button>
         </div>
-      </div>
+      </PageHeader>
 
-      {/* Stats */}
-      <div className="val-stats-grid">
-        {STATS.map(s => (
-          <div key={s.label} className={`val-stat ${s.color === 'accent' ? 'val-stat--accent' : ''}`}>
-            <p className="val-stat-value">{s.value}</p>
-            <p className="val-stat-label">{s.label}</p>
-            {s.sub && <p className="val-stat-sub">{s.sub}</p>}
-          </div>
-        ))}
-      </div>
+      <MetricStrip label="Resumen de la cola" items={STATS.map((m, i) => ({
+        id: String(i), label: ['En cola', 'Documentos por revisar', 'Con cédula SEP'][i] ?? m.label, value: m.value,
+        tone: i === 0 && Number(m.value) > 0 ? 'alert' : 'default',
+      }))} />
 
       {/* Search bar */}
       <div className="val-toolbar">
@@ -117,7 +109,7 @@ export default function ValidacionesPage() {
           <input placeholder="Buscar técnico o ID..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <button className="dash-export-btn" onClick={() => setIsFilterOpen(true)}>
-          <Filter size={13} /> FILTRAR{filtrosActivos(filters) > 0 ? ` (${filtrosActivos(filters)})` : ''}
+          <Filter size={13} /> FILTRAR{filtrosActivos(filters, CAMPOS_VALIDACION) > 0 ? ` (${filtrosActivos(filters, CAMPOS_VALIDACION)})` : ''}
         </button>
       </div>
 
@@ -205,7 +197,8 @@ export default function ValidacionesPage() {
         onClose={() => setIsFilterOpen(false)}
         value={filters}
         onApply={setFilters}
-        showStatus={false}
+        campos={CAMPOS_VALIDACION}
+        contexto="técnicos por validar"
         verificationLabel="cédula validada en SEP"
       />
     </div>

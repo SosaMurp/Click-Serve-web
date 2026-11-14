@@ -18,6 +18,7 @@ const STEPS = [
   { id: '007_tablas_heredadas', file: 'migrations/007_tablas_heredadas.sql' },
   { id: '008_codigos_con_hash', file: 'migrations/008_codigos_con_hash.sql' },
   { id: '009_reconciliar_esquema_heredado', file: 'migrations/009_reconciliar_esquema_heredado.sql' },
+  { id: '010_contrasena_temporal', file: 'migrations/010_contrasena_temporal.sql' },
 ];
 
 async function migrate(pool = getPool(), { silent = false } = {}) {

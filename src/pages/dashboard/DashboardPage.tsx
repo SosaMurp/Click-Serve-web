@@ -6,10 +6,10 @@ import {
   PieChart, Pie, Cell,
 } from "recharts"
 import {
-  Download, Users, Briefcase, ShieldCheck, Wallet, CheckCircle2,
-  RefreshCw, AlertTriangle, WifiOff, ArrowUpRight, ChevronRight,
+  Download, ShieldCheck, RefreshCw, AlertTriangle, WifiOff, ArrowUpRight,
   TrendingUp, TrendingDown, Activity, PieChart as PieIcon, Award,
 } from "lucide-react"
+import PageHeader from "@components/ui/PageHeader"
 import RangoFechas from "@components/ui/RangoFechas"
 import ReportGeneratorModal from "@components/modals/ReportGeneratorModal"
 import ServiceDetailModal from "@components/modals/ServiceDetailModal"
@@ -17,13 +17,14 @@ import TechProfileModal from "@components/modals/TechProfileModal"
 import {
   useDashboardStats,
   useServiciosMes,
-  useActividad,
   useEspecialidadStats,
   useTecnicosDestacados,
+  usePendientes,
 } from "@hooks/useDashboard"
 import type { ActividadItem } from "@/types/dashboard"
 import { etiquetaRango, guardarRango, leerRango, type Rango } from "@/lib/rango"
 import { esErrorDeRed, mensajeDeError } from "@/lib/errores"
+import CentroActividad from "./CentroActividad"
 import "./dashboard.css"
 
 // ── Paleta (azul marino + naranja de la app móvil, sin neón) ────────────────
@@ -49,16 +50,6 @@ function fmtCurrency(n: number | string | null | undefined) {
   return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(parseNum(n))
 }
 
-function fmtRelTime(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime()
-  const m = Math.floor(diff / 60_000)
-  if (m < 1)  return "ahora"
-  if (m < 60) return `hace ${m} min`
-  const h = Math.floor(m / 60)
-  if (h < 24) return `hace ${h} h`
-  return `hace ${Math.floor(h / 24)} d`
-}
-
 function greeting(date = new Date()) {
   const h = date.getHours()
   if (h >= 5 && h < 12) return "Buenos días"
@@ -69,20 +60,6 @@ function greeting(date = new Date()) {
 // "2026-11-05" → "05 nov"
 function fmtDia(iso: string) {
   return new Date(`${iso}T12:00:00`).toLocaleDateString("es-MX", { day: "2-digit", month: "short" }).replace(".", "")
-}
-
-const ACTIVIDAD_ACCION: Record<ActividadItem["tipo"], string> = {
-  servicio: "Ver el servicio",
-  tecnico:  "Ver el expediente del técnico",
-  alerta:   "Ir a la incidencia en Soporte",
-  pago:     "Ir a Finanzas",
-}
-
-const ACTIVIDAD_COLOR: Record<ActividadItem["tipo"], string> = {
-  servicio: C.navy,
-  tecnico:  C.orange,
-  pago:     "#15803D",
-  alerta:   "#B91C1C",
 }
 
 // ── Pequeños componentes ─────────────────────────────────────────────────────
@@ -122,48 +99,6 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
           {p.name}<strong>{p.value}</strong>
         </p>
       ))}
-    </div>
-  )
-}
-
-// ── KPI card ─────────────────────────────────────────────────────────────────
-interface KpiProps {
-  label: string
-  value: string | number
-  icon: React.ReactNode
-  tone: "orange" | "navy" | "blue" | "green" | "amber"
-  delta?: number | string | null
-  note: string
-  /** Texto para cuando no hay variación que comparar: `note` habla de una comparación que no se muestra. */
-  fallbackNote?: string
-  to?: string
-}
-
-function KpiCard({ label, value, icon, tone, delta, note, fallbackNote, to }: KpiProps) {
-  const navigate = useNavigate()
-  const hasDelta = delta != null && delta !== "" && !isNaN(parseNum(delta))
-  const d = parseNum(delta)
-  return (
-    <div className="db-kpi">
-      <div className="db-kpi-head">
-        <span className={`db-kpi-icon db-kpi-icon--${tone}`}>{icon}</span>
-        <span className="db-kpi-label">{label}</span>
-        {to && (
-          <button className="db-kpi-link" title={`Ir a ${label.toLowerCase()}`} onClick={() => navigate(to)}>
-            <ArrowUpRight size={15} />
-          </button>
-        )}
-      </div>
-      <div className="db-kpi-body">
-        <p className="db-kpi-value">{value}</p>
-        {hasDelta && (
-          <span className={`db-delta ${d >= 0 ? "db-delta--up" : "db-delta--down"}`}>
-            {d >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-            {d > 0 ? "+" : ""}{d.toFixed(1)}%
-          </span>
-        )}
-      </div>
-      <p className="db-kpi-note">{!hasDelta && fallbackNote ? fallbackNote : note}</p>
     </div>
   )
 }
@@ -212,60 +147,96 @@ function SuccessGauge({ completed, cancelled }: { completed: number; cancelled: 
   )
 }
 
+// ── Métrica del resumen ──────────────────────────────────────────────────────
+function Metric({ label, value, note, delta, to }: { label: string; value: string | number; note?: string; delta?: number | string | null; to?: string }) {
+  const navigate = useNavigate()
+  const hasDelta = delta != null && delta !== "" && !isNaN(parseNum(delta))
+  const d = parseNum(delta)
+  return (
+    <div className="db-metric">
+      <div className="db-metric-head">
+        <span className="db-metric-label">{label}</span>
+        {to && (
+          <button type="button" className="db-kpi-link" title={`Ir a ${label.toLowerCase()}`} aria-label={`Ir a ${label.toLowerCase()}`} onClick={() => navigate(to)}>
+            <ArrowUpRight size={14} />
+          </button>
+        )}
+      </div>
+      <div className="db-metric-body">
+        <span className="db-metric-value">{value}</span>
+        {hasDelta && (
+          <span className={`db-delta ${d >= 0 ? "db-delta--up" : "db-delta--down"}`}>
+            {d >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+            {d > 0 ? "+" : ""}{d.toFixed(1)}%
+          </span>
+        )}
+      </div>
+      {note && <p className="db-metric-note">{note}</p>}
+    </div>
+  )
+}
+
+type Vista = "especialidades" | "tecnicos" | "exito"
+
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const navigate = useNavigate()
   const [rango, setRangoState] = useState<Rango>(leerRango)
   const [isReportOpen, setIsReportOpen] = useState(false)
-  // Elemento de la actividad reciente que se está inspeccionando
+  const [vista, setVista] = useState<Vista>("especialidades")
+  // Elemento del centro de actividad que se está inspeccionando
   const [servicioId, setServicioId] = useState<number | null>(null)
   const [tecnicoId, setTecnicoId] = useState<number | null>(null)
 
   const setRango = (r: Rango) => { setRangoState(r); guardarRango(r) }
 
   const nombre = useAuthStore(s => s.user?.nombre?.trim())
-  const stats     = useDashboardStats(rango)
-  const mes       = useServiciosMes(rango)
-  const actividad = useActividad(rango)
+  const stats = useDashboardStats(rango)
+  const mes = useServiciosMes(rango)
   const especialidades = useEspecialidadStats(rango)
   const destacados = useTecnicosDestacados(rango)
+  const pendientes = usePendientes()
   const etiqueta = etiquetaRango(rango)
   const esHoy = rango.preset === "hoy"
 
-  const consultas = [stats, mes, actividad, especialidades, destacados]
+  const consultas = [stats, mes, especialidades, destacados, pendientes]
   const primerError = consultas.find(q => q.isError)?.error
   const hasAnyError = Boolean(primerError)
   const sinRed = esErrorDeRed(primerError)
-  const pendientes = parseNum(stats.data?.validaciones_pendientes)
   const totalEsp = (Array.isArray(especialidades.data) ? especialidades.data : []).reduce((acc, e) => acc + parseNum(e.total), 0)
-
   const topTecnicos = destacados.data?.tecnicos ?? []
   const maxServicios = Math.max(1, ...topTecnicos.map(t => t.servicios))
+  const pend = pendientes.data
+  const porAtender = [
+    { id: "retiros", label: "Retiros por autorizar", n: pend?.retiros ?? 0, to: "/finanzas" },
+    { id: "incidencias", label: "Incidencias abiertas", n: pend?.incidencias ?? 0, to: "/soporte" },
+    { id: "tickets", label: "Tickets sin responder", n: pend?.tickets ?? 0, to: "/soporte", state: { seccion: "tickets" } },
+  ]
 
-  // Cada fila de la actividad reciente lleva al elemento: se inspecciona aquí o se abre su sección
+  // Cada fila del centro de actividad lleva al elemento: se inspecciona aquí o se abre su sección
   const abrirActividad = (item: ActividadItem) => {
     if (item.tipo === "servicio") setServicioId(item.id)
     else if (item.tipo === "tecnico") setTecnicoId(item.id)
     else if (item.tipo === "alerta") navigate("/soporte", { state: { incidencia: item.id } })
+    else if (item.tipo === "ticket") navigate("/soporte", { state: { seccion: "tickets" } })
     else navigate("/finanzas")
   }
+
+  const VISTAS: { id: Vista; label: string }[] = [
+    { id: "especialidades", label: "Por especialidad" },
+    { id: "tecnicos", label: "Técnicos destacados" },
+    { id: "exito", label: "Completados vs cancelados" },
+  ]
 
   return (
     <div className="dash-page fade-in">
 
-      {/* ── Header ── */}
-      <div className="dash-page-header">
-        <div>
-          <h1 className="dash-page-title">{greeting()}{nombre ? `, ${nombre}` : ""}</h1>
-          <p className="dash-page-sub">Resumen de la operación en Lázaro Cárdenas</p>
-        </div>
-        <div className="db-header-actions">
-          <RangoFechas value={rango} onChange={setRango} />
-          <button className="db-btn-outline" onClick={() => setIsReportOpen(true)}>
-            <Download size={15} /> Exportar reporte
-          </button>
-        </div>
-      </div>
+      <PageHeader title={`${greeting()}${nombre ? `, ${nombre}` : ""}`} sub="Resumen de la operación en Lázaro Cárdenas">
+        <RangoFechas value={rango} onChange={setRango} />
+        <button className="db-btn-outline" onClick={() => setIsReportOpen(true)}>
+          <Download size={15} /> Exportar reporte
+        </button>
+      </PageHeader>
 
       {hasAnyError && (
         <div className="db-error-banner" role="alert">
@@ -281,43 +252,55 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ── KPI cards ── */}
-      <section className="db-kpis">
-        {stats.isLoading ? (
-          Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="db-kpi">
-              <SkeletonBox w="70%" h={14} />
-              <SkeletonBox w="50%" h={26} />
-              <SkeletonBox w="60%" h={10} />
+      {/* ── Por atender + resumen de la operación ── */}
+      <section className="db-hero" aria-label="Resumen">
+        <div className="db-hero-main">
+          <h2 className="db-panel-title">Por atender</h2>
+          {pendientes.isLoading ? (
+            <div className="db-todo"><SkeletonBox h={86} radius={12} /><SkeletonBox h={86} radius={12} /></div>
+          ) : pendientes.isError ? (
+            <PanelEmpty icon={<AlertTriangle size={18} />} text="Pendientes no disponibles" height={110} />
+          ) : (
+            <div className="db-todo">
+              <button type="button" className={`db-todo-main ${(pend?.validaciones ?? 0) > 0 ? "db-todo-main--alert" : ""}`} onClick={() => navigate("/validaciones")}>
+                <ShieldCheck size={20} aria-hidden />
+                <span className="db-todo-num">{pend?.validaciones ?? 0}</span>
+                <span className="db-todo-label">{(pend?.validaciones ?? 0) === 1 ? "Técnico por validar" : "Técnicos por validar"}</span>
+              </button>
+              <ul className="db-todo-list">
+                {porAtender.map(p => (
+                  <li key={p.id}>
+                    <button type="button" className={`db-todo-item ${p.n === 0 ? "db-todo-item--zero" : ""}`}
+                      onClick={() => navigate(p.to, p.state ? { state: p.state } : undefined)}>
+                      <span className="db-todo-count">{p.n}</span>
+                      <span>{p.label}</span>
+                      <ArrowUpRight size={14} aria-hidden />
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
-          ))
-        ) : stats.isError ? (
-          <div className="db-kpi db-kpis-error"><AlertTriangle size={15} /> Métricas no disponibles</div>
-        ) : (
-          <>
-            <KpiCard label="Técnicos en línea" tone="navy" icon={<Users size={15} />}
-              value={parseNum(stats.data?.tecnicos_online)}
-              delta={stats.data?.variacion_tecnicos_pct} note="vs semana anterior" fallbackNote="Conectados ahora" to="/tecnicos" />
-            <KpiCard label="Servicios en curso" tone="blue" icon={<Briefcase size={15} />}
-              value={parseNum(stats.data?.servicios_en_curso)}
-              note="En toda la ciudad" to="/mapa" />
-            <KpiCard label="Validaciones" tone="amber" icon={<ShieldCheck size={15} />}
-              value={pendientes}
-              note={pendientes > 0 ? "Pendientes de revisión" : "Todo al día"} to="/validaciones" />
-            <KpiCard label={esHoy ? "Ingresos de hoy" : "Ingresos del periodo"} tone="orange" icon={<Wallet size={15} />}
-              value={fmtCurrency(stats.data?.ingresos_periodo)}
-              delta={stats.data?.variacion_ingresos_pct} note={esHoy ? "vs ayer" : "vs periodo anterior"}
-              fallbackNote={`Pagos confirmados · ${etiqueta}`} to="/finanzas" />
-            <KpiCard label="Completados" tone="green" icon={<CheckCircle2 size={15} />}
-              value={parseNum(stats.data?.servicios_completados_periodo)}
-              delta={stats.data?.variacion_completados_pct} note={esHoy ? "vs ayer" : "vs periodo anterior"}
-              fallbackNote={`Finalizados · ${etiqueta}`} />
-          </>
-        )}
+          )}
+        </div>
+
+        <div className="db-hero-side">
+          {stats.isLoading ? (
+            Array.from({ length: 3 }).map((_, i) => <SkeletonBox key={i} h={64} radius={10} />)
+          ) : stats.isError ? (
+            <PanelEmpty icon={<AlertTriangle size={18} />} text="Métricas no disponibles" height={110} />
+          ) : (
+            <>
+              <Metric label="Técnicos en línea" value={parseNum(stats.data?.tecnicos_online)} note="Conectados ahora" to="/tecnicos" />
+              <Metric label="Servicios en curso" value={parseNum(stats.data?.servicios_en_curso)} note="En toda la ciudad" to="/servicios" />
+              <Metric label={esHoy ? "Ingresos de hoy" : "Ingresos del periodo"} value={fmtCurrency(stats.data?.ingresos_periodo)}
+                delta={stats.data?.variacion_ingresos_pct} note={esHoy ? "vs ayer" : `vs periodo anterior · ${etiqueta}`} to="/finanzas" />
+            </>
+          )}
+        </div>
       </section>
 
-      {/* ── Gráfica + distribución ── */}
-      <div className="db-grid-2">
+      {/* ── Gráfica + centro de actividad ── */}
+      <div className="db-grid-main">
         <section className="db-panel">
           <PanelHead title="Servicios por día" sub={etiqueta}>
             <div className="db-legend">
@@ -334,7 +317,7 @@ export default function DashboardPage() {
           ) : !mes.data?.puntos?.length ? (
             <PanelEmpty icon={<Activity size={22} />} text="Sin servicios registrados en este periodo" height={270} />
           ) : (
-            <ResponsiveContainer width="100%" height={270}>
+            <ResponsiveContainer width="100%" height={290}>
               <ComposedChart data={mes.data.puntos} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}>
                 <CartesianGrid vertical={false} stroke="#E6E9EE" />
                 <XAxis dataKey="fecha" tickFormatter={fmtDia} tick={{ fontSize: 11, fill: "#667085" }} axisLine={false} tickLine={false} minTickGap={24} />
@@ -348,16 +331,29 @@ export default function DashboardPage() {
           )}
         </section>
 
-        <section className="db-panel">
-          <PanelHead title="Por especialidad" sub={`Servicios finalizados · ${etiqueta}`} />
-          {especialidades.isLoading ? (
-            <SkeletonBox h={270} radius={10} />
+        <CentroActividad onAbrir={abrirActividad} />
+      </div>
+
+      {/* ── Rendimiento: una sola tarjeta con tres vistas ── */}
+      <section className="db-panel">
+        <PanelHead title="Rendimiento" sub={etiqueta}>
+          <div className="ca-chips" role="tablist" aria-label="Vista de rendimiento">
+            {VISTAS.map(v => (
+              <button key={v.id} type="button" role="tab" aria-selected={vista === v.id}
+                className={`ca-chip ${vista === v.id ? "ca-chip--on" : ""}`} onClick={() => setVista(v.id)}>{v.label}</button>
+            ))}
+          </div>
+        </PanelHead>
+
+        {vista === "especialidades" && (
+          especialidades.isLoading ? (
+            <SkeletonBox h={200} radius={10} />
           ) : especialidades.isError ? (
-            <PanelEmpty icon={<WifiOff size={22} />} text="No disponible" height={270} />
+            <PanelEmpty icon={<WifiOff size={22} />} text="No disponible" height={200} />
           ) : !Array.isArray(especialidades.data) || !especialidades.data.length ? (
-            <PanelEmpty icon={<PieIcon size={22} />} text="Sin servicios finalizados en este periodo" height={270} />
+            <PanelEmpty icon={<PieIcon size={22} />} text="Sin servicios finalizados en este periodo" height={200} />
           ) : (
-            <div className="db-donut-wrap">
+            <div className="db-donut-wrap db-donut-wrap--wide">
               <div className="db-donut">
                 <ResponsiveContainer width="100%" height={190}>
                   <PieChart>
@@ -373,31 +369,27 @@ export default function DashboardPage() {
                 </div>
               </div>
               <ul className="db-breakdown">
-                {especialidades.data.slice(0, 5).map((e, i) => (
+                {especialidades.data.slice(0, 6).map((e, i) => (
                   <li key={e.especialidad}>
                     <span className="db-dot" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
                     <span className="db-breakdown-name">{e.especialidad}</span>
-                    <span className="db-breakdown-pct">{parseNum(e.porcentaje).toFixed(0)}%</span>
+                    <span className="db-breakdown-pct">{e.total} · {parseNum(e.porcentaje).toFixed(0)}%</span>
                   </li>
                 ))}
               </ul>
             </div>
-          )}
-        </section>
-      </div>
+          )
+        )}
 
-      {/* ── Fila de tres ── */}
-      <div className="db-grid-3">
-        <section className="db-panel">
-          <PanelHead title="Técnicos destacados" sub={`Más servicios finalizados · ${etiqueta}`} />
-          {destacados.isLoading ? (
+        {vista === "tecnicos" && (
+          destacados.isLoading ? (
             <div className="db-list-skeleton">{Array.from({ length: 4 }).map((_, i) => <SkeletonBox key={i} h={30} />)}</div>
           ) : destacados.isError ? (
             <PanelEmpty icon={<WifiOff size={20} />} text="No disponible" height={200} />
           ) : !topTecnicos.length ? (
             <PanelEmpty icon={<Award size={20} />} text="Sin técnicos con servicios en este periodo" height={200} />
           ) : (
-            <ul className="db-rank">
+            <ul className="db-rank db-rank--wide">
               {topTecnicos.map((t, i) => (
                 <li key={t.id_usuario}>
                   <div className="db-rank-row">
@@ -411,50 +403,22 @@ export default function DashboardPage() {
                 </li>
               ))}
             </ul>
-          )}
-        </section>
+          )
+        )}
 
-        <section className="db-panel">
-          <PanelHead title="Completados vs cancelados" sub={etiqueta} />
-          {mes.isLoading ? (
+        {vista === "exito" && (
+          mes.isLoading ? (
             <SkeletonBox h={200} radius={10} />
           ) : (
-            <SuccessGauge completed={parseNum(mes.data?.total_completados)} cancelled={parseNum(mes.data?.total_cancelados)} />
-          )}
-        </section>
-
-        <section className="db-panel">
-          <PanelHead title="Actividad reciente" sub={`Toca un elemento para abrirlo · ${etiqueta}`} />
-          {actividad.isLoading ? (
-            <div className="db-list-skeleton">{Array.from({ length: 4 }).map((_, i) => <SkeletonBox key={i} h={28} />)}</div>
-          ) : actividad.isError ? (
-            <PanelEmpty icon={<AlertTriangle size={18} />} text="Sin conexión al feed" height={200} />
-          ) : !actividad.data?.items?.length ? (
-            <PanelEmpty icon={<Activity size={18} />} text="Sin actividad en este periodo" height={200} />
-          ) : (
-            <ul className="db-feed">
-              {actividad.data.items.slice(0, 5).map((item, i) => (
-                <li key={`${item.tipo}-${item.id ?? i}`} className="db-feed-item">
-                  <button type="button" className="db-feed-btn" onClick={() => abrirActividad(item)}
-                    title={ACTIVIDAD_ACCION[item.tipo]} aria-label={`${ACTIVIDAD_ACCION[item.tipo]}: ${item.descripcion}`}>
-                    <span className="db-feed-dot" style={{ background: ACTIVIDAD_COLOR[item.tipo] ?? C.navy }} />
-                    <div className="db-feed-body">
-                      <p className="db-feed-text">{item.descripcion}</p>
-                      {item.sub && <p className="db-feed-sub">{item.sub}</p>}
-                    </div>
-                    <span className="db-feed-time">{fmtRelTime(item.creado_en)}</span>
-                    <ChevronRight size={14} className="db-feed-go" aria-hidden />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </div>
+            <div className="db-gauge-wrap">
+              <SuccessGauge completed={parseNum(mes.data?.total_completados)} cancelled={parseNum(mes.data?.total_cancelados)} />
+            </div>
+          )
+        )}
+      </section>
 
       {/* ── Modales ── */}
       <ReportGeneratorModal isOpen={isReportOpen} onClose={() => setIsReportOpen(false)} />
-
       {servicioId != null && (
         <ServiceDetailModal isOpen onClose={() => setServicioId(null)} serviceId={servicioId} />
       )}

@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Download, Clock, Wallet, Percent, X, Check } from 'lucide-react'
-import { StatCard } from '@components/ui'
+import { Download, X, Check } from 'lucide-react'
+import PageHeader from '@components/ui/PageHeader'
+import MetricStrip from '@components/ui/MetricStrip'
 import WithdrawalDetailModal from '@components/modals/WithdrawalDetailModal'
 import './finanzas.css'
 import { toast } from '@components/ui/Toaster'
@@ -100,40 +101,22 @@ export default function FinanzasPage() {
 
   return (
     <div className="fin-page fade-in">
-      <div className="dash-page-header">
-        <div>
-          <h1 className="dash-page-title">Finanzas</h1>
-          <p className="dash-page-sub">Retiros de técnicos e ingresos de la plataforma</p>
-        </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button className="dash-export-btn" onClick={handleExportCSV}>
-            <Download size={13} /> Exportar CSV
-          </button>
-          <button className="fin-approve-batch" onClick={handleApproveBatch}
-            disabled={seleccionados.length === 0 || approveMutation.isPending}>
-            Aprobar seleccionados ({seleccionados.length})
-          </button>
-        </div>
-      </div>
+      <PageHeader title="Finanzas" sub="Retiros de técnicos e ingresos de la plataforma">
+        <button className="dash-export-btn" onClick={handleExportCSV}>
+          <Download size={13} /> Exportar CSV
+        </button>
+        <button className="fin-approve-batch" onClick={handleApproveBatch}
+          disabled={seleccionados.length === 0 || approveMutation.isPending}>
+          Aprobar seleccionados ({seleccionados.length})
+        </button>
+      </PageHeader>
 
-      {/* Stat cards */}
-      <div className="stat-grid">
-        <StatCard
-          label="Retiros pendientes" tone="amber" icon={<Clock size={15} />}
-          value={pendientes.isLoading ? '—' : fmtMXN(totalPendiente)}
-          note={pendientes.isLoading ? 'Cargando…' : `${pendientes.data?.length ?? 0} solicitudes por autorizar`}
-        />
-        <StatCard
-          label="Ingresos de hoy" tone="green" icon={<Wallet size={15} />}
-          value={stats.isLoading ? '—' : fmtMXN(ingresosHoy)}
-          note="Pagos confirmados"
-        />
-        <StatCard
-          label="Comisión de plataforma" tone="orange" icon={<Percent size={15} />}
-          value={stats.isLoading || settings.isLoading ? '—' : fmtMXN(ingresosHoy * comisionPct / 100)}
-          note={`Hoy · ${comisionPct}% de los ingresos`}
-        />
-      </div>
+      <MetricStrip label="Resumen financiero" items={[
+        { id: 'pend', label: pendientes.isLoading ? 'Retiros por autorizar' : `Retiros por autorizar (${pendientes.data?.length ?? 0})`,
+          value: pendientes.isLoading ? '—' : fmtMXN(totalPendiente), tone: totalPendiente > 0 ? 'alert' : 'default' },
+        { id: 'hoy', label: 'Ingresos de hoy', value: stats.isLoading ? '—' : fmtMXN(ingresosHoy), tone: 'ok' },
+        { id: 'com', label: `Comisión de hoy (${comisionPct}%)`, value: stats.isLoading || settings.isLoading ? '—' : fmtMXN(ingresosHoy * comisionPct / 100) },
+      ]} />
 
       {/* Queue */}
       <div className="dash-card" style={{ padding: 0, overflow: 'hidden' }}>

@@ -9,6 +9,7 @@ export interface AdminUser {
   id_rol: number
   estado_cuenta?: string // Opcional porque verifyLoginAdmin no lo incluye en el SELECT
   version_sesion: number
+  debe_cambiar_contrasena?: boolean
 }
 
 /* ── Tipos de Autenticación ── */
@@ -82,7 +83,7 @@ export async function resendCode(email: string) {
 
 /** Cambiar contraseña desde el perfil */
 export async function updatePassword(currentPassword: string, newPassword: string) {
-  const { data } = await api.post<{ mensaje: string; token: string }>('/update-password', {
+  const { data } = await api.post<{ mensaje: string; token: string; debe_cambiar_contrasena: boolean }>('/update-password', {
     currentPassword,
     newPassword,
   })
@@ -127,4 +128,4 @@ export async function logoutAdmin(): Promise<void> {
   } catch (err) {
     console.warn('No se pudo revocar la sesión en el servidor:', err)
   }
-}
+}

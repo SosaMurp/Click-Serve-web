@@ -7,6 +7,7 @@ import { DialogA11y } from '@components/ui/DialogA11y'
 import LoginPage from '@pages/auth/LoginPage'
 import TwoFactorPage from '@pages/auth/TwoFactorPage'
 import RecoverPasswordPage from '@pages/auth/RecoverPasswordPage'
+import CambiarContrasenaPage from '@pages/auth/CambiarContrasenaPage'
 import RegisterPage from '@pages/auth/RegisterPage'
 import RequestSentPage from '@pages/auth/RequestSentPage'
 import DashboardLayout from '@components/layout/DashboardLayout'
@@ -16,6 +17,7 @@ import DashboardLayout from '@components/layout/DashboardLayout'
 const DashboardPage = lazy(() => import('@pages/dashboard/DashboardPage'))
 const ValidacionesPage = lazy(() => import('@pages/validaciones/ValidacionesPage'))
 const TecnicosPage = lazy(() => import('@pages/tecnicos/TecnicosPage'))
+const ServiciosPage = lazy(() => import('@pages/servicios/ServiciosPage'))
 const MapaPage = lazy(() => import('@pages/mapa/MapaPage'))
 const FinanzasPage = lazy(() => import('@pages/finanzas/FinanzasPage'))
 const ConfiguracionPage = lazy(() => import('@pages/configuracion/ConfiguracionPage'))
@@ -53,10 +55,12 @@ export default function App() {
 
         {/* ── Rutas protegidas (requieren JWT válido) ── */}
         <Route element={<ProtectedRoute />}>
+          <Route path="cambiar-contrasena" element={<CambiarContrasenaPage />} />
           <Route element={<DashboardLayout />}>
             <Route path="dashboard"      element={<Suspense fallback={<Cargando />}><DashboardPage /></Suspense>} />
             <Route path="validaciones"   element={<Suspense fallback={<Cargando />}><ValidacionesPage /></Suspense>} />
             <Route path="tecnicos"       element={<Suspense fallback={<Cargando />}><TecnicosPage /></Suspense>} />
+            <Route path="servicios"     element={<Suspense fallback={<Cargando />}><ServiciosPage /></Suspense>} />
             <Route path="soporte"        element={<Suspense fallback={<Cargando />}><SoportePage /></Suspense>} />
             <Route path="mapa"           element={<Suspense fallback={<Cargando />}><MapaPage /></Suspense>} />
             <Route path="finanzas"       element={<Suspense fallback={<Cargando />}><FinanzasPage /></Suspense>} />

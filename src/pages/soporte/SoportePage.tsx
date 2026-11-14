@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Search, Inbox, CheckCircle2, AlertTriangle, ShieldAlert, X, Download } from 'lucide-react'
-import { Badge, Button, StatCard } from '@components/ui'
+import { Search, X, Download } from 'lucide-react'
+import { Badge, Button } from '@components/ui'
+import PageHeader from '@components/ui/PageHeader'
+import MetricStrip from '@components/ui/MetricStrip'
 import { useIncidencias, useUpdateIncidencia } from '../../hooks/useAdminQueries'
 import type { AccionIncidencia, IncidenciaRow, IncidenciaTipo, Prioridad } from '../../types/api'
 import '@components/modals/modals.css'
@@ -37,29 +39,35 @@ const persona = (n?: string | null, a?: string | null) => [n, a].filter(Boolean)
 const fecha = (iso: string) =>
   new Date(iso).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 
-type Filtro = 'ABIERTA' | 'RESUELTA'
+type Vista = 'abiertas' | 'alta' | 'sos' | 'resueltas'
 
 export default function SoportePage() {
   const [seccion, setSeccion] = useState<'incidencias' | 'tickets'>('incidencias')
-  const [filtro, setFiltro] = useState<Filtro>('ABIERTA')
+  const [vista, setVista] = useState<Vista>('abiertas')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<IncidenciaRow | null>(null)
 
   const abiertas = useIncidencias('ABIERTA')
   const resueltas = useIncidencias('RESUELTA')
-  const actual = filtro === 'ABIERTA' ? abiertas : resueltas
+  const actual = vista === 'resueltas' ? resueltas : abiertas
 
   // Llegar desde la actividad reciente del tablero: abre directamente esa incidencia (una sola vez)
   const location = useLocation()
   const navigate = useNavigate()
   const pedida = (location.state as { incidencia?: number } | null)?.incidencia
   const yaAbierta = useRef(false)
+  const seccionPedida = (location.state as { seccion?: string } | null)?.seccion
+  useEffect(() => {
+    if (seccionPedida !== 'tickets') return
+    setSeccion('tickets')
+    navigate(location.pathname, { replace: true, state: null })
+  }, [seccionPedida, navigate, location.pathname])
   useEffect(() => {
     if (pedida == null || yaAbierta.current) return
     const fila = abiertas.data?.find(i => i.id_incidencia === pedida) ?? resueltas.data?.find(i => i.id_incidencia === pedida)
     if (fila) {
       yaAbierta.current = true
-      setFiltro(fila.estado === 'RESUELTA' ? 'RESUELTA' : 'ABIERTA')
+      setVista(fila.estado === 'RESUELTA' ? 'resueltas' : 'abiertas')
       setSelected(fila)
       navigate(location.pathname, { replace: true, state: null }) // al recargar no se vuelve a abrir
     } else if (abiertas.isSuccess && resueltas.isSuccess) {
@@ -70,13 +78,14 @@ export default function SoportePage() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    const rows = actual.data ?? []
+    const base = actual.data ?? []
+    const rows = vista === 'alta' ? base.filter(i => i.prioridad === 'ALTA') : vista === 'sos' ? base.filter(i => i.tipo === 'SEGURIDAD') : base
     if (!q) return rows
     return rows.filter(i =>
       [i.folio, i.folio_solicitud ?? '', persona(i.cliente_nombre, i.cliente_apellido), persona(i.tecnico_nombre, i.tecnico_apellido), i.descripcion]
         .some(v => v.toLowerCase().includes(q)),
     )
-  }, [actual.data, search])
+  }, [actual.data, search, vista])
 
   const altas = (abiertas.data ?? []).filter(i => i.prioridad === 'ALTA').length
   const seguridad = (abiertas.data ?? []).filter(i => i.tipo === 'SEGURIDAD').length
@@ -84,20 +93,7 @@ export default function SoportePage() {
 
   return (
     <div className="sop-page fade-in">
-      <div className="dash-page-header">
-        <div>
-          <h1 className="dash-page-title">Soporte e incidencias</h1>
-          <p className="dash-page-sub">Reportes y tickets de clientes y técnicos desde la app</p>
-        </div>
-        <div style={{ display: seccion === 'incidencias' ? 'flex' : 'none', gap: 8 }}>
-          <button className={`sop-filter-pill ${filtro === 'ABIERTA' ? 'sop-filter-pill--active' : ''}`} onClick={() => setFiltro('ABIERTA')}>
-            Abiertas{abiertas.data ? ` (${abiertas.data.length})` : ''}
-          </button>
-          <button className={`sop-filter-pill ${filtro === 'RESUELTA' ? 'sop-filter-pill--active' : ''}`} onClick={() => setFiltro('RESUELTA')}>
-            Resueltas
-          </button>
-        </div>
-      </div>
+      <PageHeader title="Soporte" sub="Incidencias de servicios y tickets de clientes y técnicos" />
 
       <div className="tec-tabs">
         <button className={`tec-tab ${seccion === 'incidencias' ? 'tec-tab--active' : ''}`} onClick={() => setSeccion('incidencias')}>
@@ -110,12 +106,12 @@ export default function SoportePage() {
 
       {seccion === 'tickets' ? <TicketsPanel /> : (
       <>
-      <div className="stat-grid">
-        <StatCard label="Abiertas" value={valor(abiertas.data?.length ?? 0)} icon={<Inbox size={15} />} tone="amber" note="Órdenes suspendidas o en revisión" />
-        <StatCard label="Prioridad alta" value={valor(altas)} icon={<AlertTriangle size={15} />} tone="red" note="Atender primero" />
-        <StatCard label="Seguridad / SOS" value={valor(seguridad)} icon={<ShieldAlert size={15} />} tone="red" note="Escaladas desde la app" />
-        <StatCard label="Resueltas" value={resueltas.isError ? '—' : String(resueltas.data?.length ?? 0)} icon={<CheckCircle2 size={15} />} tone="green" note="Historial" />
-      </div>
+      <MetricStrip label="Filtrar incidencias" active={vista} onSelect={id => setVista(id as Vista)} items={[
+        { id: 'abiertas', label: 'Abiertas', value: valor(abiertas.data?.length ?? 0) },
+        { id: 'alta', label: 'Prioridad alta', value: valor(altas), tone: altas > 0 ? 'alert' : 'default' },
+        { id: 'sos', label: 'Seguridad / SOS', value: valor(seguridad), tone: seguridad > 0 ? 'alert' : 'default' },
+        { id: 'resueltas', label: 'Resueltas', value: resueltas.isError ? '—' : String(resueltas.data?.length ?? 0) },
+      ]} />
 
       <div className="val-toolbar">
         <div className="val-search">
@@ -145,7 +141,7 @@ export default function SoportePage() {
               </td></tr>
             )}
             {!actual.isLoading && !actual.isError && filtered.length === 0 && (
-              <tr><td colSpan={6} className="sop-empty">{filtro === 'ABIERTA' ? 'No hay incidencias abiertas.' : 'Todavía no hay incidencias resueltas.'}</td></tr>
+              <tr><td colSpan={6} className="sop-empty">{vista === 'resueltas' ? 'Todavía no hay incidencias resueltas.' : vista === 'abiertas' ? 'No hay incidencias abiertas.' : 'Ninguna incidencia abierta coincide con este filtro.'}</td></tr>
             )}
             {filtered.map(i => (
               <tr key={i.id_incidencia}>

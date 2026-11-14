@@ -51,6 +51,24 @@ function simulate(record, line, code) {
   return { simulated: true };
 }
 
+// Correo de bienvenida de un coadministrador con su contraseña temporal. El texto y la contraseña se escapan.
+function tempPasswordEmailHtml({ nombre, password, horas, url }) {
+  return `
+  <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;padding:24px;color:#14213D">
+    <h2 style="margin:0 0 12px">Tu acceso al panel de administración</h2>
+    <p>Hola ${escapeHtml(nombre)},</p>
+    <p>Te dieron de alta como administrador de Click &amp; Serve. Esta es tu <b>contraseña temporal</b>:</p>
+    <p style="font-family:Consolas,monospace;font-size:26px;letter-spacing:3px;font-weight:bold;background:#F4F1EA;padding:16px;text-align:center;border-radius:12px">${escapeHtml(password)}</p>
+    <ul style="padding-left:18px;line-height:1.6">
+      <li>Sirve <b>solo para tu primer acceso</b> y vence en ${escapeHtml(horas)} horas.</li>
+      <li>Al iniciar sesión te enviaremos un código de verificación a este mismo correo.</li>
+      <li>Después deberás <b>crear tu propia contraseña</b> antes de usar el panel.</li>
+    </ul>
+    ${url ? `<p>Panel: <a href="${escapeHtml(url)}">${escapeHtml(url)}</a></p>` : ''}
+    <p style="color:#6B7280;font-size:12px">Si no esperabas este mensaje, ignóralo o avisa a quien administra la plataforma.</p>
+  </div>`;
+}
+
 async function sendMail({ to, subject, html, code }) {
   const record = { canal: 'EMAIL', to, subject, code, fecha: new Date() };
   const t = process.env.NODE_ENV === 'test' ? null : getTransporter();
@@ -85,4 +103,4 @@ async function sendCode({ canal = 'EMAIL', usuario, code, titulo, texto }) {
   });
 }
 
-module.exports = { sendMail, sendSms, sendCode, outbox, escapeHtml };
+module.exports = { sendMail, sendSms, sendCode, outbox, escapeHtml, tempPasswordEmailHtml };

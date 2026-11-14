@@ -21,7 +21,7 @@ async function loadSessionUser(decoded) {
   }
   const { rows } = await getPool().query(
     `SELECT u.id_usuario, u.id_rol, u.nombre, u.apellido, u.correo, u.telefono, u.estado_cuenta,
-            u.identidad_verificada, u.version_sesion, u.anonimizado,
+            u.identidad_verificada, u.version_sesion, u.anonimizado, u.debe_cambiar_contrasena,
             s.estado AS estado_sesion, s.id_rol AS rol_sesion
      FROM usuarios u
      LEFT JOIN sesiones_activas s ON s.id_sesion = $2 AND s.id_usuario = u.id_usuario
@@ -47,6 +47,7 @@ async function loadSessionUser(decoded) {
       estado_cuenta: row.estado_cuenta,
       identidad_verificada: row.identidad_verificada === true,
       verificado: row.identidad_verificada === true,
+      debe_cambiar_contrasena: row.debe_cambiar_contrasena === true,
       aprobado: computeApproved(row),
     },
   };
@@ -57,6 +58,8 @@ const MESSAGES = {
   AUTH_INVALID: 'Tu sesión no es válida. Inicia sesión de nuevo.',
   AUTH_REVOKED: 'Tu sesión terminó o fue cerrada desde otro dispositivo. Inicia sesión de nuevo.',
 };
+
+const PERMITIDO_CON_TEMPORAL = new Set(['/api/update-password', '/api/logout', '/api/me', '/api/check-session']);
 
 async function auth(req, res, next) {
   const header = req.header('Authorization') || '';
@@ -73,6 +76,10 @@ async function auth(req, res, next) {
   const result = await loadSessionUser(decoded);
   if (result.error) return fail(res, 401, result.error, MESSAGES[result.error]);
   req.user = result.user;
+  // Con contraseña temporal solo se puede cambiarla, ver el propio perfil o cerrar sesión.
+  if (result.user.debe_cambiar_contrasena && !PERMITIDO_CON_TEMPORAL.has(req.path)) {
+    return fail(res, 403, 'PASSWORD_CHANGE_REQUIRED', 'Debes cambiar tu contraseña temporal para continuar.');
+  }
   return next();
 }
 

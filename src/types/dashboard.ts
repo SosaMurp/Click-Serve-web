@@ -53,7 +53,10 @@ export interface ServiciosMesResponse {
 
 // ── Actividad reciente del feed ────────────────────────────────────────────────
 
-export type ActividadTipo = "servicio" | "tecnico" | "pago" | "alerta"
+export type ActividadTipo = "servicio" | "tecnico" | "alerta" | "retiro" | "ticket"
+
+/** Grupos del filtro del centro de actividad */
+export type ActividadGrupo = "todos" | "servicios" | "tecnicos" | "alertas" | "finanzas" | "soporte"
 
 export interface ActividadItem {
   id: number
@@ -67,6 +70,17 @@ export interface ActividadItem {
 
 export interface ActividadResponse {
   items: ActividadItem[]
+  pagina: number
+  limite: number
+  hay_mas: boolean
+}
+
+/** Lo que espera una decision del administrador */
+export interface Pendientes {
+  validaciones: number
+  retiros: number
+  incidencias: number
+  tickets: number
 }
 
 // ── Distribucion de servicios por especialidad (pie/donut) ────────────────────

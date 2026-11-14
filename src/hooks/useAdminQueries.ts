@@ -312,7 +312,7 @@ export async function descargarExpediente(id: number) {
 export function useCreateCoAdmin() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (payload: { nombre: string; apellidos: string; email: string; telefono?: string; password: string }) => {
+    mutationFn: async (payload: { nombre: string; apellidos: string; email: string; telefono?: string }) => {
       const { data } = await api.post<{ mensaje: string }>('/admin/co-admins', payload)
       return data
     },

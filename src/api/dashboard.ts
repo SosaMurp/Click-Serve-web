@@ -10,6 +10,8 @@ import type {
   ActividadResponse,
   EspecialidadStat,
   TecnicosDestacadosResponse,
+  ActividadGrupo,
+  Pendientes,
 } from "../types/dashboard"
 
 export interface RangoFechas {
@@ -31,9 +33,17 @@ export async function fetchServiciosMes(rango?: RangoFechas): Promise<ServiciosM
   return data
 }
 
-/** Feed de actividad del sistema (con rango: solo lo ocurrido en esas fechas) */
-export async function fetchActividad(rango?: RangoFechas): Promise<ActividadResponse> {
-  const { data } = await api.get<ActividadResponse>("/admin/dashboard/actividad", { params: params(rango) })
+/** Centro de actividad: una pagina del feed (servicios, tecnicos, incidencias, retiros y tickets) */
+export async function fetchActividad(opts: { tipo?: ActividadGrupo; pagina?: number; limite?: number; rango?: RangoFechas } = {}): Promise<ActividadResponse> {
+  const { data } = await api.get<ActividadResponse>("/admin/dashboard/actividad", {
+    params: { tipo: opts.tipo ?? "todos", pagina: opts.pagina ?? 1, limite: opts.limite ?? 20, ...params(opts.rango) },
+  })
+  return data
+}
+
+/** Pendientes del administrador: validaciones, retiros, incidencias y tickets sin responder */
+export async function fetchPendientes(): Promise<Pendientes> {
+  const { data } = await api.get<Pendientes>("/admin/dashboard/pendientes")
   return data
 }
 

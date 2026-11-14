@@ -1,87 +1,102 @@
 import { useState, useEffect } from 'react'
-import { Settings2, Shield, MapPin, AlertTriangle, Save, CheckCircle } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
+import { Settings2, Shield, MapPin, AlertTriangle, Save, CheckCircle, Power } from 'lucide-react'
 import MaintenanceOverlay from '@components/layout/MaintenanceOverlay'
+import PageHeader from '@components/ui/PageHeader'
 import './configuracion.css'
 import { toast } from '@components/ui/Toaster'
 import { mensajeDeError } from '@/lib/errores'
-
 import { usePlatformSettings, useUpdatePlatformSettings } from '../../hooks/useAdminQueries'
+import type { UpdateSettingsPayload } from '../../types/api'
+
+type Seccion = 'finanzas' | 'operacion' | 'identidad' | 'sistema'
+
+const SECCIONES: { id: Seccion; label: string; sub: string; icon: typeof Settings2; pronto?: boolean }[] = [
+  { id: 'finanzas', label: 'Finanzas', sub: 'Comisión, retiros y multas', icon: Settings2 },
+  { id: 'operacion', label: 'Operación', sub: 'Radio y tiempos de servicio', icon: MapPin },
+  { id: 'identidad', label: 'Identidad', sub: 'Verificación de técnicos', icon: Shield, pronto: true },
+  { id: 'sistema', label: 'Sistema', sub: 'Modo mantenimiento', icon: Power },
+]
+
+const igual = (a: string, b: unknown) => Number(a) === Number(b)
 
 export default function ConfiguracionPage() {
   const { data: settings, isLoading, isError, refetch } = usePlatformSettings()
-  const updateSettingsMutation = useUpdatePlatformSettings()
+  const guardar = useUpdatePlatformSettings()
+  const [params, setParams] = useSearchParams()
+  const pedida = params.get('seccion') as Seccion | null
+  const seccion: Seccion = SECCIONES.some(s => s.id === pedida) ? (pedida as Seccion) : 'finanzas'
+  const elegir = (id: Seccion) => setParams(id === 'finanzas' ? {} : { seccion: id }, { replace: true })
 
-  const [threshold, setThreshold] = useState(85)
-  const [sepValidation, setSepValidation] = useState(true)
-  const [maintenance, setMaintenance] = useState(false)
   const [commission, setCommission] = useState('')
   const [minWithdraw, setMinWithdraw] = useState('')
   const [fine, setFine] = useState('')
   const [radius, setRadius] = useState('')
   const [timeoutVal, setTimeoutVal] = useState('')
-  const [dirty, setDirty] = useState(false)
-  const [savedSuccess, setSavedSuccess] = useState(false)
+  const [maintenance, setMaintenance] = useState(false)
+  const [confirmarMantenimiento, setConfirmarMantenimiento] = useState(false)
+  const [guardado, setGuardado] = useState<Seccion | null>(null)
 
-  // Sync state when data is loaded
-  useEffect(() => {
-    if (settings) {
-      setCommission(settings.comision_porcentaje.toString())
-      setMinWithdraw(settings.monto_minimo_retiro.toString())
-      setFine(String(settings.multa_operativa ?? '100'))
-      setRadius(settings.radio_maximo_km.toString())
-      setTimeoutVal(settings.tolerancia_minutos.toString())
-      setMaintenance(settings.modo_mantenimiento)
-      setDirty(false)
-    }
-  }, [settings])
+  // Los valores del servidor son la base: cada sección compara contra ellos para saber si hay cambios
+  const cargar = () => {
+    if (!settings) return
+    setCommission(String(settings.comision_porcentaje))
+    setMinWithdraw(String(settings.monto_minimo_retiro))
+    setFine(String(settings.multa_operativa ?? '100'))
+    setRadius(String(settings.radio_maximo_km))
+    setTimeoutVal(String(settings.tolerancia_minutos))
+    setMaintenance(settings.modo_mantenimiento)
+  }
+  useEffect(cargar, [settings]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const mark = () => {
-    setDirty(true)
-    setSavedSuccess(false)
+  const sucia: Record<'finanzas' | 'operacion', boolean> = {
+    finanzas: !!settings && (!igual(commission, settings.comision_porcentaje) || !igual(minWithdraw, settings.monto_minimo_retiro) || !igual(fine, settings.multa_operativa ?? 100)),
+    operacion: !!settings && (!igual(radius, settings.radio_maximo_km) || !igual(timeoutVal, settings.tolerancia_minutos)),
   }
 
-  const handleSave = async () => {
+  const payload = (s: 'finanzas' | 'operacion'): UpdateSettingsPayload => s === 'finanzas'
+    ? { comisionPorcentaje: Number(commission), montoMinimoRetiro: Number(minWithdraw), multaOperativa: Number(fine) }
+    : { radioMaximoKm: Number(radius), toleranciaMinutos: Number(timeoutVal) }
+
+  const guardarSeccion = async (s: 'finanzas' | 'operacion') => {
     try {
-      await updateSettingsMutation.mutateAsync({
-        comisionPorcentaje: Number(commission),
-        montoMinimoRetiro: Number(minWithdraw),
-        multaOperativa: Number(fine),
-        radioMaximoKm: Number(radius),
-        toleranciaMinutos: Number(timeoutVal),
-      })
-      setDirty(false)
-      setSavedSuccess(true)
-      window.setTimeout(() => setSavedSuccess(false), 3000)
+      await guardar.mutateAsync(payload(s))
+      setGuardado(s)
+      window.setTimeout(() => setGuardado(null), 3000)
     } catch (e) {
       toast.error(mensajeDeError(e, 'No se pudo guardar la configuración.'))
     }
   }
 
+  const descartar = (s: 'finanzas' | 'operacion') => {
+    if (!settings) return
+    if (s === 'finanzas') {
+      setCommission(String(settings.comision_porcentaje)); setMinWithdraw(String(settings.monto_minimo_retiro)); setFine(String(settings.multa_operativa ?? '100'))
+    } else {
+      setRadius(String(settings.radio_maximo_km)); setTimeoutVal(String(settings.tolerancia_minutos))
+    }
+  }
+
   // El modo mantenimiento se guarda al momento: la app empieza a responder 503 a clientes y técnicos.
-  const setMaintenanceRemote = async (on: boolean) => {
+  const cambiarMantenimiento = async (on: boolean) => {
     setMaintenance(on)
+    setConfirmarMantenimiento(false)
     try {
-      await updateSettingsMutation.mutateAsync({ modoMantenimiento: on })
+      await guardar.mutateAsync({ modoMantenimiento: on })
+      toast.success(on ? 'Modo mantenimiento activado.' : 'Modo mantenimiento desactivado.')
     } catch (e) {
       setMaintenance(!on)
       toast.error(mensajeDeError(e, 'No se pudo cambiar el modo mantenimiento. Intenta de nuevo.'))
     }
   }
 
-  if (isLoading) {
-    return <div style={{ padding: '2rem', textAlign: 'center' }}>Cargando parámetros...</div>
-  }
+  if (isLoading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Cargando parámetros...</div>
 
   // Sin datos del servidor no se muestran valores de ejemplo: guardarlos sobrescribiría la configuración real.
   if (isError || !settings) {
     return (
       <div className="cfg-page fade-in">
-        <div className="dash-page-header">
-          <div>
-            <h1 className="dash-page-title">Configuración</h1>
-            <p className="dash-page-sub">Parámetros globales de la plataforma</p>
-          </div>
-        </div>
+        <PageHeader title="Configuración" sub="Parámetros globales de la plataforma" />
         <div className="cfg-card cfg-load-error">
           <AlertTriangle size={16} />
           <p>No se pudo cargar la configuración desde el servidor.</p>
@@ -91,164 +106,159 @@ export default function ConfiguracionPage() {
     )
   }
 
+  const pie = (s: 'finanzas' | 'operacion') => (
+    <div className="cfg-footer">
+      {guardado === s && <span className="cfg-status cfg-status--ok"><CheckCircle size={14} /> Cambios guardados</span>}
+      {sucia[s] && guardado !== s && <span className="cfg-status">Tienes cambios sin guardar</span>}
+      <button type="button" className="cfg-discard-btn" disabled={!sucia[s] || guardar.isPending} onClick={() => descartar(s)}>Descartar</button>
+      <button type="button" className="cfg-save-btn" disabled={!sucia[s] || guardar.isPending} onClick={() => guardarSeccion(s)}>
+        <Save size={14} /> {guardar.isPending ? 'Guardando…' : 'Guardar cambios'}
+      </button>
+    </div>
+  )
+
+  const actual = SECCIONES.find(s => s.id === seccion)!
+
   return (
     <div className="cfg-page fade-in">
-      {/* Header */}
-      <div className="dash-page-header">
-        <div>
-          <h1 className="dash-page-title">Configuración</h1>
-          <p className="dash-page-sub">Parámetros globales de la plataforma</p>
-        </div>
-        <div className="cfg-header-right">
-          {savedSuccess && (
-            <span className="cfg-status cfg-status--ok"><CheckCircle size={14} /> Cambios guardados</span>
+      <PageHeader title="Configuración" sub="Parámetros globales de la plataforma" />
+
+      <div className="cfg-layout">
+        <nav className="cfg-nav" aria-label="Secciones de configuración">
+          {SECCIONES.map(s => (
+            <button key={s.id} type="button" aria-current={seccion === s.id ? 'page' : undefined}
+              className={`cfg-nav-item ${seccion === s.id ? 'cfg-nav-item--on' : ''}`} onClick={() => elegir(s.id)}>
+              <s.icon size={16} aria-hidden />
+              <span className="cfg-nav-text">
+                <span className="cfg-nav-label">{s.label}{s.pronto && <span className="cfg-badge-pill cfg-badge-pill--soon">Próximamente</span>}</span>
+                <span className="cfg-nav-sub">{s.sub}</span>
+              </span>
+              {(s.id === 'finanzas' || s.id === 'operacion') && sucia[s.id] && <span className="cfg-nav-dot" aria-label="Cambios sin guardar" />}
+            </button>
+          ))}
+        </nav>
+
+        <section className="cfg-panel" aria-labelledby="cfg-titulo">
+          <header className="cfg-panel-head">
+            <h2 id="cfg-titulo" className="cfg-card-title">{actual.label}</h2>
+            <p className="cfg-card-sub">{actual.sub}</p>
+          </header>
+
+          {seccion === 'finanzas' && (
+            <>
+              <div className="cfg-row">
+                <div className="cfg-field">
+                  <label className="cfg-label" htmlFor="cfg-comision">Comisión Click &amp; Serve</label>
+                  <div className="cfg-input-suffix">
+                    <input id="cfg-comision" className="cfg-input" type="number" min={0} max={100} step="0.1" value={commission} onChange={e => setCommission(e.target.value)} />
+                    <span className="cfg-suffix">%</span>
+                  </div>
+                  <p className="cfg-hint">Porcentaje deducido de cada servicio completado. Afecta a todos los servicios que se liquiden desde que guardes el cambio.</p>
+                </div>
+                <div className="cfg-field">
+                  <label className="cfg-label" htmlFor="cfg-retiro">Retiro mínimo permitido</label>
+                  <div className="cfg-input-suffix">
+                    <span className="cfg-prefix">$</span>
+                    <input id="cfg-retiro" className="cfg-input cfg-input--prefix" type="number" min={0} value={minWithdraw} onChange={e => setMinWithdraw(e.target.value)} />
+                    <span className="cfg-suffix">MXN</span>
+                  </div>
+                </div>
+              </div>
+              <div className="cfg-row">
+                <div className="cfg-field">
+                  <label className="cfg-label" htmlFor="cfg-multa">Multa operativa estándar</label>
+                  <div className="cfg-input-suffix">
+                    <span className="cfg-prefix">$</span>
+                    <input id="cfg-multa" className="cfg-input cfg-input--prefix" type="number" min={0} value={fine} onChange={e => setFine(e.target.value)} />
+                    <span className="cfg-suffix">MXN</span>
+                  </div>
+                  <p className="cfg-hint">Monto que se sugiere al liquidar un conflicto por violar los T&amp;C. Se puede ajustar en cada caso.</p>
+                </div>
+              </div>
+              {pie('finanzas')}
+            </>
           )}
-          {dirty && <span className="cfg-status">Tienes cambios sin guardar</span>}
-          <button className="cfg-save-btn" disabled={!dirty || updateSettingsMutation.isPending} onClick={handleSave}>
-            <Save size={14} /> {updateSettingsMutation.isPending ? "Guardando…" : "Guardar cambios"}
-          </button>
-        </div>
+
+          {seccion === 'operacion' && (
+            <>
+              <div className="cfg-row">
+                <div className="cfg-field">
+                  <label className="cfg-label" htmlFor="cfg-radio">Radio máximo de servicio</label>
+                  <div className="cfg-input-suffix">
+                    <input id="cfg-radio" className="cfg-input" type="number" min={1} value={radius} onChange={e => setRadius(e.target.value)} />
+                    <span className="cfg-suffix">km</span>
+                  </div>
+                  <p className="cfg-hint">Los técnicos más lejos que esto desde el domicilio no se recomiendan al cliente.</p>
+                </div>
+                <div className="cfg-field">
+                  <label className="cfg-label" htmlFor="cfg-tiempo">Tiempo para aceptar</label>
+                  <div className="cfg-input-suffix">
+                    <input id="cfg-tiempo" className="cfg-input" type="number" min={1} value={timeoutVal} onChange={e => setTimeoutVal(e.target.value)} />
+                    <span className="cfg-suffix">min</span>
+                  </div>
+                  <p className="cfg-hint">Tiempo antes de reasignar el servicio a otro técnico.</p>
+                </div>
+              </div>
+              {pie('operacion')}
+            </>
+          )}
+
+          {seccion === 'identidad' && (
+            <>
+              <p className="cfg-hint">Todavía no modifican la app: se activarán junto con la verificación de INE y biometría.</p>
+              <div className="cfg-row cfg-row--top">
+                <div className="cfg-field" style={{ flex: 2 }}>
+                  <div className="cfg-slider-header">
+                    <label className="cfg-label" htmlFor="cfg-umbral">Umbral de aprobación automática</label>
+                    <span className="cfg-slider-val">85%</span>
+                  </div>
+                  <input id="cfg-umbral" className="cfg-slider" type="range" min={50} max={100} value={85} disabled readOnly
+                    style={{ '--fill': '70%' } as React.CSSProperties} />
+                  <div className="cfg-slider-ticks"><span>Estricto (50%)</span><span>Flexible (100%)</span></div>
+                  <p className="cfg-hint">Las identidades que superen este % de similitud facial se aprueban sin intervención manual.</p>
+                </div>
+                <div className="cfg-field cfg-toggle-field">
+                  <label className="cfg-label" htmlFor="cfg-sep">Validación obligatoria en SEP</label>
+                  <label className="cfg-toggle">
+                    <input id="cfg-sep" type="checkbox" checked disabled readOnly />
+                    <span className="cfg-toggle-track" />
+                  </label>
+                  <p className="cfg-hint">Rechaza automáticamente a los técnicos cuya Cédula Profesional no exista en el Registro Nacional.</p>
+                </div>
+              </div>
+            </>
+          )}
+
+          {seccion === 'sistema' && (
+            <div className={`cfg-danger ${maintenance ? 'cfg-danger--on' : ''}`}>
+              <div className="cfg-danger-text">
+                <p className="cfg-card-title">Modo mantenimiento {maintenance && <span className="cfg-badge-pill cfg-badge-pill--on">Activo</span>}</p>
+                <p className="cfg-hint">
+                  Al activarlo, la plataforma suspende operaciones: clientes y técnicos ven la pantalla de mantenimiento.
+                  Tú sigues entrando al panel para apagarlo.
+                </p>
+              </div>
+              {maintenance ? (
+                <button type="button" className="cfg-save-btn" disabled={guardar.isPending} onClick={() => cambiarMantenimiento(false)}>
+                  <Power size={14} /> Desactivar mantenimiento
+                </button>
+              ) : confirmarMantenimiento ? (
+                <div className="cfg-confirm" role="alertdialog" aria-label="Confirmar mantenimiento">
+                  <p>¿Suspender la plataforma ahora?</p>
+                  <button type="button" className="cfg-discard-btn" onClick={() => setConfirmarMantenimiento(false)}>Cancelar</button>
+                  <button type="button" className="cfg-danger-btn" disabled={guardar.isPending} onClick={() => cambiarMantenimiento(true)}>Sí, activar</button>
+                </div>
+              ) : (
+                <button type="button" className="cfg-danger-btn" onClick={() => setConfirmarMantenimiento(true)}>
+                  <Power size={14} /> Activar mantenimiento
+                </button>
+              )}
+            </div>
+          )}
+        </section>
       </div>
 
-      <div className="cfg-sections">
-        {/* ── Modelo Financiero (RF-97) ── */}
-        <div className="cfg-card">
-          <div className="cfg-card-head">
-            <div className="cfg-icon cfg-icon--orange"><Settings2 size={16} /></div>
-            <div>
-              <p className="cfg-card-title">Modelo financiero</p>
-              <p className="cfg-card-sub">Comisiones y límites de retiro para técnicos.</p>
-            </div>
-          </div>
-          <div className="cfg-row">
-            <div className="cfg-field">
-              <label className="cfg-label">Comisión Click &amp; Serve</label>
-              <div className="cfg-input-suffix">
-                <input className="cfg-input" type="number" value={commission}
-                  onChange={e => { setCommission(e.target.value); mark() }} />
-                <span className="cfg-suffix">%</span>
-              </div>
-              <p className="cfg-hint">Porcentaje deducido de cada servicio completado. Afecta a todos los servicios que se liquiden desde que guardes el cambio.</p>
-            </div>
-            <div className="cfg-field">
-              <label className="cfg-label">Retiro mínimo permitido</label>
-              <div className="cfg-input-suffix">
-                <span className="cfg-prefix">$</span>
-                <input className="cfg-input cfg-input--prefix" type="number" value={minWithdraw}
-                  onChange={e => { setMinWithdraw(e.target.value); mark() }} />
-                <span className="cfg-suffix">MXN</span>
-              </div>
-            </div>
-          </div>
-          <div className="cfg-row" style={{ marginTop: 16 }}>
-            <div className="cfg-field">
-              <label className="cfg-label">Multa operativa estándar</label>
-              <div className="cfg-input-suffix">
-                <span className="cfg-prefix">$</span>
-                <input className="cfg-input cfg-input--prefix" type="number" value={fine}
-                  onChange={e => { setFine(e.target.value); mark() }} />
-                <span className="cfg-suffix">MXN</span>
-              </div>
-              <p className="cfg-hint">Monto que se sugiere al liquidar un conflicto por violar los T&amp;C. Se puede ajustar en cada caso.</p>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Región Operativa (RF-97) ── */}
-        <div className="cfg-card">
-          <div className="cfg-card-head">
-            <div className="cfg-icon cfg-icon--blue"><MapPin size={16} /></div>
-            <div>
-              <p className="cfg-card-title">Región operativa</p>
-              <p className="cfg-card-sub">Límites de servicio en Lázaro Cárdenas.</p>
-            </div>
-          </div>
-          <div className="cfg-row">
-            <div className="cfg-field">
-              <label className="cfg-label">Radio máximo de servicio</label>
-              <div className="cfg-input-suffix">
-                <input className="cfg-input" type="number" value={radius}
-                  onChange={e => { setRadius(e.target.value); mark() }} />
-                <span className="cfg-suffix">km</span>
-              </div>
-            </div>
-            <div className="cfg-field">
-              <label className="cfg-label">Tiempo para aceptar</label>
-              <div className="cfg-input-suffix">
-                <input className="cfg-input" type="number" value={timeoutVal}
-                  onChange={e => { setTimeoutVal(e.target.value); mark() }} />
-                <span className="cfg-suffix">min</span>
-              </div>
-              <p className="cfg-hint">Tiempo antes de reasignar el servicio a otro técnico.</p>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Motor de Verificación (RF-98) ── */}
-        <div className="cfg-card cfg-card--wide">
-          <div className="cfg-card-head">
-            <div className="cfg-icon cfg-icon--navy"><Shield size={16} /></div>
-            <div>
-              <p className="cfg-card-title">Verificación de identidad <span className="cfg-badge-pill cfg-badge-pill--soon">Próximamente</span></p>
-              <p className="cfg-card-sub">Todavía no modifican la app: se activarán junto con la verificación de INE y biometría.</p>
-            </div>
-          </div>
-
-          <div className="cfg-row cfg-row--top">
-            {/* Slider */}
-            <div className="cfg-field" style={{ flex: 2 }}>
-              <div className="cfg-slider-header">
-                <label className="cfg-label">Umbral de aprobación automática</label>
-                <span className="cfg-slider-val">{threshold}%</span>
-              </div>
-              <input
-                className="cfg-slider"
-                type="range" min={50} max={100} value={threshold} disabled
-                aria-label="Umbral de aprobación automática"
-                style={{ '--fill': `${(threshold - 50) * 2}%` } as React.CSSProperties}
-                onChange={e => { setThreshold(Number(e.target.value)); mark() }}
-              />
-              <div className="cfg-slider-ticks">
-                <span>Estricto (50%)</span>
-                <span>Flexible (100%)</span>
-              </div>
-              <p className="cfg-hint">Las identidades que superen este % de similitud facial se aprueban sin intervención manual.</p>
-            </div>
-
-            {/* Toggle */}
-            <div className="cfg-field cfg-toggle-field">
-              <label className="cfg-label">Validación obligatoria en SEP</label>
-              <label className="cfg-toggle">
-                <input type="checkbox" checked={sepValidation} disabled
-                  onChange={e => { setSepValidation(e.target.checked); mark() }} />
-                <span className="cfg-toggle-track" />
-              </label>
-              <p className="cfg-hint">Rechaza automáticamente a los técnicos cuya Cédula Profesional no exista en el Registro Nacional.</p>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Modo Mantenimiento (RF-99) ── */}
-        <div className={`cfg-card cfg-card--danger ${maintenance ? 'cfg-card--danger-active' : ''}`}>
-          <div className="cfg-card-head">
-            <div className="cfg-icon cfg-icon--danger"><AlertTriangle size={16} /></div>
-            <div style={{ flex: 1 }}>
-              <p className="cfg-card-title">Modo mantenimiento</p>
-              <p className="cfg-hint" style={{ marginTop: 4 }}>
-                Al activar esto, la plataforma suspenderá operaciones. Los usuarios verán la pantalla de mantenimiento.
-              </p>
-            </div>
-            <label className="cfg-toggle">
-              <input type="checkbox" checked={maintenance}
-                disabled={updateSettingsMutation.isPending}
-                onChange={e => setMaintenanceRemote(e.target.checked)} />
-              <span className="cfg-toggle-track" />
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <MaintenanceOverlay isActive={maintenance} onDeactivate={() => setMaintenanceRemote(false)} />
+      <MaintenanceOverlay isActive={maintenance} onDeactivate={() => cambiarMantenimiento(false)} />
     </div>
   )
 }
