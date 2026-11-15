@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { goBack } from '@/src/lib/nav';
-import { AppBar, Banner, Button, color, Icon, Pill, radius, Screen, SectionHeader, Skeleton, space, Surface, Text } from '@/src/design';
+import { AppBar, Banner, Button, color, Icon, radius, Screen, SectionHeader, Skeleton, space, Surface, Text, Ilustracion, ilustracionDe, figuraDeIcono } from '@/src/design';
 import { errorMessage } from '@/src/api/client';
 import { solicitudesApi } from '@/src/api/endpoints';
 import { formatDateTime, formatDistance, formatShortDate, formatTime12 } from '@/src/lib/format';
@@ -71,22 +71,23 @@ export default function SolicitudNueva() {
           {!disponible ? <Banner tone="info" title="Ya no está disponible" body="Otro técnico la aceptó o el cliente la canceló." style={styles.gap} /> : null}
           {s.propuesta_a_mi || s.tecnico_propuesto === user?.id_usuario ? <Banner tone="success" title="El cliente te eligió a ti" body="Tienes 10 minutos para aceptarla antes de que se ofrezca a otros técnicos." style={styles.gap} /> : null}
 
-          <Surface tint="peach">
+          <Surface>
             <View style={styles.head}>
-              <View style={styles.catIcon}><Icon name="tool" size={22} color={color.inkOnColor} /></View>
+              <Ilustracion nombre={ilustracionDe(s.categoria_nombre)} size={56} />
               <View style={styles.flex}>
-                <Text variant="caption" tone="muted">{s.folio}</Text>
                 <Text variant="headline">{s.categoria_nombre}</Text>
+                {s.servicio_nombre ? <Text variant="body" tone="soft">{s.servicio_nombre}</Text> : null}
               </View>
-              <Pill label="Nueva" tone="accent" size="sm" />
             </View>
             <Text variant="body" style={styles.desc}>{s.descripcion}</Text>
           </Surface>
 
           <View style={styles.facts}>
-            <Fact icon="navigation" label="Distancia" value={formatDistance(s.distancia_km)} />
-            <Fact icon="calendar" label="Cuándo" value={s.fecha_preferida ? `${formatShortDate(s.fecha_preferida)}${s.hora_preferida ? ` · ${formatTime12(s.hora_preferida)}` : ''}` : 'Lo antes posible'} />
-            <Fact icon="user" label="Cliente" value={`${s.cliente_nombre || 'Cliente'} ${s.cliente_apellido || ''}`.trim()} />
+            {[
+              { icon: 'navigation' as const, label: 'Distancia', value: formatDistance(s.distancia_km) },
+              { icon: 'calendar' as const, label: 'Cuándo', value: s.fecha_preferida ? `${formatShortDate(s.fecha_preferida)}${s.hora_preferida ? ` · ${formatTime12(s.hora_preferida)}` : ''}` : 'Lo antes posible' },
+              { icon: 'user' as const, label: 'Cliente', value: `${s.cliente_nombre || 'Cliente'} ${s.cliente_apellido || ''}`.trim() },
+            ].filter((f) => f.value).map((f, i) => <Fact key={f.label} {...f} linea={i > 0} />)}
           </View>
 
           {s.latitud_aprox != null && s.longitud_aprox != null ? (
@@ -95,7 +96,7 @@ export default function SolicitudNueva() {
               <View style={styles.map}>
                 <MapView center={{ lat: Number(s.latitud_aprox), lng: Number(s.longitud_aprox) }} zoom={14} height={180} markers={[{ id: 'zona', lat: Number(s.latitud_aprox), lng: Number(s.longitud_aprox), kind: 'solicitud', label: s.zona || 'Zona' }]} />
               </View>
-              <Text variant="caption" tone="muted" style={styles.note}>La dirección exacta y el teléfono del cliente aparecen al aceptar.</Text>
+              <Text variant="caption" tone="muted" style={styles.note}>La dirección exacta aparece cuando el cliente paga el precio base.</Text>
             </>
           ) : s.zona ? <Text variant="body" tone="soft" style={styles.gap}>Zona: {s.zona}</Text> : null}
 
@@ -105,17 +106,17 @@ export default function SolicitudNueva() {
               <Gallery items={s.imagenes.map((im, i) => ({ url: im.url, label: `Foto ${i + 1}` }))} size={96} />
             </>
           ) : null}
-          <Text variant="caption" tone="muted" style={styles.note}>Publicada {formatDateTime(s.fecha_creacion)}</Text>
+          <Text variant="caption" tone="muted" style={styles.note}>Publicada {formatDateTime(s.fecha_creacion).replace(/^Hoy/, 'hoy').replace(/^Mañana/, 'mañana')}</Text>
         </>
       ) : null}
     </Screen>
   );
 }
 
-function Fact({ icon, label, value }: { icon: 'navigation' | 'calendar' | 'user'; label: string; value: string }) {
+function Fact({ icon, label, value, linea }: { icon: 'navigation' | 'calendar' | 'user'; label: string; value: string; linea?: boolean }) {
   return (
-    <View style={styles.fact}>
-      <Icon name={icon} size={18} color={color.brandInk} />
+    <View style={[styles.fact, linea && styles.factLinea]}>
+      {figuraDeIcono(icon) ? <Ilustracion nombre={figuraDeIcono(icon)!} size={36} /> : <Icon name={icon} size={18} color={color.brandInk} />}
       <Text variant="caption" tone="muted">{label}</Text>
       <Text variant="label" numberOfLines={2} align="center">{value}</Text>
     </View>
@@ -128,10 +129,11 @@ const styles = StyleSheet.create({
   gap: { marginBottom: space.md },
   footer: { flexDirection: 'row', gap: space.sm, alignItems: 'center' },
   head: { flexDirection: 'row', alignItems: 'center', gap: space.md },
-  catIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: color.navy, alignItems: 'center', justifyContent: 'center' },
+  catIcon: { width: 48, height: 48, borderRadius: 14, backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center' },
   desc: { marginTop: space.md },
-  facts: { flexDirection: 'row', gap: space.sm, marginTop: space.md },
-  fact: { flex: 1, backgroundColor: color.surface, borderRadius: radius.md, padding: space.md, alignItems: 'center', gap: 4 },
+  facts: { flexDirection: 'row', marginTop: space.md, backgroundColor: color.surface, borderRadius: radius.xl, paddingVertical: space.md },
+  fact: { flex: 1, paddingHorizontal: space.sm, alignItems: 'center', gap: 4 },
+  factLinea: { borderLeftWidth: 1, borderLeftColor: color.line },
   map: { borderRadius: radius.md, overflow: 'hidden' },
   note: { marginTop: space.sm },
 });

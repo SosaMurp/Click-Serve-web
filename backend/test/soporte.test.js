@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const WebSocket = require('ws');
-const { resetDb, startServer, createUser, api, login, idem, closePool } = require('./helpers');
+const { resetDb, startServer, createUser, api, login, idem, closePool, simularPrecioBasePagado } = require('./helpers');
 const realtime = require('../src/lib/realtime');
 
 let server;
@@ -15,8 +15,11 @@ async function as(rol) {
   return { ...u, token: await login(server.url, u) };
 }
 
-function wsUrl(token) {
-  return `${server.url.replace('http', 'ws')}/ws?token=${encodeURIComponent(token)}`;
+// Abre el canal en tiempo real y manda el token como primer mensaje (nunca en la URL).
+function abrirWs(token) {
+  const ws = new WebSocket(`${server.url.replace('http', 'ws')}/ws`);
+  ws.on('open', () => ws.send(JSON.stringify({ type: 'auth', token })));
+  return ws;
 }
 
 function nextEvent(ws, name, timeoutMs = 3000) {
@@ -103,10 +106,18 @@ test('dirección sin calle se rechaza', async () => {
   assert.equal(res.status, 400);
 });
 
-test('WebSocket: token inválido se rechaza', async () => {
-  const ws = new WebSocket(wsUrl('basura'));
-  const err = await new Promise((resolve) => { ws.on('error', resolve); ws.on('unexpected-response', (_req, res) => resolve(res.statusCode)); });
-  assert.ok(err === 401 || err instanceof Error);
+test('WebSocket: token inválido, sin token o en la URL se rechaza', async () => {
+  const cerrado = (ws) => new Promise((resolve) => ws.on('close', (code) => resolve(code)));
+  assert.equal(await cerrado(abrirWs('basura')), 4401, 'token inválido');
+  const mudo = new WebSocket(`${server.url.replace('http', 'ws')}/ws`);
+  const t0 = Date.now();
+  assert.equal(await cerrado(mudo), 4401, 'sin mensaje de autenticación');
+  assert.ok(Date.now() - t0 < 7000);
+  // El token en la URL ya no se acepta: quedaría en los registros del servidor.
+  const c = await as(1);
+  const enUrl = new WebSocket(`${server.url.replace('http', 'ws')}/ws?token=${encodeURIComponent(c.token)}`);
+  const status = await new Promise((resolve) => { enUrl.on('unexpected-response', (_req, res) => resolve(res.statusCode)); enUrl.on('error', () => resolve('error')); });
+  assert.equal(status, 400);
 });
 
 test('WebSocket: el técnico recibe en tiempo real el mensaje del cliente', async () => {
@@ -117,9 +128,11 @@ test('WebSocket: el técnico recibe en tiempo real el mensaje del cliente', asyn
     body: { categoria: 'PINTURA', descripcion: 'Pintar recámara de 3 por 4 metros.', direccion: 'Calle 3 #4, Centro' },
   })).body.solicitud;
   await api(server.url, 'POST', `/api/solicitudes/${s.id_solicitud}/aceptar`, { token: t.token });
-  const ws = new WebSocket(wsUrl(t.token));
+  await simularPrecioBasePagado(s.id_solicitud);
+  const ws = abrirWs(t.token);
   await nextEvent(ws, 'conectado');
   const waiting = nextEvent(ws, 'chat.mensaje');
+  await api(server.url, 'POST', `/api/solicitudes/${s.id_solicitud}/chat/politicas`, { token: c.token });
   await api(server.url, 'POST', `/api/solicitudes/${s.id_solicitud}/chat`, { token: c.token, body: { mensaje: '¿Trae su escalera?' } });
   const msg = await waiting;
   assert.equal(msg.data.mensaje, '¿Trae su escalera?');
@@ -128,7 +141,7 @@ test('WebSocket: el técnico recibe en tiempo real el mensaje del cliente', asyn
 
 test('WebSocket: al cerrar la sesión se corta la conexión abierta', async () => {
   const c = await as(1);
-  const ws = new WebSocket(wsUrl(c.token));
+  const ws = abrirWs(c.token);
   await nextEvent(ws, 'conectado');
   const closed = new Promise((resolve) => ws.on('close', (code) => resolve(code)));
   assert.equal((await api(server.url, 'POST', '/api/logout', { token: c.token })).status, 200);

@@ -1,8 +1,9 @@
 import React from 'react';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, Animated, Platform, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
 import { Icon, IconName } from './Icon';
 import { Text } from './Text';
 import { color, elevation, radius, touch } from './tokens';
+import { usePressScale } from './motion';
 
 // primary: azul marino con texto blanco (INICIAR SESIÓN); accent: naranja para la acción destacada
 // (REGISTRARME, ACEPTAR TRABAJO). filled queda como sinónimo de primary.
@@ -10,7 +11,7 @@ type Variant = 'primary' | 'accent' | 'filled' | 'tonal' | 'outlined' | 'text' |
 
 const VARIANTS: Record<Variant, { bg: string; fg: string; border?: string; pressed: string }> = {
   primary: { bg: color.brand, fg: color.inkOnColor, pressed: color.brandDeep },
-  accent: { bg: color.accentStrong, fg: color.inkOnColor, pressed: color.accentPressed },
+  accent: { bg: color.accent, fg: color.ink, pressed: color.accentStrong },
   filled: { bg: color.brand, fg: color.inkOnColor, pressed: color.brandDeep },
   tonal: { bg: color.brandSoft, fg: color.brandInk, pressed: color.brandMid },
   outlined: { bg: color.surface, fg: color.ink, border: color.lineStrong, pressed: color.surfaceSunk },
@@ -41,8 +42,14 @@ type Props = {
 export function Button({ title, onPress, variant = 'primary', icon, iconRight, loading, disabled, full, size = 'md', style, accessibilityHint, floating }: Props) {
   const v = VARIANTS[variant];
   const inactive = disabled || loading;
+  // Se hunde al tocarlo y rebota al soltar; el naranja además brilla (nivel llamativo).
+  const press = usePressScale(0.95);
+  const glow = variant === 'accent' && !inactive ? styles.glow : null;
   return (
+    <Animated.View style={[{ alignSelf: full ? 'stretch' : floating ? 'center' : 'flex-start', transform: [{ scale: press.scale }] }, style]}>
     <Pressable
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
       accessibilityRole="button"
       accessibilityLabel={title}
       accessibilityHint={accessibilityHint}
@@ -59,13 +66,13 @@ export function Button({ title, onPress, variant = 'primary', icon, iconRight, l
             backgroundColor: state.pressed || hovered ? v.pressed : v.bg,
             borderColor: v.border || 'transparent',
             borderWidth: v.border ? 1 : 0,
-            alignSelf: full ? 'stretch' : floating ? 'center' : 'flex-start',
+            alignSelf: 'stretch',
             paddingHorizontal: variant === 'text' ? 12 : 24,
             opacity: inactive && !loading ? 0.45 : 1,
           },
           floating ? elevation[2] : null,
+          glow,
           focused && Platform.OS === 'web' ? styles.focus : null,
-          style,
         ];
       }}
     >
@@ -74,7 +81,6 @@ export function Button({ title, onPress, variant = 'primary', icon, iconRight, l
       ) : (
         <View style={styles.row}>
           {icon ? <Icon name={icon} size={20} color={v.fg} /> : null}
-          {/* Los botones llenos van en MAYÚSCULAS y negrita; los de texto, como enlace en negrita. */}
           <Text
             variant={variant === 'text' ? 'label' : 'button'}
             weight={variant === 'text' ? '700' : undefined}
@@ -88,6 +94,7 @@ export function Button({ title, onPress, variant = 'primary', icon, iconRight, l
         </View>
       )}
     </Pressable>
+    </Animated.View>
   );
 }
 
@@ -138,7 +145,8 @@ export function CircleArrow({ onPress, label, icon = 'arrow-right' }: { onPress?
 }
 
 const styles = StyleSheet.create({
-  base: { borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', paddingVertical: 8 },
+  glow: { shadowColor: color.accent, shadowOpacity: 0.38, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 6 },
+  base: { borderRadius: radius.full, alignItems: 'center', justifyContent: 'center', paddingVertical: 8 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, flexShrink: 1 },
   xlText: { fontSize: 17, lineHeight: 22 },
   focus: { outlineStyle: 'solid', outlineWidth: 3, outlineColor: color.focus, outlineOffset: 2 } as object,

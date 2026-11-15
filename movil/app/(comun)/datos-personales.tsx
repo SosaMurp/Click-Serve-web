@@ -90,7 +90,7 @@ export default function DatosPersonales() {
           <TextField label="Apellido" value={f.apellido} onChangeText={set('apellido')} error={errors.apellido} maxLength={60} autoComplete="family-name" />
         </>
       )}
-      <TextField label="Teléfono" value={formatPhone(f.telefono)} onChangeText={set('telefono')} error={errors.telefono} keyboardType="phone-pad" icon="phone" maxLength={18} autoComplete="tel" helper="Lo ve tu técnico o cliente solo durante un servicio activo." />
+      <TextField label="Teléfono" value={formatPhone(f.telefono)} onChangeText={set('telefono')} error={errors.telefono} keyboardType="phone-pad" icon="phone" maxLength={18} autoComplete="tel" />
       {user.rol === 'tecnico' ? (
         <TextField label="Sobre mí" value={f.bio} onChangeText={set('bio')} multiline maxLength={500} counter placeholder="Experiencia, especialidades y forma de trabajo" />
       ) : null}

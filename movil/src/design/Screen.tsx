@@ -2,6 +2,8 @@ import React from 'react';
 import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, space } from './tokens';
+import { TAB_BAR_SPACE } from './NavigationBar';
+import { Entrance } from './motion';
 
 type Props = {
   children: React.ReactNode;
@@ -13,7 +15,7 @@ type Props = {
   padded?: boolean;
   background?: string;
   contentStyle?: ViewStyle;
-  // En una pestaña la barra de navegación inferior ya respeta el borde inferior.
+  // En una pestaña: deja espacio abajo para la barra de navegación flotante.
   inTabs?: boolean;
 };
 
@@ -21,8 +23,12 @@ type Props = {
 // y un pie fijo para la acción principal. En web el contenido se centra a ancho de teléfono.
 export function Screen({ children, header, footer, scroll = true, refreshing = false, onRefresh, padded = true, background = color.ground, contentStyle, inTabs }: Props) {
   const insets = useSafeAreaInsets();
-  const bottom = inTabs ? 0 : insets.bottom;
+  // En una pestaña se deja libre el alto de la barra flotante.
+  const bottom = inTabs ? insets.bottom + TAB_BAR_SPACE : insets.bottom;
   const inner = [styles.content, padded && styles.padded, contentStyle];
+  // Entrada en cascada: cada bloque de la pantalla aparece después del anterior, con rebote.
+  let n = 0;
+  const cascada = React.Children.map(children, (child) => (child === null || child === undefined || child === false ? child : <Entrance index={n++}>{child}</Entrance>));
 
   const body = scroll ? (
     <ScrollView
@@ -31,7 +37,7 @@ export function Screen({ children, header, footer, scroll = true, refreshing = f
       keyboardShouldPersistTaps="handled"
       refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[color.brand]} tintColor={color.brand} /> : undefined}
     >
-      <View style={inner}>{children}</View>
+      <View style={inner}>{cascada}</View>
     </ScrollView>
   ) : (
     <View style={[styles.flex, styles.center]}><View style={[inner, styles.flex]}>{children}</View></View>
@@ -44,7 +50,7 @@ export function Screen({ children, header, footer, scroll = true, refreshing = f
         {body}
         {footer ? (
           <View style={[styles.footer, { paddingBottom: bottom + space.md }]}>
-            <View style={styles.footerInner}>{footer}</View>
+            <Entrance index={3} style={styles.footerInner}>{footer}</Entrance>
           </View>
         ) : null}
       </KeyboardAvoidingView>

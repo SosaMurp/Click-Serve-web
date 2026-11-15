@@ -9,7 +9,8 @@ const { normalizeCedula } = require('../lib/validators');
 const { saveFile, uploader, signFileUrl, DOCUMENT_TYPES } = require('../lib/files');
 const { parseCoord, haversineKm, etaMinutes } = require('../lib/geo');
 const realtime = require('../lib/realtime');
-const { fetchWithTimeout } = require('../services/payments');
+const sanciones = require('../services/sanciones');
+const { ESTADO: S_CEDULA, iniciarValidacion, validarEnSegundoPlano } = require('../services/cedula');
 const S = require('../services/solicitudes');
 
 const router = express.Router();
@@ -24,6 +25,8 @@ function locationParams(body) {
 router.put('/api/tecnico/disponibilidad', ...techOnly, async (req, res, next) => {
   const disponible = req.body?.disponible === true;
   if (disponible && !req.user.aprobado) return requireApproved(req, res, next);
+  // Escala de sanciones: suspendido no puede ponerse en línea para recibir trabajos.
+  if (disponible) await sanciones.exigirNoSuspendido(req.user.id_usuario);
   const { lat, lng } = locationParams(req.body);
   const { rows } = await db().query(
     `UPDATE usuarios SET disponible = $1,
@@ -72,6 +75,57 @@ router.put('/api/usuarios/ubicacion', auth, async (req, res) => {
     }
   }
   res.json({ mensaje: 'Ubicación actualizada.', ubicacion: { latitud: lat, longitud: lng } });
+});
+
+// Búsqueda de técnicos para el cliente: por nombre o por especialidad (texto libre, p. ej. "plomería").
+// Solo técnicos aprobados con identidad verificada. No devuelve ubicación ni teléfono.
+router.get('/api/tecnicos/buscar', auth, requireRole(ROL.CLIENTE), requireApproved, async (req, res) => {
+  const q = String(req.query.q || '').trim().slice(0, 60);
+  const categoria = String(req.query.categoria || '').trim().slice(0, 30) || null;
+  if (q.length === 1) return fail(res, 400, 'VALIDATION_ERROR', 'Escribe al menos 2 letras para buscar.', { field: 'q' });
+  const patron = q ? `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%` : null;
+  const { rows } = await db().query(
+    `SELECT u.id_usuario, u.nombre, u.apellido, u.foto_archivo, u.disponible, COALESCE(u.verificado_sep, false) AS verificado_sep,
+            (SELECT ROUND(AVG(q2.puntuacion_tecnico)::numeric, 1) FROM calificaciones_servicio q2 WHERE q2.id_tecnico = u.id_usuario AND q2.puntuacion_tecnico IS NOT NULL) AS calificacion,
+            (SELECT COUNT(*)::int FROM calificaciones_servicio q3 WHERE q3.id_tecnico = u.id_usuario AND q3.puntuacion_tecnico IS NOT NULL) AS resenas,
+            (SELECT COUNT(*)::int FROM solicitudes_servicio f WHERE f.id_tecnico = u.id_usuario AND f.estado = 'FINALIZADA') AS trabajos,
+            LEFT(u.bio, 140) AS bio,
+            -- "desde $X" por oficio: el más barato de sus servicios del catálogo (sin la visita de diagnóstico).
+            (SELECT COALESCE(json_agg(json_build_object('codigo', c.codigo, 'nombre', c.nombre,
+                     'precio', COALESCE(
+                       (SELECT MIN(LEAST(srv.precio_max, GREATEST(srv.precio_min, COALESCE(pt.precio, srv.precio_sugerido))))
+                          FROM servicios_catalogo srv LEFT JOIN precios_tecnico pt ON pt.id_servicio = srv.id_servicio AND pt.id_usuario = u.id_usuario
+                         WHERE srv.categoria = c.codigo AND srv.activo AND NOT srv.es_diagnostico),
+                       e.precio_base, NULLIF(c.tarifa_base, 0), c.precio_min)::numeric(10,2)::text) ORDER BY c.orden), '[]'::json)
+               FROM especialidades_tecnico e JOIN categorias_servicio c ON c.codigo = e.categoria
+              WHERE e.id_usuario = u.id_usuario AND e.activa) AS especialidades
+     FROM usuarios u
+     WHERE u.id_rol = 2 AND u.anonimizado = false AND u.identidad_verificada = true
+       AND UPPER(COALESCE(u.estado_cuenta, '')) IN ('ACTIVO', 'APROBADO')
+       AND ($1::text IS NULL OR CONCAT(u.nombre, ' ', u.apellido) ILIKE $1 ESCAPE '\\'
+            OR EXISTS (SELECT 1 FROM especialidades_tecnico e JOIN categorias_servicio c ON c.codigo = e.categoria
+                       WHERE e.id_usuario = u.id_usuario AND e.activa AND c.nombre ILIKE $1 ESCAPE '\\'))
+       AND ($2::text IS NULL OR EXISTS (SELECT 1 FROM especialidades_tecnico e
+                                        WHERE e.id_usuario = u.id_usuario AND e.activa AND e.categoria = $2))
+     ORDER BY u.disponible DESC, calificacion DESC NULLS LAST, u.nombre
+     LIMIT 30`,
+    [patron, categoria]
+  );
+  res.json({
+    tecnicos: rows.map((r) => ({
+      id_usuario: r.id_usuario,
+      nombre: r.nombre,
+      apellido: r.apellido,
+      foto_url: r.foto_archivo ? signFileUrl(r.foto_archivo, 3600) : null,
+      disponible: r.disponible === true,
+      verificado_sep: r.verificado_sep === true,
+      calificacion: r.calificacion,
+      trabajos: r.trabajos,
+      resenas: r.resenas,
+      bio: r.bio || null,
+      especialidades: r.especialidades,
+    })),
+  });
 });
 
 // Técnicos disponibles cerca (mapa del inicio). Coordenadas aproximadas (~1 km): sin datos de contacto.
@@ -184,7 +238,8 @@ router.get('/api/tecnicos/:id/perfil', auth, async (req, res) => {
 // ───────────────────────── Especialidades y alertas (RF-23, RF-24) ─────────────────────────
 async function listSpecialties(id) {
   const { rows } = await db().query(
-    `SELECT e.id_especialidad, e.categoria, COALESCE(c.nombre, e.nombre) AS nombre, e.estado, e.activa
+    `SELECT e.id_especialidad, e.categoria, COALESCE(c.nombre, e.nombre) AS nombre, e.estado, e.activa,
+            e.precio_base, c.precio_min, c.precio_max, NULLIF(c.tarifa_base, 0) AS precio_sugerido
      FROM especialidades_tecnico e LEFT JOIN categorias_servicio c ON c.codigo = e.categoria
      WHERE e.id_usuario = $1 ORDER BY c.orden NULLS LAST, e.id_especialidad`,
     [id]
@@ -219,6 +274,26 @@ router.patch('/api/tecnico/especialidades/:id/toggle', ...techOnly, async (req, 
   );
   if (!rows[0]) return fail(res, 404, 'NOT_FOUND', 'Especialidad no encontrada.');
   res.json({ especialidad: rows[0] });
+});
+
+// Precio base del técnico para una especialidad, dentro del rango que fija Click & Serve para la categoría.
+// Es lo que el cliente paga en custodia al aceptar; lo adicional se cotiza en el domicilio.
+router.patch('/api/tecnico/especialidades/:id/precio', ...techOnly, async (req, res) => {
+  const precio = Number(String(req.body?.precio_base ?? '').replace(',', '.'));
+  const { rows: [esp] } = await db().query(
+    `SELECT e.id_especialidad, c.precio_min, c.precio_max FROM especialidades_tecnico e
+     LEFT JOIN categorias_servicio c ON c.codigo = e.categoria WHERE e.id_especialidad = $1 AND e.id_usuario = $2`,
+    [req.params.id, req.user.id_usuario]
+  );
+  if (!esp) return fail(res, 404, 'NOT_FOUND', 'Especialidad no encontrada.');
+  const min = Number(esp.precio_min ?? 50);
+  const max = Number(esp.precio_max ?? 100000);
+  if (!Number.isFinite(precio) || Math.abs(Math.round(precio * 100) - precio * 100) > 1e-6 || precio < min || precio > max) {
+    return fail(res, 400, 'VALIDATION_ERROR', `El precio base debe estar entre $${min.toFixed(2)} y $${max.toFixed(2)}.`, { field: 'precio_base' });
+  }
+  await db().query('UPDATE especialidades_tecnico SET precio_base = $1::numeric WHERE id_especialidad = $2', [precio.toFixed(2), esp.id_especialidad]);
+  audit(req, 'PRECIO_BASE_ACTUALIZADO', 'especialidad', esp.id_especialidad, { precio_base: precio.toFixed(2) });
+  res.json({ especialidades: await listSpecialties(req.user.id_usuario) });
 });
 
 router.delete('/api/tecnico/especialidades/:id', ...techOnly, async (req, res) => {
@@ -283,44 +358,18 @@ router.post('/api/tecnico/documentos', ...techOnly, uploader({ types: DOCUMENT_T
   res.status(201).json({ mensaje: 'Documento recibido. Lo revisaremos en las próximas 48 horas.', documento: doc });
 });
 
-const normalize = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
-
-// Consulta al Registro Nacional de Profesionistas con timeout de 5 s (RNF-36). Nunca aprueba por formato.
-// Solo con identidad verificada: el nombre contra el que se compara la cédula debe ser el del INE revisado.
+// Validación opcional de la cédula ante la SEP (RF-24/25). Solo con identidad verificada: el nombre contra el
+// que se compara la cédula debe ser el del INE revisado. La consulta corre en segundo plano: aquí solo se
+// acepta la cédula y el resultado llega por WebSocket (`cedula.validada`) o al recargar el perfil.
 router.post('/api/tecnicos/validar-cedula', ...techOnly, requireApproved, async (req, res) => {
   const cedula = normalizeCedula(req.body?.cedula);
   if (!cedula) return fail(res, 400, 'VALIDATION_ERROR', 'La cédula profesional tiene 7 u 8 dígitos.', { field: 'cedula' });
-  const url = process.env.SEP_URL || 'https://www.cedulaprofesional.sep.gob.mx/cedula/buscaCedulaJson.action';
-
-  let items;
-  try {
-    const body = new URLSearchParams({ json: JSON.stringify({ maxResult: '1000', nombre: '', paterno: '', materno: '', idCedula: cedula }) });
-    const resp = await fetchWithTimeout(url, { method: 'POST', body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }, 5000);
-    if (!resp.ok) throw new Error(`SEP ${resp.status}`);
-    items = (await resp.json()).items || [];
-  } catch {
-    await db().query(
-      "INSERT INTO documentos_usuario (id_usuario, tipo, numero, descripcion) VALUES ($1, 'CEDULA', $2, 'Pendiente de validar con la SEP')",
-      [req.user.id_usuario, cedula]
-    );
-    return fail(res, 503, 'SEP_UNAVAILABLE', 'El registro de la SEP no está disponible. Guardamos tu cédula para revisarla después.');
+  const iniciada = await iniciarValidacion(req.user);
+  if (!iniciada) {
+    return res.json({ estado: S_CEDULA.VERIFICADA, verificado_sep: true, mensaje: 'Tu cédula ya está validada con la SEP.' });
   }
-
-  const nombre = normalize(req.user.nombre).split(/\s+/)[0];
-  const apellido = normalize(req.user.apellido).split(/\s+/)[0];
-  const match = items.find((it) => normalize(it.nombre).split(/\s+/).includes(nombre) && normalize(it.paterno) === apellido);
-  if (!match) {
-    return fail(res, 400, 'SEP_NO_MATCH', 'La cédula no coincide con tu nombre en el Registro Nacional de Profesionistas.');
-  }
-  await withTransaction(async (tx) => {
-    await tx.query('UPDATE usuarios SET verificado_sep = true WHERE id_usuario = $1', [req.user.id_usuario]);
-    await tx.query(
-      "INSERT INTO documentos_usuario (id_usuario, tipo, numero, descripcion, estado) VALUES ($1, 'CEDULA', $2, $3, 'APROBADO')",
-      [req.user.id_usuario, cedula, String(match.titulo || 'Cédula profesional').slice(0, 150)]
-    );
-  });
-  audit(req, 'CEDULA_VALIDADA', 'usuario', req.user.id_usuario, { cedula });
-  res.json({ verificado_sep: true, titulo: match.titulo || null, mensaje: 'Cédula validada con la SEP. Ya tienes la insignia de profesionista.' });
+  validarEnSegundoPlano(req.user, cedula, req);
+  res.status(202).json({ estado: S_CEDULA.EN_PROCESO, mensaje: 'Estamos consultando tu cédula en la SEP. Te avisaremos en cuanto tengamos el resultado.' });
 });
 
 // ───────────────────────── Aprobación (para el panel de administrador) ─────────────────────────

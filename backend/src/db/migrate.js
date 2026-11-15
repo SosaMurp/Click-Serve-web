@@ -18,6 +18,17 @@ const STEPS = [
   { id: '007_tablas_heredadas', file: 'migrations/007_tablas_heredadas.sql' },
   { id: '008_codigos_con_hash', file: 'migrations/008_codigos_con_hash.sql' },
   { id: '009_reconciliar_esquema_heredado', file: 'migrations/009_reconciliar_esquema_heredado.sql' },
+  { id: '007_cedula_sep', file: 'migrations/007_cedula_sep.sql' },
+  { id: '008_chat_directo', file: 'migrations/008_chat_directo.sql' },
+  { id: '009_chat_seguro', file: 'migrations/009_chat_seguro.sql' },
+  { id: '010_pago_custodia', file: 'migrations/010_pago_custodia.sql' },
+  { id: '011_asignacion_proximidad', file: 'migrations/011_asignacion_proximidad.sql' },
+  { id: '012_sanciones', file: 'migrations/012_sanciones.sql' },
+  { id: '013_precio_base', file: 'migrations/013_precio_base.sql' },
+  { id: '014_cargo_cancelacion', file: 'migrations/014_cargo_cancelacion.sql' },
+  { id: '015_stripe', file: 'migrations/015_stripe.sql' },
+  { id: '016_catalogo_servicios', file: 'migrations/016_catalogo_servicios.sql' },
+  { id: '017_motivo_rechazo', file: 'migrations/017_motivo_rechazo.sql' },
 ];
 
 async function migrate(pool = getPool(), { silent = false } = {}) {

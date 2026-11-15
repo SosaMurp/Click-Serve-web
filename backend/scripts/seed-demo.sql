@@ -28,3 +28,11 @@ ON CONFLICT (correo) DO UPDATE SET
     verificado_sep = EXCLUDED.verificado_sep,
     biometria_estado = EXCLUDED.biometria_estado,
     "2FA_Activo" = EXCLUDED."2FA_Activo";
+
+-- Tarjeta de prueba del cliente (sandbox): así puede pagar en custodia sin agregar una tarjeta.
+-- Sin CONEKTA_PRIVATE_KEY el backend la cobra en modo SANDBOX; no es una tarjeta real.
+INSERT INTO metodos_pago (id_usuario, titular, ultimos_4, expiracion, token, marca, predeterminada)
+SELECT u.id_usuario, 'Cliente Prueba', '4242', '12/30', 'tok_test_visa_4242', 'VISA', true
+FROM usuarios u
+WHERE u.correo = 'cliente.prueba@clickserve.test'
+  AND NOT EXISTS (SELECT 1 FROM metodos_pago m WHERE m.id_usuario = u.id_usuario AND m.token = 'tok_test_visa_4242');

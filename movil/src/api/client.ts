@@ -1,9 +1,24 @@
+import { Platform } from 'react-native';
 import * as Crypto from 'expo-crypto';
 import { getToken } from '../state/tokenStore';
 import { resolveApiUrl } from '../lib/apiUrl';
 
 // En producción la URL debe ser HTTPS (RNF-01/03); en desarrollo se permite el backend local.
-export const API_URL = resolveApiUrl(process.env.EXPO_PUBLIC_API_URL, __DEV__);
+// En la web de desarrollo el backend está en la misma máquina que sirve la página: se usa ese mismo host
+// (localhost o la IP con que se abrió), así cambiar de red Wi‑Fi no rompe la conexión. La IP del .env es
+// para el celular.
+function devWebApiUrl(url: string): string {
+  if (!__DEV__ || Platform.OS !== 'web' || typeof window === 'undefined' || !url) return url;
+  try {
+    const u = new URL(url);
+    u.hostname = window.location.hostname;
+    return u.toString().replace(/\/$/, '');
+  } catch {
+    return url;
+  }
+}
+
+export const API_URL = devWebApiUrl(resolveApiUrl(process.env.EXPO_PUBLIC_API_URL, __DEV__));
 
 if (!API_URL) {
   console.error('EXPO_PUBLIC_API_URL falta o no usa HTTPS: la app no enviará datos a ese servidor.');
@@ -75,6 +90,8 @@ async function request<T>(method: string, path: string, opts: Options = {}): Pro
   try {
     res = await fetch(`${API_URL}${path}`, { method, headers, body, signal: controller.signal });
   } catch (error) {
+    // En desarrollo, el motivo real del fallo de red aparece en la terminal de Expo (Metro).
+    if (__DEV__) console.warn(`[api] ${method} ${API_URL}${path} falló:`, (error as Error)?.name, (error as Error)?.message, opts.form ? '(formulario con archivos)' : '');
     emit({ type: 'offline' });
     const timeout = (error as Error)?.name === 'AbortError';
     throw new ApiError(0, timeout ? 'TIMEOUT' : 'NETWORK', timeout ? 'El servidor tardó demasiado en responder. Intenta de nuevo.' : NETWORK_MESSAGE);

@@ -176,7 +176,17 @@ export default function Registro() {
       {step === 2 ? (
         <>
           <IneCapture step={1} lado="frente" registro={registroIne} value={ineFrente} onChange={(v) => { setIneFrente(v); setIneReverso(null); clear('docs'); }} />
-          <IneCapture step={2} lado="reverso" registro={registroIne} ticketFrente={ineFrente?.ticket} value={ineReverso} onChange={(v) => { setIneReverso(v); clear('docs'); }} disabled={!ineFrente} />
+          <IneCapture
+            step={2}
+            lado="reverso"
+            registro={registroIne}
+            ticketFrente={ineFrente?.ticket}
+            frenteFile={ineFrente?.file}
+            onFrenteTicket={(ticket) => setIneFrente((f) => (f ? { ...f, ticket } : f))}
+            value={ineReverso}
+            onChange={(v) => { setIneReverso(v); clear('docs'); }}
+            disabled={!ineFrente}
+          />
           <DocCapture step={3} title="Tu rostro" hint="De frente, sin lentes oscuros ni gorra." icon="smile" file={rostro} onChange={(f) => { setRostro(f); clear('docs'); }} front disabled={!ineReverso} />
           {errors.docs ? <Text variant="caption" tone="danger" style={styles.docsError}>{errors.docs}</Text> : null}
           <Checkbox checked={acepta} onChange={(v) => { setAcepta(v); clear('acepta'); }} error={errors.acepta}>

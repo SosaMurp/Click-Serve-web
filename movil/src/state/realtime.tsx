@@ -39,11 +39,15 @@ class RealtimeBus {
       this.connecting = false;
     }
     if (!token || !this.active || !API_URL) return;
-    const url = `${API_URL.replace(/^http/, 'ws')}/ws?token=${encodeURIComponent(token)}`;
+    // El token va en el primer mensaje, no en la dirección: así no queda en los registros de servidores y proxies.
+    const url = `${API_URL.replace(/^http/, 'ws')}/ws`;
     try {
       const ws = new WebSocket(url);
       this.ws = ws;
-      ws.onopen = () => { this.retry = 0; };
+      ws.onopen = () => {
+        this.retry = 0;
+        ws.send(JSON.stringify({ type: 'auth', token }));
+      };
       ws.onmessage = (msg) => {
         if (this.ws !== ws) return;
         try {

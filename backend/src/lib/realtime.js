@@ -5,6 +5,9 @@ const { verifyToken } = require('./tokens');
 const clients = new Map();
 let wss = null;
 let pingTimer = null;
+// El token llega en el primer mensaje, nunca en la URL: las direcciones quedan en los registros de proxies y
+// balanceadores (RNF-40). Si no llega a tiempo o no es válido, se cierra con 4401.
+const AUTH_TIMEOUT_MS = 5000;
 
 function register(userId, ws, session) {
   const id = Number(userId);
@@ -41,16 +44,29 @@ function attach(server) {
       socket.destroy();
       return;
     }
-    try {
-      const decoded = verifyToken(url.searchParams.get('token') || '');
-      const result = await loadSessionUser(decoded);
-      if (result.error) throw new Error(result.error);
-      const session = { id: result.user.sessionId, version: result.user.version_sesion };
-      wss.handleUpgrade(req, socket, head, (ws) => register(result.user.id_usuario, ws, session));
-    } catch {
-      socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
+    // Un token en la URL ya no se acepta (y no se lee): la app lo manda como primer mensaje.
+    if (url.searchParams.has('token')) {
+      socket.write('HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n');
       socket.destroy();
+      return;
     }
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      const timer = setTimeout(() => ws.close(4401, 'Sin autenticación'), AUTH_TIMEOUT_MS);
+      ws.once('message', async (raw) => {
+        clearTimeout(timer);
+        try {
+          const msg = JSON.parse(String(raw));
+          if (msg?.type !== 'auth' || typeof msg.token !== 'string') throw new Error('mensaje inicial inválido');
+          const result = await loadSessionUser(verifyToken(msg.token));
+          if (result.error) throw new Error(result.error);
+          if (ws.readyState !== 1) return;
+          register(result.user.id_usuario, ws, { id: result.user.sessionId, version: result.user.version_sesion });
+        } catch {
+          ws.close(4401, 'Sesión no válida');
+        }
+      });
+      ws.on('error', () => {});
+    });
   });
 
   pingTimer = setInterval(() => {

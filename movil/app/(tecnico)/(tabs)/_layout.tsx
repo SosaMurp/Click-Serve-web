@@ -4,6 +4,7 @@ import { makeNavigationBar, TabBarProps, TabMeta } from '@/src/design';
 const META: TabMeta = {
   trabajos: { icon: 'briefcase', iconActive: 'briefcase', label: 'Trabajos' },
   mapa: { icon: 'map', iconActive: 'map', label: 'Mapa' },
+  mensajes: { icon: 'message-circle', iconActive: 'message-circle', label: 'Mensajes' },
   billetera: { icon: 'credit-card', iconActive: 'credit-card', label: 'Billetera' },
   perfil: { icon: 'user', iconActive: 'user', label: 'Perfil' },
 };
@@ -14,6 +15,7 @@ export default function TecnicoTabs() {
     <Tabs screenOptions={{ headerShown: false }} tabBar={(props) => <NavigationBar {...(props as unknown as TabBarProps)} />}>
       <Tabs.Screen name="trabajos" />
       <Tabs.Screen name="mapa" />
+      <Tabs.Screen name="mensajes" />
       <Tabs.Screen name="billetera" />
       <Tabs.Screen name="perfil" />
     </Tabs>

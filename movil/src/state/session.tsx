@@ -29,8 +29,11 @@ export function useSession(): SessionValue {
 async function registerPushToken() {
   if (Platform.OS === 'web') return;
   try {
+    const { default: Constants, ExecutionEnvironment } = await import('expo-constants');
+    // Expo Go no tiene notificaciones push remotas desde el SDK 53: con solo importar expo-notifications
+    // muestra un error. Se registran únicamente en un build propio (EAS).
+    if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) return;
     const Notifications = await import('expo-notifications');
-    const Constants = (await import('expo-constants')).default;
     const perm = await Notifications.getPermissionsAsync();
     const status = perm.status === 'granted' ? perm.status : (await Notifications.requestPermissionsAsync()).status;
     if (status !== 'granted') return;

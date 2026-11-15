@@ -9,6 +9,7 @@ const { sanitizeText } = require('../lib/sanitize');
 const { isValidClabe, bankFromClabe, maskClabe, onlyDigits, normalizePersonName } = require('../lib/validators');
 const S = require('../services/solicitudes');
 const { getConfig } = require('../services/config');
+const stripe = require('../services/stripe');
 
 const router = express.Router();
 const db = () => getPool();
@@ -95,8 +96,10 @@ router.patch('/api/metodos-pago/:id/predeterminada', auth, async (req, res) => {
 
 router.delete(['/api/metodos-pago/:id', '/api/tarjetas/:id'], auth, async (req, res) => {
   const deleted = await withTransaction(async (tx) => {
-    const { rows } = await tx.query('DELETE FROM metodos_pago WHERE id_metodo = $1 AND id_usuario = $2 RETURNING predeterminada', [req.params.id, req.user.id_usuario]);
+    const { rows } = await tx.query('DELETE FROM metodos_pago WHERE id_metodo = $1 AND id_usuario = $2 RETURNING predeterminada, token', [req.params.id, req.user.id_usuario]);
     if (!rows[0]) return false;
+    // Stripe: la tarjeta también se desliga del cliente en Stripe (ya no se le podrá cobrar).
+    stripe.desligarTarjeta(rows[0].token);
     if (rows[0].predeterminada) {
       await tx.query(
         `UPDATE metodos_pago SET predeterminada = true WHERE id_metodo = (

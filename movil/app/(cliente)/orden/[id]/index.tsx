@@ -1,23 +1,25 @@
 import React, { useState } from 'react';
-import { Linking, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  AppBar, Banner, Button, Collapsible, color, Divider, Icon, ListItem, Money, radius, Screen, SectionHeader, Skeleton, space, Steps, Surface, Text,
+  AppBar, Banner, Button, Collapsible, color, Divider, Icon, ListItem, Money, radius, Screen, SectionHeader, Skeleton, space, Surface, Text, StepsWindow,
 } from '@/src/design';
 import { errorMessage } from '@/src/api/client';
 import { solicitudesApi } from '@/src/api/endpoints';
 import type { Solicitud } from '@/src/api/types';
-import { clientStatusText, INCIDENCIA_TIPOS, isActive, STEPS, stepIndex } from '@/src/lib/estado';
-import { formatDate, formatDateTime, formatShortDate, formatTime12 } from '@/src/lib/format';
+import { INCIDENCIA_TIPOS, isActive, STEPS, stepIndex } from '@/src/lib/estado';
+import { compareMoney, formatDate, formatDateTime, formatMoney, formatShortDate, formatTime12 } from '@/src/lib/format';
 import { hapticSuccess } from '@/src/lib/media';
 import { MapView } from '@/src/features/map/MapView';
 import { QuoteCard } from '@/src/features/orders/QuoteCard';
 import { ReprogramCard } from '@/src/features/orders/ReprogramCard';
 import { SosButton } from '@/src/features/orders/SosButton';
 import { TechFicha } from '@/src/features/orders/TechFicha';
+import { StatusHero } from '@/src/features/orders/StatusHero';
 import { EvidenceFeed, Gallery } from '@/src/features/orders/Gallery';
 import { cancelOrder } from '@/src/features/orders/actions';
 import { useSolicitud } from '@/src/features/orders/hooks';
+import { RechazoAdicionalSheet, type MotivoRechazo } from '@/src/features/orders/RechazoAdicional';
 import { dialog } from '@/src/ui/dialog';
 import { toast } from '@/src/ui/toast';
 
@@ -32,6 +34,7 @@ export default function Orden() {
   const router = useRouter();
   const { data: s, loading, error, refreshing, refresh, reload, setData } = useSolicitud(id);
   const [busy, setBusy] = useState<string | null>(null);
+  const [rechazoAbierto, setRechazoAbierto] = useState(false);
 
   const run = async (key: string, fn: () => Promise<{ solicitud?: Solicitud; mensaje?: string }>) => {
     setBusy(key);
@@ -57,7 +60,6 @@ export default function Orden() {
     );
   }
 
-  const status = clientStatusText(s);
   const t = s.tecnico;
   const active = isActive(s.estado);
   const showMap = ['ASIGNADA', 'EN_CAMINO'].includes(s.estado) && s.latitud && s.longitud;
@@ -65,30 +67,28 @@ export default function Orden() {
   const techPos = s.tecnico_ubicacion ? { lat: s.tecnico_ubicacion.latitud, lng: s.tecnico_ubicacion.longitud } : null;
   const go = (pathname: string, extra: Record<string, string> = {}) => router.push({ pathname: pathname as never, params: { id, ...extra } });
 
-  const approveQuote = async (respuesta: 'ACEPTAR' | 'RECHAZAR') => {
-    if (respuesta === 'RECHAZAR') {
-      const ok = await dialog.confirm({
-        title: '¿Rechazar el precio?',
-        message: 'El técnico podrá mandarte otro o el servicio se cancelará sin cargo.',
-        confirmText: 'Rechazar',
-        destructive: true,
-      });
-      if (!ok) return;
-    }
-    run(respuesta, () => solicitudesApi.responderCotizacion(id, respuesta));
+  // Aprobar el precio es pagarlo en custodia (pantalla aparte); rechazarlo se hace aquí.
+  // Rechazar el adicional pide el motivo; el técnico lo ve y puede mandar otra cotización.
+  const rejectQuote = () => setRechazoAbierto(true);
+  const confirmarRechazo = async (motivo: MotivoRechazo, comentario: string) => {
+    await run('RECHAZAR', () => solicitudesApi.responderCotizacion(id, 'RECHAZAR', motivo, comentario || undefined));
+    setRechazoAbierto(false);
   };
+
+  const enCustodia = s.custodia?.estado === 'RETENIDO';
 
   const resolve = async (accion: 'REASIGNAR' | 'CANCELAR' | 'CONTINUAR') => {
     if (!s.incidencia) return;
     if (accion === 'CANCELAR') {
-      const ok = await dialog.confirm({ title: '¿Cancelar el servicio?', message: 'No se te cobrará nada.', confirmText: 'Cancelar servicio', destructive: true });
+      const message = enCustodia ? 'Te devolveremos lo que pagaste en custodia.' : 'No se te cobrará nada.';
+      const ok = await dialog.confirm({ title: '¿Cancelar el servicio?', message, confirmText: 'Cancelar servicio', destructive: true });
       if (!ok) return;
     }
     run(accion, () => solicitudesApi.resolverIncidencia(s.incidencia!.id_incidencia, accion));
   };
 
   const cancel = async () => {
-    if (await cancelOrder(id, 'cliente')) reload();
+    if (await cancelOrder(id, 'cliente', s.cargo_si_cancela)) reload();
   };
 
   return (
@@ -96,29 +96,32 @@ export default function Orden() {
       <Screen
         refreshing={refreshing}
         onRefresh={refresh}
-        header={<AppBar title="Mi servicio" subtitle={`${s.categoria_nombre} · ${s.folio}`} fallbackHref="/servicios" />}
+        header={<AppBar title="Mi servicio" fallbackHref="/servicios" />}
         contentStyle={{ paddingBottom: SOS_STATES.includes(s.estado) ? 96 : undefined }}
       >
         {/* ───── Estado en palabras ───── */}
-        <View style={[styles.status, status.accion ? styles.statusAction : null]} accessibilityRole="summary">
-          <Text variant="overline" tone="muted">{s.categoria_nombre} · {s.folio}</Text>
-          <Text variant="display" style={styles.statusTitle}>{status.titulo}</Text>
-          <Text variant="bodyLg" tone="soft">{status.detalle}</Text>
-          {s.monto_total ? (
-            <View style={styles.total}>
-              <Text variant="bodyLg" tone="soft">Total</Text>
-              <Money value={s.monto_total} size="lg" />
-            </View>
-          ) : null}
-        </View>
+        <StatusHero s={s} sinAvance={s.estado !== 'CANCELADA'} />
+        {s.monto_total && !(s.custodia && compareMoney(s.custodia.monto, s.monto_total) === 0) ? (
+          <View style={styles.total}>
+            <Text variant="bodyLg" tone="soft">Total del servicio</Text>
+            <Money value={s.monto_total} size="lg" />
+          </View>
+        ) : null}
 
+        {s.custodia ? <CustodiaBanner custodia={s.custodia} /> : null}
         {s.alerta_sos ? <Banner tone="error" title="Alerta SOS activa" body="El equipo de seguridad ya fue notificado y te contactará." style={styles.gap} /> : null}
         {s.reprogramacion ? <View style={styles.gap}><ReprogramCard r={s.reprogramacion} onChanged={reload} /></View> : null}
 
         {/* ───── La acción principal según el estado ───── */}
         {s.estado === 'PENDIENTE' ? (
           <View style={styles.gap}>
-            <Text variant="bodyLg" tone="soft">{s.tecnico_propuesto ? 'El técnico que elegiste tiene 10 minutos para responder.' : 'Si prefieres, puedes elegir tú al técnico.'}</Text>
+            <Text variant="bodyLg" tone="soft">
+              {s.modo_asignacion === 'AUTOMATICA'
+                ? (s.tecnico_propuesto
+                  ? 'Se la propusimos al técnico disponible más cercano. Si no acepta a tiempo, pasamos al siguiente.'
+                  : 'Buscando técnicos cerca de tu domicilio. Si prefieres, puedes elegir tú al técnico.')
+                : s.tecnico_propuesto ? 'El técnico que elegiste tiene unos minutos para responder.' : 'Si prefieres, puedes elegir tú al técnico.'}
+            </Text>
             <Button title="Ver técnicos disponibles" icon="users" onPress={() => router.push({ pathname: '/elegir-tecnico/[id]', params: { id } })} full size="xl" style={styles.mt} />
           </View>
         ) : null}
@@ -135,21 +138,35 @@ export default function Orden() {
                 ...(techPos ? [{ id: 'tecnico', lat: techPos.lat, lng: techPos.lng, kind: 'tecnico' as const, label: t?.nombre || 'Técnico' }] : []),
               ]}
             />
-            <View style={styles.mapInfo}>
-              <Icon name="navigation" size={18} color={color.ink} />
-              <Text variant="bodyLg" weight="600">
-                {s.tecnico_ubicacion?.eta_min ? `Llega en unos ${s.tecnico_ubicacion.eta_min} minutos` : s.estado === 'EN_CAMINO' ? 'Ubicación en vivo' : 'Verás dónde va cuando salga hacia tu domicilio'}
-              </Text>
-            </View>
+            {!techPos ? (
+              <View style={styles.mapInfo}>
+                <Icon name="navigation" size={18} color={color.inkSoft} />
+                <Text variant="body" tone="soft" style={styles.flex}>Verás dónde va cuando salga hacia tu domicilio.</Text>
+              </View>
+            ) : null}
           </View>
         ) : null}
 
-        {s.estado === 'ESPERANDO_APROBACION' ? (
+        {s.estado === 'ESPERANDO_APROBACION' && !enCustodia ? (
           <View style={styles.gap}>
-            <QuoteCard cotizacion={s.cotizacion} extras={s.extras} total={s.monto_total} title="Precio para aprobar" />
+            <QuoteCard cotizacion={s.cotizacion} extras={s.extras} total={s.cotizacion?.monto_total || s.precio_base} title="Precio base del servicio" />
+            <Text variant="body" tone="soft" style={styles.mt}>Es el precio que tu técnico fijó para este servicio. Al pagarlo se confirma el servicio y se abre el chat. Si en tu domicilio hace falta algo más, te lo cotizará en la app y solo pagarás la diferencia.</Text>
+            {s.pago_vence ? (
+              <View style={styles.row}>
+                <Icon name="clock" size={18} color={color.warningInk} />
+                <Text variant="body" weight="600" style={styles.flex}>Paga antes del {formatDateTime(s.pago_vence)}. Si no, la solicitud se cancela sola sin cargo.</Text>
+              </View>
+            ) : null}
+            <Button variant="accent" title="Pagar precio base" icon="lock" onPress={() => go('/orden/[id]/pagar')} disabled={!!busy} full size="xl" style={styles.mt} />
+          </View>
+        ) : null}
+
+        {s.estado === 'ESPERANDO_APROBACION' && enCustodia ? (
+          <View style={styles.gap}>
+            <QuoteCard cotizacion={s.cotizacion} extras={s.extras} total={s.cotizacion?.monto_total} title="Trabajo completo con el adicional" />
             <View style={styles.row}>
-              <Button title="Rechazar" variant="outlined" onPress={() => approveQuote('RECHAZAR')} loading={busy === 'RECHAZAR'} disabled={!!busy} style={styles.flex} full size="xl" />
-              <Button variant="accent" title="Aprobar" icon="check" onPress={() => approveQuote('ACEPTAR')} loading={busy === 'ACEPTAR'} disabled={!!busy} style={styles.flex} full size="xl" />
+              <Button title="Rechazar" variant="outlined" onPress={rejectQuote} loading={busy === 'RECHAZAR'} disabled={!!busy} style={styles.flex} full size="xl" />
+              <Button variant="accent" title="Pagar diferencia" icon="lock" onPress={() => go('/orden/[id]/pagar')} disabled={!!busy} style={styles.flex} full size="xl" />
             </View>
           </View>
         ) : null}
@@ -189,22 +206,39 @@ export default function Orden() {
         ) : null}
 
         {s.estado === 'CANCELADA' ? (
-          <Banner tone="info" title={`Lo canceló ${s.cancelado_por === 'TECNICO' ? 'el técnico' : s.cancelado_por === 'SISTEMA' ? 'el sistema' : 'tú'}`} body={s.motivo_cancelacion || 'No se hizo ningún cargo.'} style={styles.gap} />
+          <Banner
+            tone="info"
+            title={`Lo canceló ${s.cancelado_por === 'TECNICO' ? 'el técnico' : s.cancelado_por === 'SISTEMA' ? 'el sistema' : 'tú'}`}
+            body={[s.motivo_cancelacion, s.cargo_cancelacion ? `Se cobró ${formatMoney(s.cargo_cancelacion)} por la visita del técnico; el resto se te devuelve.` : 'No se hizo ningún cargo.'].filter(Boolean).join(' ')}
+            style={styles.gap}
+          />
         ) : null}
 
         {/* ───── Técnico ───── */}
         {t ? (
           <>
             <SectionHeader title="Tu técnico" />
-            <Surface>
+            <View style={styles.flat}>
               <TechFicha {...t} />
-              {active ? (
+              {active && s.direccion_liberada ? (
+                <Button title={`Escribir a ${t.nombre}`} variant="accent" icon="message-circle" onPress={() => go('/chat/[id]')} full size="xl" style={styles.mt} />
+              ) : null}
+              {active && !s.direccion_liberada ? (
                 <View style={styles.row}>
-                  <Button title="Mensaje" icon="message-circle" onPress={() => go('/chat/[id]')} style={styles.flex} full size="xl" />
-                  {t.telefono ? <Button title="Llamar" variant="outlined" icon="phone" onPress={() => Linking.openURL(`tel:${t.telefono}`)} style={styles.flex} full size="xl" /> : null}
+                  <Icon name="lock" size={16} color={color.inkMuted} />
+                  <Text variant="bodySm" tone="muted" style={styles.flex}>El chat con tu técnico se abre al pagar el precio base.</Text>
                 </View>
               ) : null}
               <Button title="Ver su perfil" variant="text" onPress={() => router.push({ pathname: '/tecnico/[id]', params: { id: String(t.id_usuario) } })} style={styles.center} />
+            </View>
+          </>
+        ) : null}
+
+        {s.estado !== 'CANCELADA' ? (
+          <>
+            <SectionHeader title="Avance" />
+            <Surface>
+              <StepsWindow steps={STEPS} current={stepIndex(s.estado, s.estado_previo, enCustodia)} stopped={s.estado === 'SUSPENDIDA'} />
             </Surface>
           </>
         ) : null}
@@ -228,11 +262,7 @@ export default function Orden() {
               <EvidenceFeed items={s.evidencias} />
             </View>
           ) : null}
-          <Surface>
-            <Text variant="overline" tone="muted" style={styles.label}>Avance</Text>
-            <Steps steps={STEPS} current={stepIndex(s.estado, s.estado_previo)} stopped={s.estado === 'CANCELADA' || s.estado === 'SUSPENDIDA'} />
-          </Surface>
-          <Surface>
+          <View style={styles.flat}>
             <Text variant="overline" tone="muted" style={styles.label}>Lo que pediste</Text>
             <Text variant="bodyLg">{s.descripcion}</Text>
             <Divider />
@@ -240,7 +270,7 @@ export default function Orden() {
             <Detail icon="calendar" text={s.fecha_preferida ? `${formatShortDate(s.fecha_preferida)}${s.hora_preferida ? ` · ${formatTime12(s.hora_preferida)}` : ''}` : 'Lo antes posible'} />
             <Detail icon="clock" text={`Lo pediste el ${formatDateTime(s.fecha_creacion)}`} />
             {s.imagenes?.length ? <View style={styles.mt}><Gallery items={s.imagenes.map((im, i) => ({ url: im.url, label: `Foto ${i + 1}` }))} size={80} /></View> : null}
-          </Surface>
+          </View>
         </Collapsible>
 
         <Collapsible title="Más opciones" style={styles.sectionSmall}>
@@ -261,6 +291,29 @@ export default function Orden() {
         </Collapsible>
       </Screen>
       {SOS_STATES.includes(s.estado) ? <SosButton idSolicitud={s.id_solicitud} bottom={24} /> : null}
+      <RechazoAdicionalSheet visible={rechazoAbierto} busy={busy === 'RECHAZAR'} onClose={() => setRechazoAbierto(false)} onConfirm={confirmarRechazo} />
+    </View>
+  );
+}
+
+// Estado del dinero en custodia, para que el cliente sepa dónde está su pago.
+function CustodiaBanner({ custodia }: { custodia: NonNullable<Solicitud['custodia']> }) {
+  const monto = formatMoney(custodia.monto);
+  const textos = {
+    RETENIDO: { tone: 'success' as const, title: `Pagado en custodia: ${monto}`, body: 'Se libera al técnico cuando confirmes que quedó bien.' },
+    LIBERADO: { tone: 'info' as const, title: 'Pago liberado al técnico', body: `Liberamos ${monto} al confirmar el servicio.` },
+    REEMBOLSO_PENDIENTE: { tone: 'warning' as const, title: 'Reembolso en proceso', body: `Te devolveremos ${monto} a tu tarjeta. Puede tardar unos días en reflejarse.` },
+    REEMBOLSADO: { tone: 'info' as const, title: 'Reembolso hecho', body: `Te devolvimos ${monto} a tu tarjeta.` },
+  }[custodia.estado];
+  if (!textos) return null;
+  const tinta = { success: color.successInk, info: color.brand, warning: color.warningInk }[textos.tone];
+  return (
+    <View style={styles.custodia} accessibilityRole="summary">
+      <Icon name={custodia.estado === 'RETENIDO' ? 'lock' : 'refresh-cw'} size={20} color={tinta} />
+      <View style={styles.flex}>
+        <Text variant="subtitle" style={{ color: tinta }}>{textos.title}</Text>
+        <Text variant="body" tone="soft">{textos.body}</Text>
+      </View>
     </View>
   );
 }
@@ -276,16 +329,15 @@ function Detail({ icon, text }: { icon: 'map-pin' | 'calendar' | 'clock'; text: 
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  status: { borderRadius: radius.lg, borderWidth: 1.5, borderColor: color.lineStrong, padding: space.lg, gap: space.xs },
-  statusAction: { borderColor: color.accentStrong, borderWidth: 2 },
-  statusTitle: { marginTop: space.xs },
-  total: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: space.md, paddingTop: space.md, borderTopWidth: 1, borderTopColor: color.line },
+  total: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: space.md, paddingVertical: space.md, borderBottomWidth: 1, borderBottomColor: color.line },
+  flat: { paddingVertical: space.xs },
+  custodia: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md, marginTop: space.lg },
   gap: { marginTop: space.lg },
   mt: { marginTop: space.md },
   row: { flexDirection: 'row', gap: space.sm, marginTop: space.md },
   stack: { gap: space.sm, marginTop: space.sm },
   center: { alignSelf: 'center', marginTop: space.sm },
-  map: { borderRadius: radius.lg, overflow: 'hidden', borderWidth: 1, borderColor: color.line, backgroundColor: color.surface },
+  map: { borderRadius: radius.xl, overflow: 'hidden', backgroundColor: color.surface },
   mapInfo: { flexDirection: 'row', alignItems: 'center', gap: space.sm, padding: space.md },
   section: { marginTop: space.xl },
   sectionSmall: { marginTop: space.md },

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { AppBar, Banner, Button, Chip, color, EmptyState, Icon, ListItem, Pill, radius, Screen, SectionHeader, Sheet, SkeletonList, space, Surface, Text, TextField } from '@/src/design';
+import { AppBar, Button, Chip, color, EmptyState, Icon, ListItem, Pill, radius, Screen, SectionHeader, Sheet, SkeletonList, space, Surface, Text, TextField } from '@/src/design';
 import { errorMessage } from '@/src/api/client';
 import { cuentaApi, tecnicoApi } from '@/src/api/endpoints';
 import type { LocalFile } from '@/src/api/types';
@@ -102,7 +102,7 @@ export default function Verificacion() {
           ))}
         </Surface>
       ) : null}
-      <Banner tone="info" title="Tus documentos están protegidos" body="Solo el equipo de verificación puede verlos; nunca se muestran a los clientes." style={styles.mt} />
+      <Text variant="bodySm" tone="muted" align="center" style={styles.mt}>Solo el equipo de verificación ve tus documentos; nunca se muestran a los clientes.</Text>
 
       <Sheet visible={!!upload} onClose={() => setUpload(null)} title="Subir documento" footer={<Button title="Enviar a revisión" icon="send" onPress={send} loading={sending} disabled={!upload?.archivo} full />}>
         {upload ? (

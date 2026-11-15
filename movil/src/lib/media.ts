@@ -5,6 +5,7 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import type { LocalFile } from '../api/types';
+import { openWebCamera } from '../features/camera/WebCamera';
 
 // RNF-13: las fotos se reducen a 1600 px y se comprimen antes de subirlas.
 async function compress(asset: ImagePicker.ImagePickerAsset): Promise<LocalFile> {
@@ -26,6 +27,12 @@ export class MediaPermissionError extends Error {}
 
 export async function pickImages(opts: { camera?: boolean; front?: boolean; multiple?: boolean; max?: number } = {}): Promise<LocalFile[]> {
   let result: ImagePicker.ImagePickerResult;
+  // En la web el selector de Expo solo abre archivos: "Tomar foto" usa la cámara en vivo del navegador.
+  if (opts.camera && Platform.OS === 'web') {
+    const foto = await openWebCamera(!!opts.front);
+    if (foto === null) return [];
+    if (foto !== 'galeria') return [await compress({ uri: foto.uri, width: 0, height: 0 } as ImagePicker.ImagePickerAsset)];
+  }
   if (opts.camera && Platform.OS !== 'web') {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) throw new MediaPermissionError('Permite el acceso a la cámara en los ajustes de tu teléfono para tomar la foto.');

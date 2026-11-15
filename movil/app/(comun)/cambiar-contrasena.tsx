@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { goBack } from '@/src/lib/nav';
-import { AppBar, Banner, Button, Screen, space, TextField } from '@/src/design';
+import { AppBar, Button, Screen, space, Text, TextField } from '@/src/design';
 import { ApiError, errorMessage } from '@/src/api/client';
 import { cuentaApi } from '@/src/api/endpoints';
 import { passwordIssues } from '@/src/lib/validators';
@@ -50,7 +50,7 @@ export default function CambiarContrasena() {
       header={<AppBar title="Cambiar contraseña" confirmDiscard={!!(actual || nueva)} />}
       footer={<Button title="Guardar contraseña" icon="check" onPress={save} loading={saving} full size="lg" />}
     >
-      <Banner tone="info" title="Cerraremos tus otras sesiones" body="Por seguridad, al cambiar la contraseña se cierra la sesión en todos tus demás dispositivos." style={styles.gap} />
+      <Text variant="body" tone="soft" style={styles.gap}>Al cambiarla cerramos tu sesión en los demás dispositivos.</Text>
       <TextField label="Contraseña actual" value={actual} onChangeText={(v) => { setActual(v); setErrors((x) => ({ ...x, actual: undefined })); }} password autoComplete="current-password" error={errors.actual} />
       <TextField label="Nueva contraseña" value={nueva} onChangeText={(v) => { setNueva(v); setErrors((x) => ({ ...x, nueva: undefined })); }} password autoComplete="new-password" error={errors.nueva} />
       <View style={styles.check}><PasswordChecklist value={nueva} /></View>

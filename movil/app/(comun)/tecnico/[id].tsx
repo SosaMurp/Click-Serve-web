@@ -3,10 +3,10 @@ import { StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { goBack } from '@/src/lib/nav';
 import {
-  AppBar, Avatar, Banner, Button, color, Divider, EmptyState, ListItem, MetricBox, Pill, radius, RatingStars, Screen, SectionHeader, Skeleton, space, Surface, Text,
+  AppBar, Avatar, Banner, Button, color, Divider, EmptyState, ListItem, Pill, radius, RatingStars, Screen, SectionHeader, Skeleton, space, Surface, Text,
 } from '@/src/design';
 import { errorMessage, fileUrl } from '@/src/api/client';
-import { solicitudesApi, tecnicoApi } from '@/src/api/endpoints';
+import { chatDirectoApi, solicitudesApi, tecnicoApi } from '@/src/api/endpoints';
 import { useLoader } from '@/src/lib/useLoader';
 import { formatDate, formatRelative } from '@/src/lib/format';
 import { hapticSuccess } from '@/src/lib/media';
@@ -22,6 +22,21 @@ export default function PerfilTecnico() {
   const { data: t, loading, error } = useLoader(() => tecnicoApi.perfil(id).then((r) => r.tecnico), [id]);
   const [sending, setSending] = useState(false);
   const canChoose = !!solicitud && user?.rol === 'cliente';
+  const [writing, setWriting] = useState(false);
+
+  // Mensaje directo: abre (o reutiliza) la conversación y pasa a ella.
+  async function escribir() {
+    if (!t) return;
+    setWriting(true);
+    try {
+      const { conversacion } = await chatDirectoApi.abrir(t.id_usuario);
+      router.push({ pathname: '/chat-directo/[id]', params: { id: String(conversacion.id_conversacion), nombre: `${t.nombre} ${t.apellido}` } });
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setWriting(false);
+    }
+  }
 
   async function choose() {
     if (!solicitud || !t) return;
@@ -43,14 +58,18 @@ export default function PerfilTecnico() {
   return (
     <Screen
       header={<AppBar title="Perfil del técnico" />}
-      footer={canChoose && t ? <Button variant="accent" title={`Elegir a ${t.nombre}`} icon="check" onPress={choose} loading={sending} disabled={!t.disponible} full size="lg" /> : undefined}
+      footer={t && user?.rol === 'cliente' ? (
+        <View style={styles.footer}>
+          <Button title="Mensaje" icon="message-circle" variant="tonal" onPress={escribir} loading={writing} disabled={sending} size="lg" style={styles.flex} />
+          {canChoose ? <Button variant="accent" title={`Elegir a ${t.nombre}`} icon="check" onPress={choose} loading={sending} disabled={!t.disponible} size="lg" style={styles.flex} /> : null}
+        </View>
+      ) : undefined}
     >
       {loading ? <Skeleton height={260} /> : null}
       {error && !t ? <Banner tone="error" title="No pudimos cargar el perfil" body={error} /> : null}
       {t ? (
         <>
           <Surface padded={false} style={styles.card}>
-            <View style={styles.band} />
             <View style={styles.body}>
               <View style={styles.avatar}><Avatar uri={fileUrl(t.foto_url)} nombre={t.nombre} apellido={t.apellido} size={92} ring /></View>
               <Text variant="headline" align="center">{t.nombre} {t.apellido}</Text>
@@ -65,13 +84,9 @@ export default function PerfilTecnico() {
               </View>
               <Text variant="caption" tone="muted">Miembro desde {formatDate(t.miembro_desde)}</Text>
             </View>
-          </Surface>
-
-          <Surface tint="sky" style={styles.metrics}>
-            <View style={styles.row}>
-              <MetricBox value={t.trabajos} label="Trabajos" tone="brand" />
-              <MetricBox value={t.calificacion || '—'} label="Calificación" />
-              <MetricBox value={t.efectividad != null ? `${t.efectividad}%` : '—'} label="Efectividad" />
+            <View style={styles.cifras}>
+              <Cifra value={String(t.trabajos)} label="Trabajos" />
+              <Cifra value={t.efectividad != null ? `${t.efectividad}%` : '—'} label="Efectividad" linea />
             </View>
           </Surface>
 
@@ -131,17 +146,27 @@ export default function PerfilTecnico() {
   );
 }
 
+function Cifra({ value, label, linea }: { value: string; label: string; linea?: boolean }) {
+  return (
+    <View style={[styles.cifra, linea && styles.cifraLinea]} accessibilityLabel={`${label}: ${value}`}>
+      <Text variant="number" tabular>{value}</Text>
+      <Text variant="caption" tone="muted">{label}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   card: { overflow: 'hidden' },
-  band: { height: 76, backgroundColor: color.brandSoft },
-  body: { alignItems: 'center', paddingHorizontal: space.lg, paddingBottom: space.lg, gap: 6 },
-  avatar: { marginTop: -50, marginBottom: space.xs, borderRadius: radius.full },
+  body: { alignItems: 'center', paddingHorizontal: space.lg, paddingVertical: space.lg, gap: 6 },
+  avatar: { marginBottom: space.xs, borderRadius: radius.full },
+  cifras: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: color.line },
+  cifra: { flex: 1, alignItems: 'center', paddingVertical: space.md, gap: 2 },
+  cifraLinea: { borderLeftWidth: 1, borderLeftColor: color.line },
   rating: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   pills: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: space.sm, marginVertical: space.xs },
-  metrics: { marginTop: space.md },
-  row: { flexDirection: 'row', gap: space.sm },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   review: { paddingVertical: space.sm, gap: 4 },
   reviewHead: { flexDirection: 'row', alignItems: 'center' },
+  footer: { flexDirection: 'row', gap: space.sm },
 });

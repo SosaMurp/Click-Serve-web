@@ -51,7 +51,7 @@ export default function NuevoTicket() {
       header={<AppBar title="Nuevo caso" confirmDiscard={!!(asunto || mensaje)} />}
       footer={<Button title="Enviar caso" icon="send" onPress={submit} loading={sending} full size="lg" />}
     >
-      {solicitud ? <Banner tone="info" title="Ligado a tu orden" body="El asesor verá el detalle del servicio." style={styles.gap} /> : null}
+      {solicitud ? <Text variant="body" tone="soft" style={styles.gap}>El asesor verá el detalle de tu servicio.</Text> : null}
       <Text variant="label" tone="soft" style={styles.label}>Tema</Text>
       <View style={styles.chips}>
         {CATEGORIAS.map((c) => <Chip key={c.value} label={c.label} icon={c.icon} selected={categoria === c.value} onPress={() => setCategoria(c.value)} />)}

@@ -1,28 +1,28 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import {
-  AppBar, Banner, Button, color, DateField, Icon, IconName, radius, Screen, space, Text, TextField, TimeField,
-} from '@/src/design';
+import { AppBar, Banner, Button, color, DateField, Icon, radius, Screen, space, Text, TextField, TimeField, Ilustracion, ilustracionDe } from '@/src/design';
 import { ApiError, errorMessage } from '@/src/api/client';
 import { direccionesApi, solicitudesApi } from '@/src/api/endpoints';
 import type { Direccion, LocalFile } from '@/src/api/types';
 import { useSession } from '@/src/state/session';
 import { useCategorias } from '@/src/features/orders/hooks';
+import { ejemploDescripcion } from '@/src/lib/categorias';
 import { Choice } from '@/src/features/orders/Choice';
 import { MapView } from '@/src/features/map/MapView';
 import { addressFromCoords, currentLocation, hapticSuccess, LZC_CENTER, MediaPermissionError, pickImages } from '@/src/lib/media';
 import { useOperationKey } from '@/src/lib/useOperationKey';
 import { toast } from '@/src/ui/toast';
+import { formatMoney } from '@/src/lib/format';
 
 type Cuando = 'pronto' | 'programar';
 type Modo = 'elegir' | 'automatica';
-type Field = 'categoria' | 'descripcion' | 'direccion' | 'fecha_preferida' | 'hora_preferida';
+type Field = 'categoria' | 'servicio' | 'descripcion' | 'direccion' | 'fecha_preferida' | 'hora_preferida';
 type Errors = Partial<Record<Field, string>>;
 
 const MAX_FOTOS = 5;
 const STEPS = ['¿Qué necesitas arreglar?', '¿Dónde es el servicio?', '¿Cuándo y quién va?'];
-const FIELD_STEP: Record<Field, number> = { categoria: 0, descripcion: 0, direccion: 1, fecha_preferida: 2, hora_preferida: 2 };
+const FIELD_STEP: Record<Field, number> = { categoria: 0, servicio: 0, descripcion: 0, direccion: 1, fecha_preferida: 2, hora_preferida: 2 };
 
 function todayIso() {
   const d = new Date();
@@ -37,13 +37,17 @@ function fullAddress(d: Direccion) {
 // "Paso N de 3" y Regresar siempre visible). El mapa queda como opción para ajustar el punto.
 export default function NuevaSolicitud() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ categoria?: string; descripcion?: string; automatica?: string }>();
+  const params = useLocalSearchParams<{ categoria?: string; descripcion?: string; automatica?: string; tecnico?: string; tecnico_nombre?: string }>();
+  // Desde el chat directo: la solicitud se propone a ese técnico en cuanto se crea.
+  const tecnicoElegido = params.tecnico ? Number(params.tecnico) : null;
   const { user } = useSession();
   const categorias = useCategorias();
   const opKey = useOperationKey();
 
   const [step, setStep] = useState(0);
   const [categoria, setCategoria] = useState<string | null>(params.categoria || null);
+  // Servicio del catálogo: define el precio base que el cliente pagará al aceptar el técnico.
+  const [idServicio, setIdServicio] = useState<number | null>(null);
   const [descripcion, setDescripcion] = useState(params.descripcion || '');
   const [fotos, setFotos] = useState<LocalFile[]>([]);
   const [direcciones, setDirecciones] = useState<Direccion[]>([]);
@@ -72,6 +76,8 @@ export default function NuevaSolicitud() {
 
   const dirty = !!(descripcion.trim() || fotos.length || referencias.trim() || (categoria && categoria !== params.categoria));
   const catNombre = useMemo(() => categorias.find((c) => c.codigo === categoria)?.nombre, [categorias, categoria]);
+  const servicios = useMemo(() => categorias.find((c) => c.codigo === categoria)?.servicios || [], [categorias, categoria]);
+  const servicioElegido = servicios.find((x) => x.id_servicio === idServicio) || null;
   const clear = (k: Field) => setErrors((e) => ({ ...e, [k]: undefined }));
 
   function applySaved(d: Direccion) {
@@ -119,6 +125,7 @@ export default function NuevaSolicitud() {
     const e: Errors = {};
     if (s === 0) {
       if (!categoria) e.categoria = 'Elige qué tipo de servicio necesitas.';
+      else if (servicios.length && !idServicio) e.servicio = 'Elige el servicio que necesitas, o la visita de diagnóstico si no sabes qué falla.';
       if (descripcion.trim().length < 10) e.descripcion = 'Cuéntanos la falla con al menos 10 letras.';
     }
     if (s === 1 && direccion.trim().length < 5) e.direccion = 'Escribe la dirección donde será el servicio.';
@@ -147,6 +154,7 @@ export default function NuevaSolicitud() {
     try {
       const { solicitud } = await solicitudesApi.crear({
         categoria,
+        id_servicio: idServicio,
         descripcion: descripcion.trim(),
         direccion: direccion.trim(),
         referencias: referencias.trim() || undefined,
@@ -158,7 +166,17 @@ export default function NuevaSolicitud() {
       opKey.reset();
       hapticSuccess();
       const id = String(solicitud.id_solicitud);
-      if (modo === 'automatica') {
+      if (tecnicoElegido) {
+        try {
+          const r = await solicitudesApi.proponer(id, tecnicoElegido);
+          toast.success(r.mensaje);
+          router.replace({ pathname: '/orden/[id]', params: { id } });
+        } catch (err) {
+          // El técnico no está disponible o está lejos: la solicitud ya existe, se elige a otro.
+          toast.warning(`Tu solicitud ${solicitud.folio} quedó registrada, pero ${params.tecnico_nombre || 'ese técnico'} no puede tomarla ahora: ${errorMessage(err)}`);
+          router.replace({ pathname: '/elegir-tecnico/[id]', params: { id } });
+        }
+      } else if (modo === 'automatica') {
         try {
           await solicitudesApi.automatica(id);
           toast.success(`Tu solicitud ${solicitud.folio} quedó registrada. Estamos buscando al técnico más cercano.`);
@@ -188,7 +206,7 @@ export default function NuevaSolicitud() {
 
   return (
     <Screen
-      header={<AppBar title={`Paso ${step + 1} de 3`} confirmDiscard={dirty && step === 0} fallbackHref="/inicio" onBack={step > 0 ? () => setStep((s) => s - 1) : undefined} />}
+      header={<AppBar title="Pedir un servicio" subtitle={`Paso ${step + 1} de 3`} confirmDiscard={dirty && step === 0} fallbackHref="/inicio" onBack={step > 0 ? () => setStep((s) => s - 1) : undefined} />}
       footer={(
         <View style={styles.footer}>
           {step > 0 ? <Button title="Regresar" variant="outlined" icon="arrow-left" onPress={() => setStep((s) => s - 1)} style={styles.flex} full size="xl" /> : null}
@@ -202,6 +220,7 @@ export default function NuevaSolicitud() {
         {STEPS.map((_, i) => <View key={i} style={[styles.bar, i <= step && styles.barOn]} />)}
       </View>
       <Text variant="headline" accessibilityRole="header" style={styles.question}>{STEPS[step]}</Text>
+      {tecnicoElegido ? <Banner tone="info" title={`Se la enviaremos a ${params.tecnico_nombre || 'tu técnico'}`} body="Cuando acepte, pagas su precio base en custodia y se abre el chat del servicio." style={styles.gap} /> : null}
       {blocked ? <Banner tone="warning" title="Tu cuenta está en revisión" body="Podrás enviar solicitudes en cuanto aprobemos tus documentos." style={styles.gap} /> : null}
 
       {step === 0 ? (
@@ -213,20 +232,52 @@ export default function NuevaSolicitud() {
                 accessibilityRole="radio"
                 accessibilityState={{ checked: categoria === c.codigo }}
                 accessibilityLabel={c.nombre}
-                onPress={() => { setCategoria(c.codigo); clear('categoria'); }}
+                onPress={() => { if (categoria !== c.codigo) setIdServicio(null); setCategoria(c.codigo); clear('categoria'); }}
                 style={[styles.cat, categoria === c.codigo && styles.catOn]}
               >
-                <Icon name={(c.icono as IconName) || 'tool'} size={26} color={categoria === c.codigo ? color.inkOnColor : color.ink} />
+                <Ilustracion nombre={ilustracionDe(c.nombre)} size={48} />
                 <Text variant="subtitle" weight="700" style={[styles.catText, categoria === c.codigo && { color: color.inkOnColor }]}>{c.nombre}</Text>
               </Pressable>
             ))}
           </View>
           {errors.categoria ? <Text variant="body" tone="danger" style={styles.gap}>{errors.categoria}</Text> : null}
+          {servicios.length ? (
+            <View style={styles.servicios} accessibilityRole="radiogroup">
+              <Text variant="title">¿Qué servicio necesitas?</Text>
+              <Text variant="body" tone="soft">Pagas el precio base al aceptar al técnico y queda protegido hasta que confirmes el trabajo.</Text>
+              {servicios.map((sv) => {
+                const on = idServicio === sv.id_servicio;
+                return (
+                  <Pressable
+                    key={sv.id_servicio}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: on }}
+                    accessibilityLabel={`${sv.nombre}, ${sv.es_diagnostico ? `precio fijo ${sv.precio_sugerido} pesos` : `de ${sv.precio_min} a ${sv.precio_max} pesos`}`}
+                    onPress={() => { setIdServicio(sv.id_servicio); clear('servicio'); }}
+                    style={[styles.srv, on && styles.srvOn]}
+                  >
+                    <View style={[styles.radio, on && styles.radioOn]}>{on ? <View style={styles.radioDot} /> : null}</View>
+                    <View style={styles.flex}>
+                      <Text variant="subtitle">{sv.nombre}</Text>
+                      {sv.es_diagnostico
+                        ? <Text variant="bodySm" tone="soft" numberOfLines={2}>¿No sabes qué falla? El técnico revisa y te cotiza.</Text>
+                        : sv.descripcion ? <Text variant="bodySm" tone="soft" numberOfLines={1}>{sv.descripcion}</Text> : null}
+                    </View>
+                    <View style={styles.srvPrecio}>
+                      <Text variant="caption" tone="muted">{sv.es_diagnostico ? 'Precio fijo' : 'Desde'}</Text>
+                      <Text variant="subtitle" style={styles.srvPrecioText}>{formatMoney(sv.es_diagnostico ? sv.precio_sugerido : sv.precio_min, { entero: true })}</Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+              {errors.servicio ? <Text variant="body" tone="danger">{errors.servicio}</Text> : null}
+            </View>
+          ) : null}
           <TextField
             label="Cuéntanos qué pasa"
             value={descripcion}
             onChangeText={(t) => { setDescripcion(t); clear('descripcion'); }}
-            placeholder="Ej. el contacto de la cocina hace chispa"
+            placeholder={ejemploDescripcion(categoria, servicioElegido?.nombre, servicioElegido?.es_diagnostico)}
             multiline
             maxLength={1000}
             error={errors.descripcion}
@@ -318,7 +369,7 @@ export default function NuevaSolicitud() {
 
           <View style={styles.summary} accessibilityRole="summary">
             <Text variant="overline" tone="muted">Tu solicitud</Text>
-            <Text variant="bodyLg"><Text variant="bodyLg" weight="700">{catNombre || 'Servicio'}</Text> en {direccion || 'tu dirección'}</Text>
+            <Text variant="bodyLg"><Text variant="bodyLg" weight="700">{servicioElegido?.nombre || catNombre || 'Servicio'}</Text> en {direccion || 'tu dirección'}</Text>
           </View>
         </View>
       ) : null}
@@ -336,9 +387,9 @@ const styles = StyleSheet.create({
   barOn: { backgroundColor: color.accent },
   question: { marginBottom: space.lg },
   cats: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginBottom: space.lg },
-  cat: { flexBasis: '47%', flexGrow: 1, minHeight: 96, borderRadius: radius.lg, borderWidth: 1.5, borderColor: color.lineStrong, padding: space.md, gap: space.sm, justifyContent: 'center', backgroundColor: color.surface },
+  cat: { flexBasis: '47%', flexGrow: 1, minHeight: 96, borderRadius: radius.xl, paddingVertical: space.md, paddingHorizontal: 10, gap: space.sm, justifyContent: 'center', backgroundColor: color.surface },
   catOn: { backgroundColor: color.brand, borderColor: color.brand },
-  catText: { fontSize: 17, lineHeight: 22 },
+  catText: { fontSize: 15, lineHeight: 20 },
   bigInput: { fontSize: 18 },
   label: { marginBottom: space.sm },
   photos: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
@@ -350,5 +401,13 @@ const styles = StyleSheet.create({
   other: { gap: space.sm, marginTop: space.xs },
   center: { alignSelf: 'center' },
   map: { borderRadius: radius.md, overflow: 'hidden', marginBottom: space.sm },
-  summary: { backgroundColor: color.groundAlt, borderRadius: radius.md, padding: space.lg, gap: space.xs, marginTop: space.lg },
+  servicios: { gap: space.sm, marginBottom: space.lg },
+  srv: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md, borderRadius: radius.lg, borderWidth: 2, borderColor: color.surface, backgroundColor: color.surface },
+  srvOn: { borderColor: color.accent },
+  radio: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: color.lineStrong, alignItems: 'center', justifyContent: 'center' },
+  radioOn: { borderColor: color.accentPressed },
+  radioDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: color.accentPressed },
+  srvPrecio: { alignItems: 'flex-end', minWidth: 72 },
+  srvPrecioText: { color: color.accentInk },
+  summary: { gap: space.xs, marginTop: space.lg, paddingTop: space.lg, borderTopWidth: 1, borderTopColor: color.line },
 });

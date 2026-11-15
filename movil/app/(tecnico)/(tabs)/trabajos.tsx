@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Banner, Button, EmptyState, Screen, SectionHeader, SkeletonList, space, Tabs, Text } from '@/src/design';
-import { errorMessage, fileUrl } from '@/src/api/client';
+import { errorMessage } from '@/src/api/client';
 import { solicitudesApi } from '@/src/api/endpoints';
 import type { Solicitud } from '@/src/api/types';
 import { hapticSuccess } from '@/src/lib/media';
@@ -13,6 +13,7 @@ import { PanelHeader } from '@/src/features/tech/PanelHeader';
 import { RequestCard } from '@/src/features/tech/RequestCard';
 import { NextStopCard, ScheduledRow } from '@/src/features/tech/NextStopCard';
 import { useResumenTecnico, useTrabajos, Vista } from '@/src/features/tech/hooks';
+import { SuspensionBanner } from '@/src/features/account/SancionesHost';
 import { dialog } from '@/src/ui/dialog';
 import { toast } from '@/src/ui/toast';
 
@@ -72,8 +73,9 @@ export default function Trabajos() {
       inTabs
       refreshing={lista.refreshing}
       onRefresh={() => { lista.refresh(); resumen.reload(); }}
-      header={<PanelHeader nombre={user?.nombre} apellido={user?.apellido} fotoUrl={fileUrl(user?.foto_url)} onAvatar={() => router.push('/perfil')} resumen={resumen.data} />}
+      header={<PanelHeader nombre={user?.nombre} apellido={user?.apellido} resumen={resumen.data} />}
     >
+      <SuspensionBanner style={styles.gap} />
       {user && !user.aprobado ? (
         <Banner tone="warning" title="Tu cuenta está en revisión" body="Podrás aceptar trabajos cuando aprobemos tus documentos." action={<Button title="Ver verificación" variant="text" onPress={() => router.push('/verificacion')} />} style={styles.gap} />
       ) : null}
@@ -95,7 +97,7 @@ export default function Trabajos() {
           <EmptyState
             icon={disponible ? 'radio' : 'moon'}
             title={disponible ? 'Sin solicitudes por ahora' : 'Estás desconectado'}
-            body={disponible ? 'Te avisaremos en cuanto un cliente cercano pida un servicio de tus especialidades.' : 'Toca OFFLINE, arriba a la derecha, para empezar a recibir trabajos.'}
+            body={disponible ? 'Te avisaremos en cuanto un cliente cercano pida un servicio de tus especialidades.' : 'Toca "Desconectado", arriba a la derecha, para empezar a recibir trabajos.'}
           />
         ) : <EmptyState icon={vista === 'en_curso' ? 'tool' : 'archive'} title={vista === 'en_curso' ? 'Sin trabajos en curso' : 'Aún no tienes historial'} />
       ) : null}

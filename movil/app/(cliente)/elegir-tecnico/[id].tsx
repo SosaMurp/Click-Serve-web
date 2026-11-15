@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { AppBar, Banner, Button, color, elevation, EmptyState, radius, Screen, Skeleton, space, Surface, Text } from '@/src/design';
+import { AppBar, Banner, Button, color, elevation, EmptyState, Money, radius, Screen, Skeleton, space, Surface, Text } from '@/src/design';
 import { errorMessage } from '@/src/api/client';
 import { solicitudesApi } from '@/src/api/endpoints';
 import type { TecnicoRecomendado } from '@/src/api/types';
@@ -128,6 +128,7 @@ export default function ElegirTecnico() {
         <Text variant="title" style={styles.flex}>{tecnicos.loading ? 'Buscando técnicos…' : `${list.length} disponible${list.length === 1 ? '' : 's'} cerca`}</Text>
         <Text variant="caption" tone="muted">Ubicación aproximada</Text>
       </View>
+      {list.length ? <Text variant="body" tone="soft" style={styles.nota}>El precio base lo pagas al aceptar y queda en custodia hasta que confirmes.</Text> : null}
 
       {tecnicos.loading ? <Skeleton height={180} /> : null}
       {tecnicos.error && !tecnicos.data ? <Banner tone="error" title="No pudimos cargar los técnicos" body={tecnicos.error} /> : null}
@@ -161,6 +162,12 @@ export default function ElegirTecnico() {
                 <Pressable accessibilityRole="button" accessibilityLabel={`Ver en el mapa a ${t.nombre} ${t.apellido}`} onPress={() => focus(t, i)}>
                   {i === 0 ? <Text variant="overline" tone="accent" style={styles.best}>Mejor opción</Text> : null}
                   <TechFicha {...t} />
+                  {t.precio_base ? (
+                    <View style={styles.precio}>
+                      <Text variant="body" tone="soft" style={styles.flex}>Precio base</Text>
+                      <Money value={t.precio_base} size="md" />
+                    </View>
+                  ) : null}
                   {t.bio ? <Text variant="bodySm" tone="soft" numberOfLines={2} style={styles.bio}>{t.bio}</Text> : null}
                 </Pressable>
                 <View style={styles.actions}>
@@ -181,11 +188,11 @@ export default function ElegirTecnico() {
         </ScrollView>
       ) : null}
 
-      <Surface tint="sky" style={styles.auto}>
+      <View style={styles.auto}>
         <Text variant="title">¿Sin preferencia?</Text>
-        <Text variant="bodySm" tone="soft">Asignamos al técnico disponible más cercano con la especialidad.</Text>
-        <Button title="Búsqueda automática" icon="zap" variant="filled" onPress={automatic} loading={busy === 'auto'} disabled={!!busy} style={styles.autoBtn} />
-      </Surface>
+        <Text variant="body" tone="soft">Asignamos al técnico disponible más cercano con la especialidad.</Text>
+        <Button title="Búsqueda automática" icon="zap" variant="filled" onPress={automatic} loading={busy === 'auto'} disabled={!!busy} full style={styles.autoBtn} />
+      </View>
 
       <Button title="Cancelar solicitud" variant="text" icon="x" onPress={cancel} style={styles.cancel} />
     </Screen>
@@ -196,14 +203,16 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   gap: { marginTop: space.md },
   map: { borderRadius: radius.lg, overflow: 'hidden', ...elevation[1] },
-  headRow: { flexDirection: 'row', alignItems: 'center', marginTop: space.lg, marginBottom: space.md },
+  precio: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.md, paddingTop: space.md, borderTopWidth: 1, borderTopColor: color.line },
+  headRow: { flexDirection: 'row', alignItems: 'center', marginTop: space.lg, marginBottom: space.xs },
+  nota: { marginBottom: space.md },
   carousel: { gap: space.md, paddingRight: space.lg },
   card: { borderWidth: 2, borderColor: 'transparent' },
   cardOn: { borderColor: color.accent },
   best: { marginBottom: space.sm },
   bio: { marginTop: space.sm },
   actions: { flexDirection: 'row', gap: space.sm, marginTop: space.md },
-  auto: { marginTop: space.lg, gap: 4 },
+  auto: { marginTop: space.xl, gap: 4, paddingTop: space.lg, borderTopWidth: 1, borderTopColor: color.line },
   autoBtn: { marginTop: space.md },
   cancel: { alignSelf: 'center', marginTop: space.md },
 });

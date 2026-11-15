@@ -13,6 +13,10 @@ type Props = {
   lado: 'frente' | 'reverso';
   registro: IneRegistro;
   ticketFrente?: string;
+  // Reverso: la foto del frente ya verificada (con Didit las dos caras se verifican juntas) y quién recibe
+  // el ticket del frente que el servidor vuelve a firmar con el documento verificado.
+  frenteFile?: LocalFile | null;
+  onFrenteTicket?: (ticket: string) => void;
   disabled?: boolean;
   value: IneValue | null;
   onChange: (v: IneValue | null) => void;
@@ -21,7 +25,7 @@ type Props = {
 // RF-25: captura de la INE con verificación al momento. La foto sale de la cámara (no de la galería),
 // se manda a POST /api/ine/verificar y solo se acepta si el servidor la reconoce como una INE con
 // datos coherentes; el ticket que devuelve lo exige el registro.
-export function IneCapture({ step, lado, registro, ticketFrente, disabled, value, onChange }: Props) {
+export function IneCapture({ step, lado, registro, ticketFrente, frenteFile, onFrenteTicket, disabled, value, onChange }: Props) {
   const [camera, setCamera] = useState(false);
   const [checking, setChecking] = useState<LocalFile | null>(null);
   const [error, setError] = useState<{ file: LocalFile; motivo: string } | null>(null);
@@ -33,7 +37,8 @@ export function IneCapture({ step, lado, registro, ticketFrente, disabled, value
     setError(null);
     onChange(null);
     try {
-      const r = await authApi.verificarIne(lado, file, registro, ticketFrente);
+      const r = await authApi.verificarIne(lado, file, registro, ticketFrente, frenteFile);
+      if (r.ok && r.ticket_frente) onFrenteTicket?.(r.ticket_frente);
       if (r.ok && r.ticket) onChange({ file, ticket: r.ticket });
       else setError({ file, motivo: r.motivo || 'No pudimos verificar tu credencial. Toma la foto otra vez.' });
     } catch (e) {

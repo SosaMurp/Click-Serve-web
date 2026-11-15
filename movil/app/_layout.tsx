@@ -10,6 +10,10 @@ import { ConnectivityBanner, ConnectivityProvider } from '@/src/state/connectivi
 import { RealtimeProvider } from '@/src/state/realtime';
 import { DialogHost } from '@/src/ui/dialog';
 import { ToastHost } from '@/src/ui/toast';
+import { SancionesHost } from '@/src/features/account/SancionesHost';
+import { WebCameraHost } from '@/src/features/camera/WebCamera';
+// Registra la tarea de ubicación en segundo plano al arrancar (debe existir antes de que el sistema la despierte).
+import '@/src/features/location/backgroundTrack';
 import { color, iconFont, LogoMark, Text, Wordmark } from '@/src/design';
 
 function Splash() {
@@ -59,6 +63,8 @@ export default function RootLayout() {
             <ConnectivityBanner />
             <DialogHost />
             <ToastHost />
+            <SancionesHost />
+            <WebCameraHost />
           </RealtimeProvider>
         </ConnectivityProvider>
       </SessionProvider>

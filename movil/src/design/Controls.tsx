@@ -3,6 +3,8 @@ import { Image, Pressable, StyleSheet, Switch, View, ViewStyle } from 'react-nat
 import { Icon, IconName } from './Icon';
 import { Text } from './Text';
 import { color, elevation, font, radius, space, touch } from './tokens';
+import { Ilustracion } from './Ilustracion';
+import { figuraDeIcono } from './figuras';
 import { initials } from '../lib/format';
 
 // ───────── Chip: blanco con borde; el seleccionado se rellena de marino ─────────
@@ -116,7 +118,7 @@ export function Avatar({ uri, nombre, apellido, size = 44, ring }: { uri?: strin
 export function EmptyState({ icon, title, body, action }: { icon: IconName; title: string; body?: string; action?: React.ReactNode }) {
   return (
     <View style={styles.empty}>
-      <View style={styles.emptyIcon}><Icon name={icon} size={28} color={color.brandInk} /></View>
+      {figuraDeIcono(icon) ? <Ilustracion nombre={figuraDeIcono(icon)!} size={96} /> : <View style={styles.emptyIcon}><Icon name={icon} size={28} color={color.brandInk} /></View>}
       <Text variant="title" align="center">{title}</Text>
       {body ? <Text variant="body" tone="muted" align="center" style={styles.emptyBody}>{body}</Text> : null}
       {action ? <View style={styles.emptyAction}>{action}</View> : null}

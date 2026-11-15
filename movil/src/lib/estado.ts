@@ -12,8 +12,8 @@ const CLIENTE: Record<EstadoOrden, Info> = {
   PENDIENTE: { label: 'Buscando técnico', tone: 'brand', icon: 'search', hint: 'Avisamos a técnicos cercanos de la especialidad.' },
   ASIGNADA: { label: 'Técnico asignado', tone: 'brand', icon: 'user-check', hint: 'Tu técnico confirmó el servicio.' },
   EN_CAMINO: { label: 'En camino', tone: 'brand', icon: 'navigation', hint: 'Sigue su ubicación en el mapa.' },
-  EN_SITIO: { label: 'En tu domicilio', tone: 'brand', icon: 'home', hint: 'El técnico está revisando la falla.' },
-  ESPERANDO_APROBACION: { label: 'Aprueba la cotización', tone: 'warning', icon: 'edit-3', hint: 'Revisa los conceptos antes de que empiece el trabajo.' },
+  EN_SITIO: { label: 'En tu domicilio', tone: 'brand', icon: 'home', hint: 'El técnico está en tu domicilio.' },
+  ESPERANDO_APROBACION: { label: 'Paga para confirmar', tone: 'warning', icon: 'lock', hint: 'Paga en custodia; el dinero se libera al técnico solo cuando confirmes el trabajo.' },
   EN_PROCESO: { label: 'Trabajando', tone: 'brand', icon: 'tool', hint: 'El técnico está haciendo el trabajo.' },
   POR_CONFIRMAR: { label: 'Confirma y paga', tone: 'warning', icon: 'award', hint: 'Revisa la evidencia y confirma que quedó.' },
   FINALIZADA: { label: 'Pagado', tone: 'success', icon: 'check-circle', hint: 'Servicio confirmado. Tienes 90 días de garantía.' },
@@ -24,10 +24,10 @@ const CLIENTE: Record<EstadoOrden, Info> = {
 const TECNICO: Record<EstadoOrden, Info> = {
   ...CLIENTE,
   PENDIENTE: { label: 'Nueva', tone: 'accent', icon: 'bell', hint: 'Acepta o descarta esta solicitud.' },
-  ASIGNADA: { label: 'Asignada', tone: 'brand', icon: 'calendar', hint: 'Avisa cuando vayas en camino.' },
+  ASIGNADA: { label: 'Asignada', tone: 'brand', icon: 'calendar', hint: 'El precio base está pagado en custodia: ya puedes salir.' },
   EN_CAMINO: { label: 'En camino', tone: 'brand', icon: 'navigation', hint: 'Tu ubicación se comparte con el cliente.' },
-  EN_SITIO: { label: 'En sitio', tone: 'brand', icon: 'map-pin', hint: 'Revisa la falla y envía la cotización.' },
-  ESPERANDO_APROBACION: { label: 'Cotización enviada', tone: 'warning', icon: 'clock', hint: 'Esperando que el cliente la apruebe.' },
+  EN_SITIO: { label: 'En sitio', tone: 'brand', icon: 'map-pin', hint: 'Inicia el trabajo de la cotización pagada.' },
+  ESPERANDO_APROBACION: { label: 'Esperando pago', tone: 'warning', icon: 'clock', hint: 'Esperando que el cliente pague en custodia.' },
   EN_PROCESO: { label: 'En proceso', tone: 'brand', icon: 'tool', hint: 'Marca tareas y sube evidencia antes de terminar.' },
   POR_CONFIRMAR: { label: 'Por confirmar', tone: 'warning', icon: 'clock', hint: 'El cliente debe confirmar y pagar.' },
   FINALIZADA: { label: 'Cobrado', tone: 'success', icon: 'dollar-sign', hint: 'El pago ya está en tu billetera.' },
@@ -40,17 +40,30 @@ export function estadoInfo(estado: EstadoOrden, rol: 'cliente' | 'tecnico' | str
 type ClientText = { titulo: string; detalle: string; accion?: string };
 
 // Pantallas del cliente (enfoque CILIM): el estado en una frase llana y, si le toca hacer algo,
-// el texto del único botón principal.
-export function clientStatusText(s: { estado: EstadoOrden; tecnico?: { nombre: string } | null }): ClientText {
+// el texto del único botón principal. Con pago en custodia, ASIGNADA cambia según si ya pagó el precio.
+export function clientStatusText(s: { estado: EstadoOrden; tecnico?: { nombre: string } | null; custodia?: { estado: string } | null }): ClientText {
   const quien = s.tecnico?.nombre || 'Tu técnico';
+  const pagado = s.custodia?.estado === 'RETENIDO';
   const textos: Record<EstadoOrden, ClientText> = {
     PENDIENTE: { titulo: 'Buscando técnico', detalle: 'Te avisamos en cuanto un técnico acepte.' },
-    ASIGNADA: { titulo: 'Tu técnico confirmó', detalle: `${quien} va a atenderte. Te avisamos cuando salga.` },
+    ASIGNADA: pagado
+      ? { titulo: 'Servicio confirmado', detalle: `Pagaste el precio base en custodia. ${quien} ya tiene tu dirección; te avisamos cuando salga.` }
+      : { titulo: 'Tu técnico confirmó', detalle: `${quien} va a atenderte.` },
     EN_CAMINO: { titulo: 'Tu técnico va en camino', detalle: 'Puedes ver por dónde va en el mapa.' },
-    EN_SITIO: { titulo: 'Tu técnico llegó', detalle: 'Está revisando la falla para darte el precio.' },
-    ESPERANDO_APROBACION: { titulo: 'Revisa el precio', detalle: `${quien} te mandó el precio. Apruébalo para que empiece.`, accion: 'Revisar el precio' },
+    EN_SITIO: { titulo: 'Tu técnico llegó', detalle: pagado ? 'Está por empezar el trabajo que pagaste en custodia.' : 'Está revisando la falla para darte el precio.' },
+    ESPERANDO_APROBACION: pagado
+      ? {
+        titulo: 'Tu técnico pide un adicional',
+        detalle: `${quien} revisó la falla y necesita hacer algo más. Solo pagas la diferencia; todo queda en custodia hasta que confirmes.`,
+        accion: 'Revisar el adicional',
+      }
+      : {
+        titulo: 'Paga para confirmar',
+        detalle: `${quien} aceptó tu solicitud. Paga el precio base en custodia para confirmar el servicio y abrir el chat. El dinero se libera al técnico solo cuando confirmes que quedó bien.`,
+        accion: 'Pagar precio base',
+      },
     EN_PROCESO: { titulo: 'Están trabajando', detalle: `${quien} está haciendo el trabajo.` },
-    POR_CONFIRMAR: { titulo: 'Confirma que quedó', detalle: 'Revisa el trabajo y paga solo si quedó bien.', accion: 'Confirmar y pagar' },
+    POR_CONFIRMAR: { titulo: 'Confirma que quedó', detalle: 'Revisa el trabajo; al confirmar liberamos el pago al técnico.', accion: 'Confirmar y pagar' },
     FINALIZADA: { titulo: 'Servicio terminado', detalle: 'Tienes 90 días de garantía.' },
     SUSPENDIDA: { titulo: 'Servicio detenido', detalle: 'Hay un reporte abierto. Elige cómo resolverlo.', accion: 'Ver qué pasó' },
     CANCELADA: { titulo: 'Servicio cancelado', detalle: 'No se hizo ningún cargo.' },
@@ -58,25 +71,31 @@ export function clientStatusText(s: { estado: EstadoOrden; tecnico?: { nombre: s
   return textos[s.estado] || { titulo: s.estado, detalle: '' };
 }
 
+// Pago en custodia: el precio se paga antes de que el técnico salga hacia el domicilio.
 export const STEPS: { key: string; label: string }[] = [
   { key: 'solicitud', label: 'Solicitud enviada' },
   { key: 'asignada', label: 'Técnico asignado' },
+  { key: 'custodia', label: 'Precio base pagado en custodia' },
   { key: 'camino', label: 'En camino' },
-  { key: 'sitio', label: 'Llegó y cotizó' },
+  { key: 'sitio', label: 'En tu domicilio' },
   { key: 'trabajo', label: 'Trabajo en proceso' },
-  { key: 'confirmar', label: 'Confirmación y pago' },
+  { key: 'confirmar', label: 'Confirmación' },
   { key: 'garantia', label: 'Garantía de 90 días' },
 ];
 
 const ORDER: Record<EstadoOrden, number> = {
-  PENDIENTE: 0, ASIGNADA: 1, EN_CAMINO: 2, EN_SITIO: 3, ESPERANDO_APROBACION: 3,
-  EN_PROCESO: 4, POR_CONFIRMAR: 5, FINALIZADA: 7, SUSPENDIDA: 0, CANCELADA: 0,
+  PENDIENTE: 0, ASIGNADA: 1, ESPERANDO_APROBACION: 2, EN_CAMINO: 3, EN_SITIO: 4,
+  EN_PROCESO: 5, POR_CONFIRMAR: 6, FINALIZADA: 8, SUSPENDIDA: 0, CANCELADA: 0,
 };
 
 // Índice de la etapa en curso. Una orden suspendida se queda en la etapa donde estaba.
-export function stepIndex(estado: EstadoOrden, previo?: EstadoOrden | null): number {
-  if (estado === 'SUSPENDIDA' && previo) return ORDER[previo] ?? 0;
-  return ORDER[estado] ?? 0;
+// Asignada y ya pagada en custodia, la etapa en curso es "En camino".
+export function stepIndex(estado: EstadoOrden, previo?: EstadoOrden | null, pagado = false): number {
+  const actual = estado === 'SUSPENDIDA' && previo ? previo : estado;
+  if (actual === 'ASIGNADA' && pagado) return ORDER.EN_CAMINO;
+  // Con el precio base pagado, "esperando aprobación" es un adicional en el domicilio.
+  if (actual === 'ESPERANDO_APROBACION' && pagado) return ORDER.EN_SITIO;
+  return ORDER[actual] ?? 0;
 }
 
 const CLOSED: EstadoOrden[] = ['FINALIZADA', 'CANCELADA'];

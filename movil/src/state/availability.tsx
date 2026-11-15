@@ -4,6 +4,7 @@ import { errorMessage } from '../api/client';
 import { currentLocation, hapticSuccess, quietLocation } from '../lib/media';
 import { toast } from '../ui/toast';
 import { useSession } from './session';
+import { detenerRastreo, iniciarRastreo } from '../features/location/backgroundTrack';
 
 // RF-21 + RNF-34: interruptor ONLINE del técnico y latido cada 20 s mientras está en línea.
 type Value = { disponible: boolean; cambiando: boolean; setDisponible: (v: boolean) => Promise<void> };
@@ -50,10 +51,13 @@ export function AvailabilityProvider({ children }: { children: React.ReactNode }
   return <AvailabilityContext.Provider value={{ disponible, cambiando, setDisponible }}>{children}</AvailabilityContext.Provider>;
 }
 
-// RNF-43: mientras va en camino, el técnico comparte su ubicación cada 4 s.
+// RNF-43: mientras va en camino, el técnico comparte su ubicación. En una compilación propia se usa una tarea en
+// segundo plano (sigue con la app minimizada); en Expo Go, la web o sin permiso "Todo el tiempo", cada 4 s con la app abierta.
 export function useLocationBroadcast(active: boolean) {
   useEffect(() => {
     if (!active) return undefined;
+    let cancelado = false;
+    let timer: ReturnType<typeof setInterval> | null = null;
     let busy = false;
     const send = async () => {
       if (busy) return;
@@ -66,7 +70,15 @@ export function useLocationBroadcast(active: boolean) {
       }
     };
     send();
-    const timer = setInterval(send, 4000);
-    return () => clearInterval(timer);
+    (async () => {
+      const enSegundoPlano = await iniciarRastreo();
+      if (cancelado) { if (enSegundoPlano) detenerRastreo(); return; }
+      if (!enSegundoPlano) timer = setInterval(send, 4000);
+    })();
+    return () => {
+      cancelado = true;
+      if (timer) clearInterval(timer);
+      detenerRastreo();
+    };
   }, [active]);
 }

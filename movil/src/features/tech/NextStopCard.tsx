@@ -22,7 +22,7 @@ export function NextStopCard({ s, onChat, onMap, onOpen }: { s: Solicitud; onCha
         <Text variant="overline" tone="muted" style={styles.flex}>Siguiente destino</Text>
         {eta ? <Text variant="overline" tone="success">ETA: {eta} min</Text> : null}
       </View>
-      <Surface style={styles.card}>
+      <Surface card style={styles.card}>
         <Pressable accessibilityRole="button" accessibilityLabel={`Ver el trabajo de ${cliente}`} onPress={onOpen}>
           <View style={styles.who}>
             <View style={styles.flex}>
@@ -33,7 +33,7 @@ export function NextStopCard({ s, onChat, onMap, onOpen }: { s: Solicitud; onCha
           </View>
           <View style={styles.boxes}>
             <InfoBox label="Cita" value={whenText(s)} />
-            <InfoBox label="Estatus" value={estadoInfo(s.estado, 'tecnico').label.toUpperCase()} />
+            <InfoBox label="Estatus" value={estadoInfo(s.estado, 'tecnico').label} />
           </View>
         </Pressable>
         <View style={styles.actions}>

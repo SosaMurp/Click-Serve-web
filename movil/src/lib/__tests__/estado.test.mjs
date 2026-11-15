@@ -18,11 +18,15 @@ test('cada estado tiene tono e ícono; verde, ámbar y rojo solo para estados', 
 });
 
 test('el avance ubica la etapa actual en la línea de pasos', () => {
-  assert.equal(STEPS.length, 7);
+  assert.equal(STEPS.length, 8);
   assert.equal(stepIndex('PENDIENTE'), 0);
-  assert.equal(stepIndex('EN_SITIO'), 3);
-  assert.equal(stepIndex('FINALIZADA'), 7);
-  assert.equal(stepIndex('SUSPENDIDA', 'EN_PROCESO'), 4);
+  assert.equal(stepIndex('ASIGNADA'), 1);
+  assert.equal(stepIndex('ESPERANDO_APROBACION'), 2);
+  assert.equal(stepIndex('ASIGNADA', null, true), 3, 'pagada en custodia, lo siguiente es salir');
+  assert.equal(stepIndex('ESPERANDO_APROBACION', null, true), 4, 'con el precio base pagado, es un adicional en el domicilio');
+  assert.equal(stepIndex('EN_SITIO'), 4);
+  assert.equal(stepIndex('FINALIZADA'), 8);
+  assert.equal(stepIndex('SUSPENDIDA', 'EN_PROCESO'), 5);
 });
 
 test('isActive distingue órdenes vivas de cerradas', () => {
@@ -38,7 +42,10 @@ test('el cliente lee su servicio en palabras llanas y con la siguiente acción',
   assert.equal(clientStatusText({ estado: 'PENDIENTE' }).accion, undefined);
   assert.match(clientStatusText({ estado: 'ASIGNADA', tecnico: { nombre: 'Luis' } }).detalle, /Luis/);
   assert.equal(clientStatusText({ estado: 'EN_CAMINO' }).titulo, 'Tu técnico va en camino');
-  assert.equal(clientStatusText({ estado: 'ESPERANDO_APROBACION' }).accion, 'Revisar el precio');
+  assert.equal(clientStatusText({ estado: 'ESPERANDO_APROBACION' }).accion, 'Pagar precio base');
+  assert.equal(clientStatusText({ estado: 'ESPERANDO_APROBACION', custodia: { estado: 'RETENIDO' } }).accion, 'Revisar el adicional');
   assert.equal(clientStatusText({ estado: 'POR_CONFIRMAR' }).accion, 'Confirmar y pagar');
   assert.equal(clientStatusText({ estado: 'FINALIZADA' }).titulo, 'Servicio terminado');
+  assert.equal(clientStatusText({ estado: 'ASIGNADA', custodia: { estado: 'RETENIDO' } }).titulo, 'Servicio confirmado');
+  assert.match(clientStatusText({ estado: 'ESPERANDO_APROBACION' }).detalle, /custodia/);
 });

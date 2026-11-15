@@ -1,5 +1,13 @@
 const { randomUUID } = require('crypto');
 const { isDevelopment } = require('../lib/env');
+const stripe = require('./stripe');
+
+// Pasarela activa: Stripe si hay STRIPE_SECRET_KEY; si no, Conekta con su llave; sin llaves, modo de prueba.
+function proveedorPagos() {
+  if (stripe.enabled()) return 'STRIPE';
+  if (process.env.CONEKTA_PRIVATE_KEY) return 'CONEKTA';
+  return 'SANDBOX';
+}
 
 // Tokens de prueba publicados por Conekta que representan rechazos.
 const DECLINED_TEST_TOKENS = new Set(['tok_test_card_declined', 'tok_test_insufficient_funds', 'tok_test_card_expired']);
@@ -17,7 +25,12 @@ async function fetchWithTimeout(url, options, ms = 5000) {
 // RNF-02: el backend solo recibe el token de la tarjeta. Con CONEKTA_PRIVATE_KEY cobra en Conekta;
 // sin ella (desarrollo) registra un cargo de sandbox y respeta los tokens de rechazo de prueba.
 // Fuera de desarrollo (NODE_ENV distinto de development/test) sin llave se niega el cobro: nunca se marca pagado un servicio que nadie cobró.
-async function chargeCard({ token, amount, description, customer }) {
+async function chargeCard({ token, amount, description, customer, idempotencyKey, metadata }) {
+  // Stripe: las tarjetas guardadas con Setup Intents son PaymentMethods (pm_...) y se cobran con un PaymentIntent.
+  if (String(token).startsWith('pm_')) {
+    if (!stripe.enabled()) return { ok: false, modo: 'STRIPE', unavailable: true, motivo: 'Los pagos con esta tarjeta no están disponibles en este momento.' };
+    return stripe.cobrar({ paymentMethod: token, amount, description, idempotencyKey, metadata });
+  }
   const key = process.env.CONEKTA_PRIVATE_KEY;
   if (!key) {
     if (!isDevelopment()) {
@@ -62,4 +75,4 @@ async function chargeCard({ token, amount, description, customer }) {
   }
 }
 
-module.exports = { chargeCard, fetchWithTimeout };
+module.exports = { chargeCard, fetchWithTimeout, proveedorPagos };

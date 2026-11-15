@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, Switch, View } from 'react-native';
-import { AppBar, Banner, Chip, color, IconButton, IconName, Pill, Screen, SectionHeader, SkeletonList, space, Surface, Text, Icon, radius, Divider } from '@/src/design';
+import { useRouter } from 'expo-router';
+import { AppBar, Chip, ListItem, color, IconButton, IconName, Pill, Screen, SectionHeader, SkeletonList, space, Surface, Text, Icon, radius, Divider } from '@/src/design';
 import { errorMessage } from '@/src/api/client';
 import { tecnicoApi } from '@/src/api/endpoints';
 import type { Especialidad } from '@/src/api/types';
@@ -10,7 +11,9 @@ import { dialog } from '@/src/ui/dialog';
 import { toast } from '@/src/ui/toast';
 
 // RF-23/24: categorías en las que el técnico recibe solicitudes; se pueden pausar sin perder la verificación.
+// El precio base por servicio de cada especialidad se fija en "Mis precios" (catálogo de servicios).
 export default function Especialidades() {
+  const router = useRouter();
   const categorias = useCategorias();
   const { data, loading, setData, reload } = useLoader(() => tecnicoApi.especialidades().then((r) => r.especialidades), []);
   const [busy, setBusy] = useState<string | null>(null);
@@ -54,8 +57,11 @@ export default function Especialidades() {
   return (
     <Screen header={<AppBar title="Especialidades" />}>
       {!mias.length && !loading ? (
-        <Banner tone="info" title="Recibes solicitudes de todas las categorías" body="Sin especialidades registradas te llegan solicitudes generales. Agrega las tuyas para aparecer primero en esas categorías." />
+        <Text variant="body" tone="soft">Sin especialidades te llegan solicitudes generales. Agrega las tuyas para aparecer primero en esas categorías.</Text>
       ) : null}
+      <Surface padded={false} style={styles.note}>
+        <ListItem icon="tag" iconTone="accent" title="Mis precios" subtitle="El precio base de cada servicio que ofreces" onPress={() => router.push('/precios')} />
+      </Surface>
       <SectionHeader title="Tus especialidades" />
       {loading ? <SkeletonList rows={2} /> : null}
       {mias.length ? (

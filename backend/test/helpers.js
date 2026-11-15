@@ -2,12 +2,17 @@
 // Usan la base clickyserve_test del Postgres local; cada archivo de prueba la reinicia.
 process.env.NODE_ENV = 'test';
 process.env.DB_HOST = process.env.TEST_DB_HOST || 'localhost';
-process.env.DB_PORT = process.env.TEST_DB_PORT || '5432';
+process.env.DB_PORT = process.env.TEST_DB_PORT || '5435';
 process.env.DB_USER = process.env.TEST_DB_USER || 'postgres';
-process.env.DB_PASSWORD = process.env.TEST_DB_PASSWORD || '';
+process.env.DB_PASSWORD = process.env.TEST_DB_PASSWORD || 'G4llo0909';
 process.env.DB_NAME = process.env.TEST_DB_NAME || 'clickyserve_test';
 process.env.JWT_SECRET = 'test-jwt-secret';
 process.env.FILES_SECRET = 'test-files-secret';
+// Las pruebas nunca usan las llaves reales del .env (Didit, Stripe): cada prueba que las necesita pone una falsa.
+// Vacías y no borradas, para que dotenv no las vuelva a cargar desde el .env.
+process.env.DIDIT_API_KEY = '';
+process.env.STRIPE_SECRET_KEY = '';
+process.env.STRIPE_WEBHOOK_SECRET = '';
 
 const http = require('http');
 const { randomUUID } = require('crypto');
@@ -91,4 +96,13 @@ function idem() {
   return { 'Idempotency-Key': randomUUID() };
 }
 
-module.exports = { resetDb, startServer, createUser, api, login, idem, getPool, closePool };
+// Precio base (anti-evasión): al aceptar, la orden espera el pago del precio base. Simula que el cliente ya lo
+// pagó en custodia (el cobro real lo prueba solicitudes.test.js): la orden queda ASIGNADA con dirección y chat abiertos.
+async function simularPrecioBasePagado(idSolicitud) {
+  await getPool().query(
+    "UPDATE solicitudes_servicio SET estado = 'ASIGNADA', direccion_liberada = true, estado_pago = 'EN_CUSTODIA' WHERE id_solicitud = $1",
+    [idSolicitud]
+  );
+}
+
+module.exports = { resetDb, startServer, createUser, api, login, idem, getPool, closePool, simularPrecioBasePagado };

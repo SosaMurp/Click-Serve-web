@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { goBack } from '@/src/lib/nav';
-import { AppBar, Banner, Button, Calendar, Chip, Screen, space, Surface, Text, TextField, TimeField } from '@/src/design';
+import { AppBar, Button, Calendar, Chip, Screen, space, Surface, Text, TextField, TimeField } from '@/src/design';
 import { errorMessage } from '@/src/api/client';
 import { solicitudesApi } from '@/src/api/endpoints';
 import { formatDate, formatTime12 } from '@/src/lib/format';
@@ -48,8 +48,8 @@ export default function Reprogramar() {
       footer={<Button title={fecha && hora ? `Proponer ${formatDate(fecha)}, ${formatTime12(hora)}` : 'Elige día y hora'} icon="send" onPress={submit} loading={sending} disabled={!fecha || !hora} full size="lg" />}
     >
       {s?.fecha_preferida ? (
-        <Banner tone="info" title="Cita actual" body={`${formatDate(s.fecha_preferida)}${s.hora_preferida ? ` a las ${formatTime12(s.hora_preferida)}` : ''}. Se mantiene hasta que la otra parte acepte el cambio.`} />
-      ) : <Banner tone="info" title="La otra parte debe aceptar" body="Mientras tanto la cita se mantiene como está." />}
+        <Text variant="body" tone="soft">{`Cita actual: ${formatDate(s.fecha_preferida)}${s.hora_preferida ? ` a las ${formatTime12(s.hora_preferida)}` : ''}. Se mantiene hasta que la otra parte acepte el cambio.`}</Text>
+      ) : <Text variant="body" tone="soft">La otra parte debe aceptar; mientras tanto la cita se mantiene.</Text>}
       <Text variant="title" style={styles.title}>Nuevo día</Text>
       <Surface><Calendar value={fecha} min={todayIso()} onPick={setFecha} /></Surface>
       <Text variant="title" style={styles.title}>Nueva hora</Text>

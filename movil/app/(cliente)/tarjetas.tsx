@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import { AppBar, Banner, Button, color, EmptyState, Icon, radius, Screen, SkeletonList, space, Text } from '@/src/design';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { AppBar, Button, color, EmptyState, Icon, radius, Screen, SkeletonList, space, Text } from '@/src/design';
 import { errorMessage } from '@/src/api/client';
 import { pagosApi } from '@/src/api/endpoints';
+import { leerRetornoStripe } from '@/src/lib/stripeRetorno';
 import type { Tarjeta } from '@/src/api/types';
 import { useLoader } from '@/src/lib/useLoader';
 import { dialog } from '@/src/ui/dialog';
@@ -14,6 +15,31 @@ import { toast } from '@/src/ui/toast';
 export default function Tarjetas() {
   const router = useRouter();
   const { data, loading, setData, reload } = useLoader(() => pagosApi.tarjetas().then((r) => r.metodos), []);
+  // Regreso del formulario de Stripe en la web: /tarjetas?tarjeta=ok&session_id=cs_...
+  const params = useLocalSearchParams<{ tarjeta?: string; session_id?: string }>();
+  const { estado, sessionId } = leerRetornoStripe(params);
+  const tarjeta = estado === 'ninguno' ? undefined : estado;
+  const atendido = useRef(false);
+  useEffect(() => {
+    if (!tarjeta || atendido.current) return;
+    atendido.current = true;
+    (async () => {
+      if (tarjeta === 'cancelada') {
+        toast.show('No se guardó ninguna tarjeta.');
+        router.setParams({ tarjeta: undefined, session_id: undefined });
+        return;
+      }
+      try {
+        if (sessionId) await pagosApi.confirmarStripe(sessionId);
+        toast.success('Tarjeta guardada.');
+      } catch (e) {
+        toast.error(errorMessage(e));
+      } finally {
+        reload();
+        router.setParams({ tarjeta: undefined, session_id: undefined });
+      }
+    })();
+  }, [tarjeta, sessionId, reload, router]);
 
   async function makeDefault(t: Tarjeta) {
     try {
@@ -40,7 +66,6 @@ export default function Tarjetas() {
   const list = data || [];
   return (
     <Screen header={<AppBar title="Métodos de pago" />} footer={<Button title="Agregar tarjeta" icon="plus" onPress={() => router.push('/tarjeta-nueva')} full size="lg" />}>
-      <Banner tone="info" title="Pagos protegidos" body="Tu número de tarjeta se cifra en el teléfono y lo procesa Conekta; nosotros nunca lo vemos ni guardamos el CVV." />
       {loading ? <SkeletonList rows={2} /> : null}
       {!loading && !list.length ? <EmptyState icon="credit-card" title="Sin tarjetas" body="Agrega una tarjeta para pagar tus servicios al terminar." /> : null}
       {list.map((t) => (
@@ -64,7 +89,7 @@ export default function Tarjetas() {
       ))}
       <View style={styles.secure}>
         <Icon name="lock" size={14} color={color.inkMuted} />
-        <Text variant="caption" tone="muted">Cifrado de extremo a extremo · PCI DSS</Text>
+        <Text variant="caption" tone="muted" align="center">Stripe procesa tus tarjetas; nunca vemos el número completo ni el CVV.</Text>
       </View>
     </Screen>
   );

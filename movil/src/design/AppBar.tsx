@@ -8,6 +8,7 @@ import { IconName } from './Icon';
 import { Text } from './Text';
 import { color, space } from './tokens';
 import { dialog } from '../ui/dialog';
+import { Entrance } from './motion';
 import { goBack as navGoBack } from '../lib/nav';
 
 export type AppBarAction = { icon: IconName; label: string; onPress: () => void; badge?: number | boolean };
@@ -24,7 +25,7 @@ type Props = {
   fallbackHref?: string;
 };
 
-// Encabezado simple sobre el fondo claro: botón circular para regresar, título centrado y acciones circulares.
+// Encabezado: bloque azul marino con esquinas inferiores redondeadas, botón para regresar, título y acciones.
 export function AppBar({ title, subtitle, back = true, onBack, confirmDiscard, actions = [], right, fallbackHref = '/' }: Props) {
   const router = useRouter();
   const navigation = useNavigation();
@@ -66,35 +67,41 @@ export function AppBar({ title, subtitle, back = true, onBack, confirmDiscard, a
 
   return (
     <View style={[styles.bar, { paddingTop: insets.top + space.xs }]}>
-      <StatusBar style="dark" />
-      <View style={styles.inner}>
+      <StatusBar style="light" />
+      <Entrance from="down" style={styles.inner}>
         {back ? (
           <View style={styles.side}>
-            <CircleIcon icon="arrow-left" label="Regresar" onPress={goBack} />
+            <BarIcon icon="arrow-left" label="Regresar" onPress={goBack} />
           </View>
         ) : null}
         <View style={styles.titles}>
-          <Text variant={back ? 'title' : 'headline'} numberOfLines={1} align={back ? 'center' : 'left'} accessibilityRole="header">{title}</Text>
-          {subtitle ? <Text variant="caption" tone="muted" numberOfLines={1} align={back ? 'center' : 'left'}>{subtitle}</Text> : null}
+          <Text variant={back ? 'title' : 'headline'} tone="onColor" numberOfLines={1} align={back ? 'center' : 'left'} accessibilityRole="header">{title}</Text>
+          {subtitle ? <Text variant="caption" numberOfLines={1} align={back ? 'center' : 'left'} style={styles.subtitle}>{subtitle}</Text> : null}
         </View>
         <View style={[styles.side, styles.sideRight]}>
-          {actions.map((a) => <CircleIcon key={a.label} icon={a.icon} label={a.label} onPress={a.onPress} badge={a.badge} />)}
+          {actions.map((a) => <BarIcon key={a.label} icon={a.icon} label={a.label} onPress={a.onPress} badge={a.badge} />)}
           {right}
           {back && !actions.length && !right ? <View style={styles.placeholder} /> : null}
         </View>
-      </View>
+      </Entrance>
     </View>
   );
 }
 
-// Botón circular blanco con borde fino (encabezados).
+// Botón circular translúcido sobre el azul del encabezado.
+function BarIcon({ icon, label, onPress, badge }: { icon: IconName; label: string; onPress?: () => void; badge?: number | boolean }) {
+  return <IconButton icon={icon} label={label} onPress={onPress} background="rgba(255,255,255,0.14)" tint={color.inkOnColor} badge={badge} size={20} />;
+}
+
+// Botón circular blanco con borde fino (sobre fondos claros o mapas).
 export function CircleIcon({ icon, label, onPress, badge }: { icon: IconName; label: string; onPress?: () => void; badge?: number | boolean }) {
   return <IconButton icon={icon} label={label} onPress={onPress} background={color.surface} badge={badge} size={20} bordered />;
 }
 
 const styles = StyleSheet.create({
-  bar: { backgroundColor: color.ground, alignItems: 'center' },
+  bar: { backgroundColor: color.navy, alignItems: 'center', borderBottomLeftRadius: 24, borderBottomRightRadius: 24, paddingBottom: space.sm },
   inner: { width: '100%', maxWidth: 640, minHeight: 60, flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.lg, gap: space.sm },
+  subtitle: { color: '#C9D0E0' },
   side: { minWidth: 48, flexDirection: 'row', alignItems: 'center', gap: space.sm },
   sideRight: { justifyContent: 'flex-end' },
   titles: { flex: 1 },

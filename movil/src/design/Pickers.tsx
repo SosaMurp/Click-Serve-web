@@ -6,6 +6,7 @@ import { Icon } from './Icon';
 import { Sheet } from './Sheet';
 import { Text } from './Text';
 import { color, radius, space, touch } from './tokens';
+import { useCountUp } from './motion';
 import { formatDate, formatTime12, formatMoney } from '../lib/format';
 import { toast } from '../ui/toast';
 
@@ -162,9 +163,22 @@ export function Folio({ value, label = 'Folio' }: { value: string; label?: strin
 }
 
 // ───────── Monto (formato del servidor, sin aritmética) ─────────
+// Los montos grandes (lg, xl) cuentan desde $0 al aparecer.
+function centavos(value: string | number | null | undefined): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const m = /^(-?)(\d+)(?:\.(\d+))?$/.exec(String(value).trim());
+  if (!m) return null;
+  const c = Number(m[2]) * 100 + Number(((m[3] || '') + '00').slice(0, 2));
+  return m[1] ? -c : c;
+}
+
 export function Money({ value, size = 'md', tone = 'default', suffix }: { value: string | number | null | undefined; size?: 'sm' | 'md' | 'lg' | 'xl'; tone?: 'default' | 'success' | 'brand' | 'onColor'; suffix?: boolean }) {
   const variant = size === 'xl' ? 'display' : size === 'lg' ? 'headline' : size === 'md' ? 'title' : 'label';
-  return <Text variant={variant} tone={tone} tabular>{formatMoney(value, { currency: suffix })}</Text>;
+  const cents = centavos(value);
+  const animar = (size === 'lg' || size === 'xl') && cents !== null && cents > 0;
+  const shown = useCountUp(cents ?? 0, animar);
+  const texto = animar && shown !== cents ? formatMoney(`${Math.floor(shown / 100)}.${String(shown % 100).padStart(2, '0')}`, { currency: suffix }) : formatMoney(value, { currency: suffix });
+  return <Text variant={variant} tone={tone} tabular accessibilityLabel={formatMoney(value, { currency: suffix })}>{texto}</Text>;
 }
 
 

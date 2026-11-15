@@ -4,6 +4,7 @@ const { createWorker, OEM, PSM } = require('tesseract.js');
 const { parseCurp, findCurp, curpMatchesName } = require('../lib/ine/curp');
 const { parseMrzTd1, findMrz } = require('../lib/ine/mrz');
 const { namesMatch, normalizeName, levenshtein } = require('../lib/ine/nombres');
+const { isDevelopment } = require('../lib/env');
 
 // Verificación propia de la credencial INE (sin servicios de pago): calidad de la foto, OCR con
 // tesseract.js y comprobaciones de CURP, MRZ y nombre contra los datos del registro.
@@ -14,6 +15,8 @@ const MOTIVOS = {
   noIne: 'No reconocimos una credencial del INE. Pon el frente de tu credencial dentro del marco, con buena luz y sin reflejos.',
   noCurp: 'No pudimos leer tu CURP en la credencial. Acércala un poco, con buena luz y sin reflejos.',
   datos: 'Los datos de la credencial no coinciden con los que escribiste. Revisa tu nombre y fecha de nacimiento, o usa tu propia credencial.',
+  fecha: 'Los datos de la credencial no coinciden con tu fecha de nacimiento. Revisa la fecha que escribiste: debe ser la misma de tu INE.',
+  nombre: 'Los datos de la credencial no coinciden con tu nombre. Escríbelo completo y tal como aparece en tu INE, con tus dos apellidos.',
   noMrz: 'No pudimos leer las tres líneas de letras y números de la parte de abajo del reverso. Acércala, con buena luz y sin reflejos.',
   otroReverso: 'Este reverso no corresponde al frente que tomaste. Toma el reverso de la misma credencial.',
   vencida: 'Tu credencial está vencida. Usa una credencial vigente.',
@@ -168,14 +171,23 @@ async function verifyFront(buffer, registro) {
   checks.push(result('fecha_nacimiento', datos.fechaNacimiento === registro.fecha_nacimiento, 'La fecha de nacimiento de la CURP se compara con la del registro.'));
   checks.push(result('iniciales', curpMatchesName(datos.curp, registro), 'Las iniciales de la CURP se comparan con el nombre registrado.'));
   checks.push(result('nombre', namesMatch(text, `${registro.nombre} ${registro.apellidos}`), 'El nombre de la credencial se compara con el registrado.'));
+  // El sexo impreso se lee con OCR y una H confundida con M no debe tumbar la verificación: manda el de la CURP
+  // (que sí tiene dígito verificador). Se registra, pero no bloquea.
   const sexoLeido = (/SEXO\s*([HM])\b/.exec(text) || [])[1];
-  if (sexoLeido) checks.push(result('sexo', sexoLeido === datos.sexo, 'El sexo impreso se compara con el de la CURP.'));
+  if (sexoLeido) checks.push(result('sexo', sexoLeido === datos.sexo, 'El sexo impreso se compara con el de la CURP (informativo).'));
 
-  const ok = checks.every((c) => c.ok);
+  const fallas = checks.filter((c) => !c.ok && c.id !== 'sexo').map((c) => c.id);
+  const ok = fallas.length === 0;
+  // En desarrollo, qué comprobación falló (sin datos personales), para diagnosticar desde la terminal.
+  if (!ok && isDevelopment()) console.info('[INE] frente: no pasó', fallas.join(', '));
+  const motivo = ok ? undefined
+    : fallas.includes('fecha_nacimiento') ? MOTIVOS.fecha
+    : fallas.some((id) => id === 'nombre' || id === 'iniciales') ? MOTIVOS.nombre
+    : MOTIVOS.datos;
   return {
     ok,
     comprobaciones: checks,
-    motivo: ok ? undefined : MOTIVOS.datos,
+    motivo,
     datos: ok ? { curp: datos.curp, sexo: datos.sexo, fecha_nacimiento: datos.fechaNacimiento } : undefined,
   };
 }

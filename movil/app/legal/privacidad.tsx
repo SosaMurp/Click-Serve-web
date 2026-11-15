@@ -33,8 +33,8 @@ export default function AvisoPrivacidad() {
         {
           title: 'Con quién los compartimos',
           paragraphs: [
-            'Con el técnico o el cliente de tu servicio: nombre, teléfono y dirección solo cuando el servicio ya fue asignado.',
-            'Con la pasarela de pago (Conekta) para cobrar con tu tarjeta, y con autoridades cuando una ley o un juez lo ordene. No vendemos tus datos.',
+            'Con el técnico o el cliente de tu servicio: tu nombre y, para el técnico, la dirección del servicio cuando el pago queda en custodia. Tu teléfono y tu correo nunca se comparten: la comunicación es solo por el chat de la app.',
+            'Con la pasarela de pago (Stripe) para cobrar con tu tarjeta, y con autoridades cuando una ley o un juez lo ordene. No vendemos tus datos.',
           ],
         },
         {

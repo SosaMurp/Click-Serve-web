@@ -14,6 +14,11 @@ export type User = {
   aprobado: boolean;
   identidad_verificada: boolean;
   verificado_sep: boolean;
+  // Último resultado de la validación de cédula en la SEP (null si nunca se ha pedido).
+  estado_cedula: 'EN_PROCESO' | 'VERIFICADA' | 'NO_VERIFICADA' | 'NO_DISPONIBLE' | null;
+  folio_profesional: string | null;
+  // Escala de sanciones: suspensión temporal vigente (nivel 2 o 3), en ISO; null si no hay.
+  suspendido_hasta?: string | null;
   biometria_estado: string;
   '2FA_Activo': boolean;
   disponible: boolean;
@@ -27,7 +32,25 @@ export type Estado =
   | 'PENDIENTE' | 'ASIGNADA' | 'EN_CAMINO' | 'EN_SITIO' | 'ESPERANDO_APROBACION'
   | 'EN_PROCESO' | 'POR_CONFIRMAR' | 'FINALIZADA' | 'SUSPENDIDA' | 'CANCELADA';
 
-export type Categoria = { codigo: string; nombre: string; descripcion: string; icono: string };
+// Catálogo de servicios: cada categoría tiene servicios concretos con rango (IVA incluido) y precio sugerido.
+// La visita de diagnóstico tiene precio fijo.
+export type Servicio = {
+  id_servicio: number;
+  categoria: string;
+  nombre: string;
+  descripcion: string | null;
+  precio_min: string;
+  precio_max: string;
+  precio_sugerido: string;
+  es_diagnostico: boolean;
+  activo: boolean;
+};
+
+// Precio de un servicio para el técnico: el suyo (precio_propio) o el sugerido; cambiar_desde = cuándo podrá cambiarlo.
+export type PrecioServicio = Servicio & { categoria_nombre: string; precio: string; precio_propio: string | null; cambiar_desde: string | null };
+
+// Precio base: rango que fija Click & Serve por categoría (IVA incluido) y precio sugerido.
+export type Categoria = { codigo: string; nombre: string; descripcion: string; icono: string; precio_min?: string | null; precio_max?: string | null; precio_sugerido?: string | null; servicios?: Servicio[] };
 
 export type TecnicoResumen = {
   id_usuario: number;
@@ -37,7 +60,6 @@ export type TecnicoResumen = {
   calificacion: string | null;
   trabajos: number;
   verificado_sep: boolean;
-  telefono?: string;
 };
 
 export type Concepto = { id_concepto: number; tipo: 'MANO_OBRA' | 'MATERIAL' | 'EXTRA'; descripcion: string; monto: string; id_cotizacion: number | null };
@@ -64,6 +86,9 @@ export type Solicitud = {
   folio: string;
   categoria: string | null;
   categoria_nombre: string;
+  // Servicio del catálogo que eligió el cliente (define el precio base).
+  id_servicio?: number | null;
+  servicio_nombre?: string | null;
   descripcion: string;
   fecha_preferida: string | null;
   hora_preferida: string | null;
@@ -90,6 +115,20 @@ export type Solicitud = {
   comentario_al_cliente: string | null;
   direccion?: string;
   referencias?: string | null;
+  // Precio base (anti-evasión): lo que el cliente paga en custodia al aceptar el técnico. mi_precio: en las
+  // solicitudes nuevas, lo que cobraría el técnico que las ve.
+  precio_base?: string | null;
+  mi_precio?: string;
+  // Hasta cuándo puede pagar el cliente el precio base (después se cancela sola).
+  pago_vence?: string | null;
+  // Cargo por visita si el cliente cancelara ahora (el técnico ya salió) y el que se cobró al cancelar.
+  cargo_si_cancela?: string | null;
+  cargo_cancelacion?: string | null;
+  // Pago en custodia: el técnico ve la dirección y se abre el chat solo cuando el cliente pagó el precio base.
+  direccion_liberada?: boolean;
+  // AUTOMATICA: se propone al técnico más cercano y, si no acepta a tiempo, al siguiente.
+  modo_asignacion?: 'MANUAL' | 'AUTOMATICA';
+  custodia?: { monto: string; estado: 'RETENIDO' | 'LIBERADO' | 'REEMBOLSO_PENDIENTE' | 'REEMBOLSADO' } | null;
   latitud?: number | null;
   longitud?: number | null;
   zona?: string;
@@ -99,7 +138,6 @@ export type Solicitud = {
   propuesta_a_mi?: boolean;
   cliente_nombre?: string;
   cliente_apellido?: string;
-  cliente_telefono?: string;
   tecnico?: TecnicoResumen;
   tecnico_ubicacion?: { latitud: number; longitud: number; actualizado: string; distancia_km: number; eta_min: number | null };
   // Solo en el detalle
@@ -110,6 +148,8 @@ export type Solicitud = {
   evidencias?: Evidencia[];
   reprogramacion?: Reprogramacion | null;
   incidencia?: Incidencia | null;
+  // Último adicional que el cliente rechazó (motivo y conceptos), para que el técnico mande otra cotización.
+  ultimo_rechazo?: { monto_total: string; motivo: 'PRECIO_ALTO' | 'NO_LO_DESEA' | 'OTRO'; comentario: string | null; fecha: string; conceptos: Concepto[] } | null;
   pago?: { monto: string; modo: string; referencia: string; estado: string; fecha: string; desglose?: Desglose } | null;
 };
 
@@ -130,6 +170,7 @@ export type TecnicoRecomendado = {
   resenas: number;
   trabajos: number;
   especialidades: string[];
+  precio_base?: string;
 };
 
 export type PerfilTecnico = {
@@ -199,7 +240,10 @@ export type ResumenTecnico = {
 
 export type Contadores = { nuevas: number; en_curso: number; historial: number };
 
-export type Especialidad = { id_especialidad: number; categoria: string | null; nombre: string; estado: string; activa: boolean };
+export type Especialidad = {
+  id_especialidad: number; categoria: string | null; nombre: string; estado: string; activa: boolean;
+  precio_base?: string | null; precio_min?: string | null; precio_max?: string | null; precio_sugerido?: string | null;
+};
 export type Documento = { id_documento: number; tipo: string; numero: string | null; descripcion: string | null; estado: string; url: string | null; fecha_creacion: string };
 export type ItemPortafolio = { id_item: number; titulo: string; descripcion: string | null; url: string; fecha_creacion: string };
 
@@ -244,5 +288,7 @@ export type IneResultado = {
   motivo?: string;
   datos?: { curp?: string; sexo?: string; fecha_nacimiento?: string; vigencia?: string };
   ticket?: string;
+  // Con Didit, al verificar el reverso el frente se vuelve a firmar con el documento verificado.
+  ticket_frente?: string;
 };
 export type IneRegistro = { nombre: string; apellidos: string; fecha_nacimiento: string };

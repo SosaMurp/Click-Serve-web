@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  AppBar, Banner, Button, Checkbox, color, Icon, Money, radius, RatingStars, Screen, SectionHeader, Skeleton, space, Surface, Text, TextField,
+  AppBar, Banner, Button, Checkbox, color, Icon, Money, radius, RatingStars, Screen, SectionHeader, Skeleton, space, Surface, Text, TextField, Celebration,
 } from '@/src/design';
 import { errorMessage } from '@/src/api/client';
 import { pagosApi, solicitudesApi } from '@/src/api/endpoints';
 import { useLoader } from '@/src/lib/useLoader';
+import { formatMoney, restaMoney } from '@/src/lib/format';
 import { hapticSuccess } from '@/src/lib/media';
 import { useOperationKey } from '@/src/lib/useOperationKey';
 import { EvidenceFeed } from '@/src/features/orders/Gallery';
@@ -26,21 +27,28 @@ export default function Confirmar() {
   const [comentario, setComentario] = useState('');
   const [conforme, setConforme] = useState(false);
   const [sending, setSending] = useState(false);
+  // Celebración al terminar (palomita, monto que cuenta y confeti) antes de ir a la siguiente pantalla.
+  const [fiesta, setFiesta] = useState<{ titulo: string; detalle: string; centavos: number | null } | null>(null);
 
   useEffect(() => {
     const list = tarjetas.data || [];
     if (!metodo && list.length) setMetodo((list.find((t) => t.predeterminada) || list[0]).id_metodo);
   }, [tarjetas.data, metodo]);
 
+  // Con pago en custodia solo falta cobrar la diferencia de los conceptos extra (el servidor la recalcula).
+  const custodia = s?.custodia?.estado === 'RETENIDO' ? s.custodia.monto : null;
+  const porPagar = restaMoney(s?.monto_total, custodia);
+  const requiereTarjeta = Number(porPagar) > 0;
+
   async function submit() {
-    if (!metodo) return;
+    if (requiereTarjeta && !metodo) return;
     setSending(true);
     try {
-      const r = await solicitudesApi.confirmar(id, { id_metodo: metodo, calificacion: estrellas || undefined, comentario: comentario.trim() || undefined }, key.get());
+      const r = await solicitudesApi.confirmar(id, { id_metodo: requiereTarjeta ? metodo : null, calificacion: estrellas || undefined, comentario: comentario.trim() || undefined }, key.get());
       key.reset();
       hapticSuccess();
-      toast.success(r.mensaje);
-      router.replace({ pathname: '/orden/[id]/comprobante', params: { id } });
+      const aCentavos = (v: string | null | undefined) => { const [i = '0', d = ''] = String(v || '0').split('.'); return Number(i) * 100 + Number((d + '00').slice(0, 2)); };
+      setFiesta({ titulo: '¡Servicio terminado!', detalle: r.mensaje, centavos: r.pago?.monto ? aCentavos(r.pago.monto) : null });
     } catch (e) {
       toast.error(errorMessage(e));
     } finally {
@@ -48,6 +56,9 @@ export default function Confirmar() {
     }
   }
 
+  if (fiesta) {
+    return <Celebration visible title={fiesta.titulo} detail={fiesta.detalle} amountCents={fiesta.centavos} onDone={() => router.replace({ pathname: '/orden/[id]/comprobante', params: { id } })} />;
+  }
   if (!s) return <Screen header={<AppBar title="Confirma y paga" />}>{loading ? <Skeleton height={300} /> : null}</Screen>;
   if (s.estado !== 'POR_CONFIRMAR') {
     return (
@@ -62,21 +73,33 @@ export default function Confirmar() {
 
   return (
     <Screen
-      header={<AppBar title="Confirma y paga" subtitle={s.folio} />}
+      header={<AppBar title={custodia && !requiereTarjeta ? 'Confirma el trabajo' : 'Confirma y paga'} subtitle={s.folio} />}
       footer={(
         <View style={styles.footer}>
-          <View style={styles.total}>
-            <Text variant="caption" tone="muted">Total a pagar</Text>
-            <Money value={s.monto_total} size="lg" />
-          </View>
-          <Button variant="accent" title="Enviar y finalizar" icon="check-circle" onPress={submit} loading={sending} disabled={!conforme || !metodo} size="lg" style={styles.flex} />
+          {custodia && !requiereTarjeta ? null : (
+            <View style={styles.total}>
+              <Text variant="caption" tone="muted">{custodia ? 'Por pagar ahora' : 'Total a pagar'}</Text>
+              <Money value={custodia ? porPagar : s.monto_total} size="lg" />
+            </View>
+          )}
+          <Button variant="accent" title={custodia ? 'Confirmar y liberar' : 'Enviar y finalizar'} icon="check-circle" onPress={submit} loading={sending} disabled={!conforme || (requiereTarjeta && !metodo)} size="lg" style={styles.flex} />
         </View>
       )}
     >
-      <Surface tint="peach">
-        <Text variant="title">Revisa que todo quedó bien</Text>
-        <Text variant="bodySm" tone="soft">El cobro se hace solo cuando confirmas. Si algo no quedó, repórtalo y no se te cobra mientras se resuelve.</Text>
-      </Surface>
+      <Text variant="headline">Revisa que todo quedó bien</Text>
+      <Text variant="body" tone="soft" style={styles.intro}>
+        {custodia
+          ? 'Al confirmar liberamos al técnico el pago en custodia. Si algo no quedó, repórtalo y el dinero se queda retenido.'
+          : 'El cobro se hace solo cuando confirmas. Si algo no quedó, repórtalo y no se te cobra.'}
+      </Text>
+      {custodia ? (
+        <View style={styles.pagado}>
+          <Icon name="lock" size={18} color={color.successInk} />
+          <Text variant="body" style={styles.flex}>
+            Ya pagaste <Text variant="body" weight="700">{formatMoney(custodia)}</Text> en custodia. {requiereTarjeta ? `Falta ${formatMoney(porPagar)} de lo que se agregó en el trabajo.` : 'No se te cobra nada más.'}
+          </Text>
+        </View>
+      ) : null}
 
       {s.evidencias?.length ? (
         <>
@@ -88,14 +111,14 @@ export default function Confirmar() {
       {s.tareas?.length ? <Text variant="bodySm" tone="muted" style={styles.gap}>{done} de {s.tareas.length} tareas de seguridad marcadas como hechas.</Text> : null}
 
       <SectionHeader title="Resumen" />
-      <QuoteCard cotizacion={s.cotizacion} extras={s.extras} total={s.monto_total} title="Conceptos" />
+      <QuoteCard cotizacion={s.cotizacion} extras={s.extras} total={s.monto_total} />
 
-      <SectionHeader title="Paga con" action="Agregar tarjeta" onAction={() => router.push('/tarjeta-nueva')} />
-      {tarjetas.loading ? <Skeleton height={72} /> : null}
-      {!tarjetas.loading && !list.length ? (
+      {requiereTarjeta ? <SectionHeader title="Paga con" action="Agregar tarjeta" onAction={() => router.push('/tarjeta-nueva')} /> : null}
+      {requiereTarjeta && tarjetas.loading ? <Skeleton height={72} /> : null}
+      {requiereTarjeta && !tarjetas.loading && !list.length ? (
         <Banner tone="warning" title="No tienes tarjetas guardadas" body="Agrega una tarjeta para pagar el servicio." action={<Button title="Agregar tarjeta" icon="plus" variant="text" onPress={() => router.push('/tarjeta-nueva')} />} />
       ) : null}
-      <View style={styles.cards} accessibilityRole="radiogroup">
+      <View style={[styles.cards, !requiereTarjeta && styles.hidden]} accessibilityRole="radiogroup">
         {list.map((t) => {
           const on = metodo === t.id_metodo;
           return (
@@ -121,7 +144,11 @@ export default function Confirmar() {
 
       <View style={styles.gap}>
         <Checkbox checked={conforme} onChange={setConforme}>
-          <Text variant="body">Confirmo que el trabajo quedó terminado y autorizo el cobro de este total.</Text>
+          <Text variant="body">
+            {custodia
+              ? `Confirmo que el trabajo quedó terminado y autorizo liberar el pago al técnico${requiereTarjeta ? ' y el cobro de la diferencia' : ''}.`
+              : 'Confirmo que el trabajo quedó terminado y autorizo el cobro de este total.'}
+          </Text>
         </Checkbox>
       </View>
       <Button title="Algo no quedó bien" icon="alert-triangle" variant="text" onPress={() => router.push({ pathname: '/orden/[id]/incidencia', params: { id } })} style={styles.center} />
@@ -132,12 +159,15 @@ export default function Confirmar() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   gap: { marginTop: space.md },
+  intro: { marginTop: space.xs },
+  pagado: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm, marginTop: space.md },
   center: { alignSelf: 'center', marginTop: space.sm },
   footer: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   total: { minWidth: 110 },
   cards: { gap: space.sm },
+  hidden: { display: 'none' },
   card: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg, borderRadius: radius.md, backgroundColor: color.surface, borderWidth: 2, borderColor: 'transparent' },
-  cardOn: { borderColor: color.accent, backgroundColor: color.accentSoft },
+  cardOn: { borderColor: color.accent },
   cardIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: color.brandSoft, alignItems: 'center', justifyContent: 'center' },
   radio: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: color.lineStrong, alignItems: 'center', justifyContent: 'center' },
   radioOn: { borderColor: color.accentPressed },

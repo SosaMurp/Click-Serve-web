@@ -65,6 +65,18 @@ test('si el nombre registrado es de otra persona se rechaza', async () => {
   const res = await verificar('frente', await fx.frente(), { registro: { ...fx.PERSONA, nombre: 'Juan', apellidos: 'López Ruiz' } });
   assert.equal(res.body.ok, false);
   assert.equal(check(res.body, 'nombre').ok, false);
+  assert.match(res.body.motivo, /no coinciden con tu nombre/);
+});
+
+test('el motivo dice qué corregir: la fecha de nacimiento', async () => {
+  const res = await verificar('frente', await fx.frente(), { registro: { ...fx.PERSONA, fecha_nacimiento: '1990-01-01' } });
+  assert.match(res.body.motivo, /no coinciden con tu fecha de nacimiento/);
+});
+
+test('un sexo impreso mal leído por el OCR no bloquea: manda el de la CURP', async () => {
+  const res = await verificar('frente', await fx.frente({ sexo: 'M' }));
+  assert.equal(res.body.ok, true, JSON.stringify(res.body.comprobaciones));
+  assert.equal(res.body.datos.sexo, 'H');
 });
 
 test('el reverso con su MRZ válida y el ticket del frente se acepta', async () => {

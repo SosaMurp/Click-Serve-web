@@ -201,16 +201,44 @@ test('documentos: carga de certificación queda en revisión', async () => {
   assert.equal(res.body.documento.estado, 'EN_REVISION');
 });
 
-test('cédula SEP: coincide el nombre → insignia; no coincide → 400', async () => {
+// La consulta a la SEP corre en segundo plano: esperamos a que la base deje de estar EN_PROCESO.
+async function esperarCedula(idUsuario) {
+  for (let i = 0; i < 100; i += 1) {
+    const { rows } = await getPool().query('SELECT estado_cedula, verificado_sep, folio_profesional FROM usuarios WHERE id_usuario = $1', [idUsuario]);
+    if (rows[0].estado_cedula !== 'EN_PROCESO') return rows[0];
+    await new Promise((r) => setTimeout(r, 20));
+  }
+  throw new Error('La validación de la cédula no terminó');
+}
+
+test('cédula SEP: coincide el nombre → folio profesional e insignia; no coincide → NO_VERIFICADA', async () => {
   const t = await as(2, { nombre: 'Roberto' });
   sepResponse = { items: [{ nombre: 'ROBERTO', paterno: 'PRUEBA', materno: 'X', titulo: 'INGENIERO ELECTRICISTA' }] };
   const ok = await api(server.url, 'POST', '/api/tecnicos/validar-cedula', { token: t.token, body: { cedula: '1234567' } });
-  assert.equal(ok.status, 200);
-  assert.equal(ok.body.verificado_sep, true);
+  assert.equal(ok.status, 202);
+  assert.equal(ok.body.estado, 'EN_PROCESO');
+  const verificada = await esperarCedula(t.id);
+  assert.equal(verificada.estado_cedula, 'VERIFICADA');
+  assert.equal(verificada.verificado_sep, true);
+  assert.equal(verificada.folio_profesional, `CSP-${String(t.id).padStart(6, '0')}`);
+
+  const otro = await as(2, { nombre: 'Roberto' });
   sepResponse = { items: [] };
-  const no = await api(server.url, 'POST', '/api/tecnicos/validar-cedula', { token: t.token, body: { cedula: '7654321' } });
-  assert.equal(no.status, 400);
-  assert.equal(no.body.code, 'SEP_NO_MATCH');
+  const no = await api(server.url, 'POST', '/api/tecnicos/validar-cedula', { token: otro.token, body: { cedula: '7654321' } });
+  assert.equal(no.status, 202);
+  const rechazada = await esperarCedula(otro.id);
+  assert.equal(rechazada.estado_cedula, 'NO_VERIFICADA');
+  assert.equal(rechazada.verificado_sep, false);
+  assert.equal(rechazada.folio_profesional, null);
+});
+
+test('cédula SEP: una cédula dada de baja no se verifica', async () => {
+  const t = await as(2, { nombre: 'Baja' });
+  sepResponse = { items: [{ nombre: 'BAJA', paterno: 'PRUEBA', materno: 'X', titulo: 'LICENCIADO', estatus: 'CANCELADA' }] };
+  await api(server.url, 'POST', '/api/tecnicos/validar-cedula', { token: t.token, body: { cedula: '1234568' } });
+  const row = await esperarCedula(t.id);
+  assert.equal(row.estado_cedula, 'NO_VERIFICADA');
+  assert.equal(row.verificado_sep, false);
 });
 
 test('cédula SEP: un técnico sin identidad verificada no puede validarla', async () => {
@@ -222,16 +250,16 @@ test('cédula SEP: un técnico sin identidad verificada no puede validarla', asy
   assert.equal(row.rows[0].verificado_sep, false);
 });
 
-test('cédula SEP: servicio caído responde 503 sin aprobar por formato', async () => {
+test('cédula SEP: servicio caído deja NO_DISPONIBLE sin aprobar por formato', async () => {
   const t = await as(2);
   const prev = process.env.SEP_URL;
   process.env.SEP_URL = 'http://127.0.0.1:1/cedula';
   try {
     const res = await api(server.url, 'POST', '/api/tecnicos/validar-cedula', { token: t.token, body: { cedula: '1234567' } });
-    assert.equal(res.status, 503);
-    assert.equal(res.body.code, 'SEP_UNAVAILABLE');
-    const row = await getPool().query('SELECT verificado_sep FROM usuarios WHERE id_usuario = $1', [t.id]);
-    assert.equal(row.rows[0].verificado_sep, false);
+    assert.equal(res.status, 202);
+    const row = await esperarCedula(t.id);
+    assert.equal(row.estado_cedula, 'NO_DISPONIBLE');
+    assert.equal(row.verificado_sep, false);
   } finally {
     process.env.SEP_URL = prev;
   }
@@ -245,6 +273,8 @@ test('ubicación del técnico en camino llega al detalle del cliente', async () 
     body: { categoria: 'PLOMERIA', descripcion: 'Fuga en el lavabo del baño principal.', direccion: 'Calle 8 #3, Centro', latitud: 17.958, longitud: -102.2 },
   })).body.solicitud;
   await api(server.url, 'POST', `/api/solicitudes/${s.id_solicitud}/aceptar`, { token: t.token });
+  // Equivale a que el cliente ya pagó el precio base en custodia (lo prueba solicitudes.test.js).
+  await getPool().query("UPDATE solicitudes_servicio SET estado = 'ASIGNADA', direccion_liberada = true WHERE id_solicitud = $1", [s.id_solicitud]);
   await api(server.url, 'PATCH', `/api/solicitudes/${s.id_solicitud}/estado`, { token: t.token, body: { estado: 'EN_CAMINO' } });
   await api(server.url, 'PUT', '/api/usuarios/ubicacion', { token: t.token, body: { latitud: 17.97, longitud: -102.21 } });
   const det = await api(server.url, 'GET', `/api/solicitudes/${s.id_solicitud}`, { token: c.token });

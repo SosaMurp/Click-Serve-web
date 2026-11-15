@@ -1,0 +1,9 @@
+# Lo que NO se sube a los servidores de EAS al compilar (el proyecto no usa git, así que EAS lee este archivo).
+node_modules/
+.expo/
+dist/
+web-build/
+*.log
+.env
+.env.*
+!.env.example

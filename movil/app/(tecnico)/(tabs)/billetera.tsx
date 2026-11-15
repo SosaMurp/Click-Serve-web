@@ -1,12 +1,11 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { AppBar, Banner, Button, color, EmptyState, HeroCard, Icon, ListItem, MetricBox, Screen, SectionHeader, Skeleton, space, Surface, Text } from '@/src/design';
+import { AppBar, Banner, Button, color, EmptyState, HeroCard, Icon, ListItem, Screen, SectionHeader, Skeleton, space, Surface, Text } from '@/src/design';
 import { billeteraApi } from '@/src/api/endpoints';
 import { useLoader } from '@/src/lib/useLoader';
 import { formatMoney } from '@/src/lib/format';
 import { useRealtime } from '@/src/state/realtime';
-import { useResumenTecnico } from '@/src/features/tech/hooks';
 import { MovimientoItem } from '@/src/features/tech/MovimientoItem';
 
 // RF-71-79: saldo, retiro, cuenta bancaria y movimientos recientes.
@@ -14,7 +13,6 @@ export default function Billetera() {
   const router = useRouter();
   const wallet = useLoader(() => billeteraApi.ver(), []);
   const movs = useLoader(() => billeteraApi.movimientos().then((r) => r.movimientos), []);
-  const resumen = useResumenTecnico();
   useRealtime('billetera.actualizada', () => { wallet.reload(); movs.reload(); });
   const w = wallet.data;
   const saldo = Number(w?.saldo_actual || 0);
@@ -24,7 +22,7 @@ export default function Billetera() {
     <Screen
       inTabs
       refreshing={wallet.refreshing}
-      onRefresh={() => { wallet.refresh(); movs.reload(); resumen.reload(); }}
+      onRefresh={() => { wallet.refresh(); movs.reload(); }}
       header={<AppBar title="Billetera" back={false} actions={[{ icon: 'help-circle', label: 'Ayuda sobre retiros', onPress: () => router.push({ pathname: '/ayuda/[slug]', params: { slug: 'retiros' } }) }]} />}
     >
       {wallet.loading ? <Skeleton height={200} /> : null}
@@ -42,7 +40,6 @@ export default function Billetera() {
               disabled={w.tiene_clabe && saldo < minimo}
               style={styles.flex}
             />
-            <Button title="Movimientos" icon="list" variant="tonal" onPress={() => router.push('/movimientos')} style={styles.flex} />
           </View>
         </HeroCard>
       ) : null}
@@ -50,15 +47,6 @@ export default function Billetera() {
       {w && !w.tiene_clabe ? (
         <Banner tone="warning" title="Registra tu cuenta bancaria" body="Necesitas una CLABE a tu nombre para retirar tu saldo." action={<Button title="Agregar CLABE" variant="text" onPress={() => router.push('/cuenta-bancaria')} />} style={styles.gap} />
       ) : null}
-
-      <Surface tint="sky" style={styles.gap}>
-        <Text variant="title">Esta semana</Text>
-        <View style={styles.metrics}>
-          <MetricBox value={resumen.data ? formatMoney(resumen.data.ganancias_semana) : '—'} label="Ganado" tone="brand" />
-          <MetricBox value={resumen.data?.servicios_semana ?? '—'} label="Servicios" />
-          <MetricBox value={resumen.data?.servicios_total ?? '—'} label="Total" />
-        </View>
-      </Surface>
 
       {w?.tiene_clabe ? (
         <>

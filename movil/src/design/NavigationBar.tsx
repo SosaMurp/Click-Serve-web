@@ -1,9 +1,10 @@
-import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, LayoutRectangle, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, IconName } from './Icon';
 import { Text } from './Text';
 import { color, space } from './tokens';
+import { usePressScale, useReduceMotion } from './motion';
 
 export type TabMeta = Record<string, { icon: IconName; iconActive: IconName; label: string }>;
 
@@ -14,17 +15,41 @@ export type TabBarProps = {
   navigation: { emit: (e: { type: 'tabPress'; target: string; canPreventDefault: true }) => { defaultPrevented: boolean }; navigate: (name: string, params?: object) => void };
 };
 
-// Barra inferior blanca: ícono de contorno fino con etiqueta; la pestaña activa va en naranja
-// (ícono #E25900, texto #B84A00 para que se lea con 4.5:1). `comfortable` agranda íconos y etiquetas
-// para las pantallas del cliente (CILIM).
+// Espacio que el contenido de una pestaña deja libre abajo para que la barra flotante no lo tape
+// (alto de la barra + su separación del borde). Screen con `inTabs` ya lo aplica.
+export const TAB_BAR_SPACE = 96;
+
+// Barra flotante en azul marino: la pestaña activa es una píldora naranja con ícono y nombre;
+// las demás, círculos con su ícono (el nombre va en la etiqueta de accesibilidad).
+// `comfortable` agranda los botones para las pantallas del cliente (CILIM).
 export function makeNavigationBar(meta: TabMeta, { comfortable = false }: { comfortable?: boolean } = {}) {
-  const iconSize = comfortable ? 26 : 22;
-  const labelStyle = comfortable ? styles.labelLg : null;
+  const size = comfortable ? 56 : 52;
+  const iconSize = comfortable ? 24 : 22;
   return function NavigationBar({ state, descriptors, navigation }: TabBarProps) {
     const insets = useSafeAreaInsets();
+    const reduce = useReduceMotion();
+    const [layouts, setLayouts] = useState<Record<number, LayoutRectangle>>({});
+    const x = useRef(new Animated.Value(0)).current;
+    const w = useRef(new Animated.Value(0)).current;
+    const placed = useRef(false);
+    const target = layouts[state.index];
+
+    useEffect(() => {
+      if (!target) return;
+      if (!placed.current || reduce) {
+        x.setValue(target.x); w.setValue(target.width); placed.current = true;
+        return;
+      }
+      Animated.parallel([
+        Animated.spring(x, { toValue: target.x, friction: 6, tension: 90, useNativeDriver: false }),
+        Animated.spring(w, { toValue: target.width, friction: 6, tension: 90, useNativeDriver: false }),
+      ]).start();
+    }, [target?.x, target?.width, reduce, x, w, target]);
+
     return (
-      <View style={[styles.bar, { paddingBottom: insets.bottom }]} accessibilityRole="tablist">
-        <View style={[styles.inner, comfortable && styles.innerLg]}>
+      <View pointerEvents="box-none" style={[styles.wrap, { bottom: Math.max(insets.bottom, space.md) + space.sm }]}>
+        <View style={styles.bar} accessibilityRole="tablist">
+          {target ? <Animated.View pointerEvents="none" style={[styles.slider, { left: x, width: w, height: size, borderRadius: size / 2 }]} /> : null}
           {state.routes.map((route, index) => {
             const m = meta[route.name];
             if (!m) return null;
@@ -35,24 +60,24 @@ export function makeNavigationBar(meta: TabMeta, { comfortable = false }: { comf
               if (!focused && !event.defaultPrevented) navigation.navigate(route.name, route.params);
             };
             return (
-              <Pressable
+              <TabItem
                 key={route.key}
+                onLayout={(l) => setLayouts((prev) => (prev[index]?.x === l.x && prev[index]?.width === l.width ? prev : { ...prev, [index]: l }))}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: focused }}
                 accessibilityLabel={badge ? `${m.label}, ${badge} pendientes` : m.label}
                 onPress={onPress}
-                style={styles.item}
+                size={size}
+                focused={focused}
               >
-                <View style={styles.pill}>
-                  <Icon name={focused ? m.iconActive : m.icon} size={iconSize} color={focused ? color.accentStrong : color.inkMuted} />
-                  {badge ? (
-                    <View style={styles.badge}>
-                      <Text variant="caption" tone="onColor" style={styles.badgeText}>{String(badge)}</Text>
-                    </View>
-                  ) : null}
-                </View>
-                <Text variant="caption" weight={focused ? '700' : '500'} style={[{ color: focused ? color.accentInk : color.inkMuted }, labelStyle]}>{m.label}</Text>
-              </Pressable>
+                <Icon name={focused ? m.iconActive : m.icon} size={iconSize} color={focused ? color.ink : color.inkOnColor} />
+                {focused ? <Text variant="label" weight="700" style={styles.labelOn} numberOfLines={1}>{m.label}</Text> : null}
+                {badge ? (
+                  <View style={styles.badge}>
+                    <Text variant="caption" style={styles.badgeText}>{String(badge)}</Text>
+                  </View>
+                ) : null}
+              </TabItem>
             );
           })}
         </View>
@@ -61,16 +86,52 @@ export function makeNavigationBar(meta: TabMeta, { comfortable = false }: { comf
   };
 }
 
+// Pestaña: se hunde al tocarla; la activa deja ver la píldora naranja de atrás.
+function TabItem({ children, onLayout, size, focused, ...a11y }: {
+  children: React.ReactNode;
+  onLayout: (l: LayoutRectangle) => void;
+  size: number;
+  focused: boolean;
+  accessibilityRole: 'tab';
+  accessibilityState: { selected: boolean };
+  accessibilityLabel: string;
+  onPress: () => void;
+}) {
+  const press = usePressScale(0.88);
+  return (
+    <Animated.View onLayout={(e) => onLayout(e.nativeEvent.layout)} style={{ transform: [{ scale: press.scale }] }}>
+      <Pressable
+        {...a11y}
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
+        style={({ pressed }) => [
+          styles.item,
+          { height: size, minWidth: size, borderRadius: size / 2 },
+          focused ? styles.itemOn : styles.itemOff,
+          pressed && !focused && styles.itemPressed,
+        ]}
+      >
+        {children}
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 const styles = StyleSheet.create({
-  bar: { backgroundColor: color.surface, alignItems: 'center', borderTopWidth: 1, borderTopColor: color.line },
-  inner: { flexDirection: 'row', width: '100%', maxWidth: 640, height: 68 },
-  innerLg: { height: 76 },
-  labelLg: { fontSize: 14, lineHeight: 18 },
-  item: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4 },
-  pill: { width: 48, height: 28, alignItems: 'center', justifyContent: 'center' },
-  badge: {
-    position: 'absolute', top: -2, right: 10, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: color.danger,
-    alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.xs,
+  wrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  bar: {
+    flexDirection: 'row', gap: 6, padding: 6, borderRadius: 999, backgroundColor: color.navy,
+    shadowColor: color.navy, shadowOpacity: 0.28, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 10,
   },
-  badgeText: { fontSize: 10, lineHeight: 12, fontWeight: '700' },
+  item: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm },
+  itemOn: { backgroundColor: 'transparent', paddingHorizontal: space.lg },
+  slider: { position: 'absolute', top: 6, backgroundColor: color.accent },
+  itemOff: { backgroundColor: 'rgba(255,255,255,0.10)' },
+  itemPressed: { backgroundColor: 'rgba(255,255,255,0.22)' },
+  labelOn: { color: color.ink },
+  badge: {
+    position: 'absolute', top: 4, right: 4, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: color.accent,
+    borderWidth: 2, borderColor: color.navy, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
+  },
+  badgeText: { fontSize: 10, lineHeight: 12, fontWeight: '800', color: color.ink },
 });

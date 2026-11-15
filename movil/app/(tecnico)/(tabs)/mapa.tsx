@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { AppBar, Button, color, elevation, Icon, radius, Screen, space, Surface, Text } from '@/src/design';
+import { AppBar, Button, color, elevation, Icon, radius, Screen, space, Surface, Text, TAB_BAR_SPACE, Ilustracion } from '@/src/design';
 import type { Solicitud } from '@/src/api/types';
 import { formatDistance, formatShortDate } from '@/src/lib/format';
 import { LZC_CENTER, quietLocation } from '@/src/lib/media';
@@ -61,8 +61,8 @@ export default function Mapa() {
 
         <View style={styles.overlay} pointerEvents="box-none">
           {!disponible ? (
-            <Surface style={styles.offline}>
-              <Icon name="moon" size={20} color={color.brandInk} />
+            <Surface card style={styles.offline}>
+              <Ilustracion nombre="luna" size={40} />
               <Text variant="subtitle" style={styles.flex}>Estás desconectado</Text>
               <Button title="Conectarme" onPress={() => setDisponible(true)} loading={cambiando} />
             </Surface>
@@ -104,12 +104,12 @@ export default function Mapa() {
                 </Pressable>
               ))}
             </ScrollView>
-          ) : (
-            <Surface style={styles.empty}>
+          ) : disponible ? (
+            <Surface card style={styles.empty}>
               <Text variant="subtitle">{lista.loading ? 'Buscando solicitudes…' : 'No hay solicitudes cerca'}</Text>
               <Text variant="caption" tone="muted">Las ubicaciones son aproximadas hasta que aceptas el trabajo.</Text>
             </Surface>
-          )}
+          ) : null}
         </View>
       </View>
     </Screen>
@@ -119,7 +119,8 @@ export default function Mapa() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   map: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, height: '100%', borderRadius: 0 },
-  overlay: { position: 'absolute', left: 0, right: 0, bottom: space.lg, gap: space.md },
+  // Por encima de la barra de navegación flotante.
+  overlay: { position: 'absolute', left: 0, right: 0, bottom: TAB_BAR_SPACE, gap: space.md },
   offline: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginHorizontal: space.lg },
   carousel: { gap: space.md, paddingHorizontal: space.lg },
   card: { backgroundColor: color.surface, borderRadius: radius.lg, padding: space.lg, gap: space.sm, borderWidth: 2, borderColor: 'transparent', ...elevation[2] },

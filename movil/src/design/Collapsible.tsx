@@ -28,7 +28,7 @@ export function Collapsible({ title, icon = 'more-horizontal', children, style, 
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  head: { minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, borderRadius: radius.lg, borderWidth: 1.5, borderColor: color.lineStrong, backgroundColor: color.surface },
+  head: { minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, borderRadius: radius.xl, backgroundColor: color.surface },
   pressed: { backgroundColor: color.surfaceSunk },
   body: { marginTop: space.md, gap: space.md },
 });

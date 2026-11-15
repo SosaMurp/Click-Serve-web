@@ -1,12 +1,10 @@
 import React from 'react';
 import { ProfileScreen } from '@/src/features/account/ProfileScreen';
 
-// Mi cuenta del cliente con el enfoque de CILIM: lo de uso diario en filas grandes y el resto
-// (notificaciones, descargar o borrar mis datos, términos) en "Más opciones".
+// Perfil del cliente: mismo diseño que el del técnico; solo cambian sus secciones propias.
 export default function Cuenta() {
   return (
     <ProfileScreen
-      simple
       sections={[
         {
           title: 'Tu cuenta',

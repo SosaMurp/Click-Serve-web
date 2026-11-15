@@ -8,6 +8,7 @@ const { sanitizeText } = require('../lib/sanitize');
 const realtime = require('../lib/realtime');
 const { sendPush } = require('../lib/push');
 const S = require('../services/solicitudes');
+const { marcarReembolso } = require('../services/custodia');
 const { todayMx } = require('../lib/dates');
 
 const router = express.Router();
@@ -128,12 +129,15 @@ async function applyResolution(tx, inc, row, accion, canceladoPor) {
       if (previousTech) {
         await tx.query('INSERT INTO solicitudes_descartadas (id_solicitud, id_tecnico) VALUES ($1, $2) ON CONFLICT DO NOTHING', [row.id_solicitud, previousTech]);
       }
+      // Lo pagado en custodia se devuelve: con otro técnico habrá otra cotización y otro pago.
+      await marcarReembolso(tx, row.id_solicitud);
     } else if (accion === 'CANCELAR') {
       await tx.query(
         `UPDATE solicitudes_servicio SET estado = 'CANCELADA', estado_previo = NULL, cancelado_por = $3,
            motivo_cancelacion = $1, estado_pago = 'NO_APLICA' WHERE id_solicitud = $2`,
         [`Cancelada sin cargo por la incidencia ${inc.folio}`, row.id_solicitud, canceladoPor]
       );
+      await marcarReembolso(tx, row.id_solicitud);
     } else if (row.estado === 'SUSPENDIDA') {
       await tx.query('UPDATE solicitudes_servicio SET estado = COALESCE(estado_previo, $2), estado_previo = NULL WHERE id_solicitud = $1', [row.id_solicitud, inc.estado_previo || 'ASIGNADA']);
     }
@@ -244,7 +248,9 @@ router.post('/api/solicitudes/:id/reprogramaciones', auth, async (req, res) => {
     const row = await S.findRow(req.params.id, tx, { lock: true });
     if (!participant(row, req.user)) throw new HttpError(404, 'NOT_FOUND', 'Solicitud no encontrada.');
     if (!row.id_tecnico) throw new HttpError(409, 'INVALID_STATE', 'Aún no hay técnico asignado; cambia la fecha desde los detalles de la solicitud.');
-    if (!RESCHEDULABLE.includes(row.estado)) throw new HttpError(409, 'INVALID_STATE', 'Solo se puede reprogramar antes de que el técnico llegue.');
+    // Precio base: mientras el cliente no lo paga (ESPERANDO_APROBACION sin llegada) también se puede mover la cita.
+    const esperandoBase = row.estado === 'ESPERANDO_APROBACION' && !row.fecha_llegada;
+    if (!RESCHEDULABLE.includes(row.estado) && !esperandoBase) throw new HttpError(409, 'INVALID_STATE', 'Solo se puede reprogramar antes de que el técnico llegue.');
     return { row, prop: await createProposal(tx, row, req.user.id_usuario, schedule) };
   });
   const to = otherParty(out.row, req.user.id_usuario);

@@ -7,7 +7,8 @@ function groupThousands(intPart: string): string {
   return intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
-export function formatMoney(value: string | number | null | undefined, opts: { currency?: boolean } = {}): string {
+// opts.entero: pesos sin centavos ("$1,500"), para precios cortos como "desde $1,500"; los centavos se truncan.
+export function formatMoney(value: string | number | null | undefined, opts: { currency?: boolean; entero?: boolean } = {}): string {
   if (value === null || value === undefined || value === '') return '—';
   const raw = String(value).trim();
   const negative = raw.startsWith('-');
@@ -15,7 +16,7 @@ export function formatMoney(value: string | number | null | undefined, opts: { c
   const [intPartRaw, decRaw = ''] = clean.split('.');
   const intPart = (intPartRaw || '0').replace(/^0+(?=\d)/, '');
   const dec = (decRaw + '00').slice(0, 2);
-  const out = `${negative ? '-' : ''}$${groupThousands(intPart)}.${dec}`;
+  const out = `${negative ? '-' : ''}$${groupThousands(intPart)}${opts.entero ? '' : `.${dec}`}`;
   return opts.currency ? `${out} MXN` : out;
 }
 
@@ -39,6 +40,22 @@ export function moneyPortion(value: string | null | undefined, part: 1 | 0.5): s
 // Vista previa de la suma de conceptos; el total oficial lo calcula el servidor.
 export function sumMoney(values: (string | null | undefined)[]): string {
   return fromCents(values.reduce((acc, v) => acc + toCents(v), 0));
+}
+
+// Vista previa de lo que falta por pagar al confirmar (total menos lo pagado en custodia), nunca negativo.
+// El cobro real lo calcula el servidor.
+export function restaMoney(total: string | null | undefined, pagado: string | null | undefined): string {
+  return fromCents(Math.max(0, toCents(total) - toCents(pagado)));
+}
+
+// Compara dos importes en centavos: negativo si a < b, 0 si son iguales, positivo si a > b.
+export function compareMoney(a: string | null | undefined, b: string | null | undefined): number {
+  return toCents(a) - toCents(b);
+}
+
+// Normaliza un importe del servidor ("1500.0000") a dos decimales ("1500.00"), sin flotantes.
+export function normalizeMoney(value: string | null | undefined): string {
+  return fromCents(toCents(value));
 }
 
 // Normaliza lo que la persona escribe ("1,160.5") a una cadena con dos decimales ("1160.50").

@@ -1,7 +1,8 @@
 const crypto = require('crypto');
 const { getPool } = require('../db/pool');
+const precioBase = require('./precioBase');
 const { signFileUrl, signRequestImageUrl } = require('../lib/files');
-const { haversineKm, etaMinutes } = require('../lib/geo');
+const { haversineKm, haversineSql, etaMinutes } = require('../lib/geo');
 const realtime = require('../lib/realtime');
 const { sendPush } = require('../lib/push');
 
@@ -64,13 +65,14 @@ function parseMoney(value) {
 }
 
 const BASE_SELECT = `
-  SELECT s.id_solicitud, s.folio, s.id_usuario, s.id_tecnico, s.id_tecnico_propuesto, s.propuesto_hasta,
-         s.categoria, cat.nombre AS categoria_nombre, s.descripcion, s.direccion, s.referencias,
+  SELECT s.id_solicitud, s.folio, s.id_usuario, s.id_tecnico, s.id_tecnico_propuesto, s.propuesto_hasta, s.modo_asignacion,
+         s.categoria, cat.nombre AS categoria_nombre, s.id_servicio, srv.nombre AS servicio_nombre, s.descripcion, s.direccion, s.referencias,
          to_char(s.fecha_preferida, 'YYYY-MM-DD') AS fecha_preferida, to_char(s.hora_preferida, 'HH24:MI') AS hora_preferida,
          s.estado, s.estado_previo, COALESCE(s.estado_pago, 'PENDIENTE') AS estado_pago, s.fecha_creacion,
          s.fecha_asignacion, s.fecha_llegada, s.fecha_finalizacion, to_char(s.garantia_hasta, 'YYYY-MM-DD') AS garantia_hasta,
-         s.monto_total, s.monto_cotizacion, s.detalles_cotizacion, s.cancelado_por, s.motivo_cancelacion,
-         s.alerta_sos, s.latitud, s.longitud,
+         s.monto_total, s.monto_cotizacion, s.precio_base, s.cargo_cancelacion, s.detalles_cotizacion, s.cancelado_por, s.motivo_cancelacion,
+         s.alerta_sos, s.latitud, s.longitud, COALESCE(s.direccion_liberada, false) AS direccion_liberada,
+         cus.monto AS custodia_monto, cus.estado AS custodia_estado,
          c.nombre AS cliente_nombre, c.apellido AS cliente_apellido, c.telefono AS cliente_telefono, c.foto_archivo AS cliente_foto,
          t.nombre AS tecnico_nombre, t.apellido AS tecnico_apellido, t.telefono AS tecnico_telefono,
          t.foto_archivo AS tecnico_foto, COALESCE(t.verificado_sep, false) AS tecnico_verificado_sep,
@@ -82,7 +84,11 @@ const BASE_SELECT = `
   JOIN usuarios c ON c.id_usuario = s.id_usuario
   LEFT JOIN usuarios t ON t.id_usuario = s.id_tecnico
   LEFT JOIN categorias_servicio cat ON cat.codigo = s.categoria
+  LEFT JOIN servicios_catalogo srv ON srv.id_servicio = s.id_servicio
   LEFT JOIN calificaciones_servicio cs ON cs.id_solicitud = s.id_solicitud
+  LEFT JOIN LATERAL (
+    SELECT k.monto, k.estado FROM custodias k WHERE k.id_solicitud = s.id_solicitud ORDER BY k.id_custodia DESC LIMIT 1
+  ) cus ON true
   LEFT JOIN LATERAL (
     SELECT ROUND(AVG(q.puntuacion_tecnico)::numeric, 1) AS calificacion,
            (SELECT COUNT(*)::int FROM solicitudes_servicio f WHERE f.id_tecnico = s.id_tecnico AND f.estado = 'FINALIZADA') AS trabajos
@@ -95,15 +101,19 @@ function zonaAproximada(direccion) {
 }
 
 // Vista de una solicitud según quién la consulta (RNF-03: PII del cliente solo para el técnico asignado).
+// Chat seguro: el técnico asignado ve la dirección exacta y los teléfonos solo después del pago en custodia.
 function shape(row, viewer, extra = {}) {
   const isClient = row.id_usuario === viewer.id_usuario;
   const isAssigned = row.id_tecnico != null && row.id_tecnico === viewer.id_usuario;
   const active = ACTIVE_STATES.includes(row.estado);
+  const liberada = row.direccion_liberada === true;
   const out = {
     id_solicitud: Number(row.id_solicitud),
     folio: row.folio,
     categoria: row.categoria,
     categoria_nombre: row.categoria_nombre || 'Servicio general',
+    id_servicio: row.id_servicio ?? null,
+    servicio_nombre: row.servicio_nombre ?? null,
     descripcion: row.descripcion,
     fecha_preferida: row.fecha_preferida,
     hora_preferida: row.hora_preferida,
@@ -117,6 +127,7 @@ function shape(row, viewer, extra = {}) {
     garantia_hasta: row.garantia_hasta,
     monto_total: row.monto_total,
     monto_cotizacion: row.monto_cotizacion,
+    precio_base: row.precio_base ?? null,
     cancelado_por: row.cancelado_por,
     motivo_cancelacion: row.motivo_cancelacion,
     alerta_sos: row.alerta_sos,
@@ -131,7 +142,18 @@ function shape(row, viewer, extra = {}) {
     ...extra,
   };
 
+  if (isClient) out.modo_asignacion = row.modo_asignacion || 'MANUAL';
+
   if (isClient || isAssigned) {
+    out.direccion_liberada = liberada;
+    out.custodia = row.custodia_estado ? { monto: row.custodia_monto, estado: row.custodia_estado } : null;
+    // Precio base: hasta cuándo puede pagar el cliente; cargo por visita si cancelara ahora; cargo ya cobrado.
+    out.pago_vence = precioBase.pagoVence(row);
+    if (isClient) out.cargo_si_cancela = precioBase.cargoCancelacion(row);
+    out.cargo_cancelacion = row.cargo_cancelacion ?? null;
+  }
+
+  if (isClient || (isAssigned && liberada)) {
     out.direccion = row.direccion;
     out.referencias = row.referencias;
     out.latitud = row.latitud == null ? null : Number(row.latitud);
@@ -145,7 +167,7 @@ function shape(row, viewer, extra = {}) {
   if (!isClient) {
     out.cliente_nombre = row.cliente_nombre;
     out.cliente_apellido = isAssigned ? row.cliente_apellido : `${String(row.cliente_apellido || '').charAt(0)}.`;
-    if (isAssigned && active) out.cliente_telefono = row.cliente_telefono;
+    // Política anti-evasión: los teléfonos nunca se comparten entre cliente y técnico; todo va por el chat de la app.
   }
 
   if (row.id_tecnico) {
@@ -157,7 +179,6 @@ function shape(row, viewer, extra = {}) {
       calificacion: row.tecnico_calificacion,
       trabajos: row.tecnico_trabajos,
       verificado_sep: row.tecnico_verificado_sep,
-      telefono: isClient && active ? row.tecnico_telefono : undefined,
     };
     // Compatibilidad con los nombres planos que usaba la app anterior.
     out.tecnico_nombre = row.tecnico_nombre;
@@ -233,6 +254,26 @@ async function detail(row, viewer, db = getPool()) {
 
   const cot = cotizacion.rows[0] || null;
   const isTech = row.id_tecnico === viewer.id_usuario;
+  // Último adicional rechazado (si es la cotización más reciente): su motivo y sus conceptos, para que el técnico
+  // sepa por qué y pueda ajustar otra cotización.
+  let ultimoRechazo = null;
+  if (isParticipant) {
+    const { rows: [ult] } = await db.query(
+      `SELECT id_cotizacion, estado, monto_total, motivo_rechazo, comentario_rechazo, fecha_respuesta
+       FROM cotizaciones_servicio WHERE id_solicitud = $1 ORDER BY id_cotizacion DESC LIMIT 1`,
+      [id]
+    );
+    if (ult?.estado === 'RECHAZADA' && ult.motivo_rechazo) {
+      const conceptosRechazo = await db.query(
+        'SELECT id_concepto, tipo, descripcion, monto, id_cotizacion FROM conceptos_cotizacion WHERE id_cotizacion = $1 ORDER BY id_concepto',
+        [ult.id_cotizacion]
+      );
+      ultimoRechazo = {
+        monto_total: ult.monto_total, motivo: ult.motivo_rechazo, comentario: ult.comentario_rechazo,
+        fecha: ult.fecha_respuesta, conceptos: conceptosRechazo.rows,
+      };
+    }
+  }
   return shape(row, viewer, {
     imagenes: imagenes.rows.map((r) => ({ id: r.id_imagen, url: signRequestImageUrl(r.id_imagen) })),
     cotizacion: cot && {
@@ -244,15 +285,26 @@ async function detail(row, viewer, db = getPool()) {
     evidencias: evidencias.rows.map((e) => ({ ...e, url: signFileUrl(e.id_archivo) })),
     reprogramacion: reprog.rows[0] ? { ...reprog.rows[0], propuesta_por_mi: reprog.rows[0].propuesta_por === viewer.id_usuario } : null,
     incidencia: incidencia.rows[0] || null,
+    ultimo_rechazo: ultimoRechazo,
     pago: pago.rows[0] ? { ...pago.rows[0], desglose: isTech ? pago.rows[0].desglose : undefined } : null,
   });
 }
+
+// Una solicitud nueva solo le aparece al técnico si está dentro del radio máximo (o si se le propuso a él).
+// Si la solicitud no trae coordenadas no se puede medir y se muestra; si el técnico no tiene ubicación, no.
+const EN_RADIO_DEL_TECNICO = `(
+  (s.id_tecnico_propuesto = $1 AND s.propuesto_hasta > NOW())
+  OR s.latitud IS NULL
+  OR EXISTS (SELECT 1 FROM usuarios yo WHERE yo.id_usuario = $1 AND yo.latitud IS NOT NULL
+             AND ${haversineSql('s.latitud', 's.longitud', 'yo.latitud', 'yo.longitud')}
+                 <= COALESCE((SELECT radio_maximo_km FROM configuracion_plataforma WHERE id = 1), 25)))`;
 
 // Filtros del panel del técnico ($1 = id del técnico), compartidos por la lista y el resumen.
 const TECH_WHERE = {
   nuevas: `s.estado = 'PENDIENTE'
     AND NOT EXISTS (SELECT 1 FROM solicitudes_descartadas d WHERE d.id_solicitud = s.id_solicitud AND d.id_tecnico = $1)
     AND (s.id_tecnico_propuesto IS NULL OR s.id_tecnico_propuesto = $1 OR s.propuesto_hasta < NOW())
+    AND ${EN_RADIO_DEL_TECNICO}
     AND (s.categoria IS NULL
          OR NOT EXISTS (SELECT 1 FROM especialidades_tecnico e WHERE e.id_usuario = $1 AND e.categoria IS NOT NULL)
          OR EXISTS (SELECT 1 FROM especialidades_tecnico e WHERE e.id_usuario = $1 AND e.categoria = s.categoria AND e.activa))`,

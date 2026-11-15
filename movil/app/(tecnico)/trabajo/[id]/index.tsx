@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  AppBar, Banner, Button, Checkbox, color, Divider, Icon, IconButton, ListItem, Money, radius, Screen, SectionHeader, Sheet, Skeleton, space, Steps, Surface, Text, TextField,
+  AppBar, Banner, Button, Checkbox, color, Divider, Icon, IconButton, ListItem, Money, radius, Screen, SectionHeader, Sheet, Skeleton, space, Surface, Text, TextField, StepsWindow,
 } from '@/src/design';
 import { errorMessage } from '@/src/api/client';
 import { solicitudesApi } from '@/src/api/endpoints';
 import type { Solicitud } from '@/src/api/types';
-import { STEPS, stepIndex, estadoInfo, isActive } from '@/src/lib/estado';
-import { formatDate, formatShortDate, formatTime12, parseMoneyInput } from '@/src/lib/format';
+import { STEPS, stepIndex, isActive } from '@/src/lib/estado';
+import { formatDate, formatDateTime, formatMoney, formatShortDate, formatTime12, parseMoneyInput } from '@/src/lib/format';
 import { hapticSuccess } from '@/src/lib/media';
 import { useOperationKey } from '@/src/lib/useOperationKey';
 import { useLocationBroadcast } from '@/src/state/availability';
@@ -20,6 +20,7 @@ import { SosButton } from '@/src/features/orders/SosButton';
 import { EvidenceFeed, Gallery } from '@/src/features/orders/Gallery';
 import { cancelOrder } from '@/src/features/orders/actions';
 import { useSolicitud } from '@/src/features/orders/hooks';
+import { motivoTexto } from '@/src/features/orders/RechazoAdicional';
 import { dialog } from '@/src/ui/dialog';
 import { toast } from '@/src/ui/toast';
 
@@ -63,12 +64,16 @@ export default function Trabajo() {
     );
   }
 
-  const info = estadoInfo(s.estado, 'tecnico');
   const active = isActive(s.estado);
   const home = s.latitud != null && s.longitud != null ? { lat: Number(s.latitud), lng: Number(s.longitud) } : null;
   const cliente = `${s.cliente_nombre || 'Cliente'} ${s.cliente_apellido || ''}`.trim();
   const tareas = s.tareas || [];
   const hechas = tareas.filter((t) => t.completada).length;
+  // Pago en custodia: sin pago no hay dirección exacta ni salida; con la custodia retenida se inicia el trabajo.
+  const liberada = s.direccion_liberada === true;
+  const pagada = s.custodia?.estado === 'RETENIDO';
+  const openChat = () => router.push({ pathname: '/chat/[id]', params: { id } });
+  const openQuote = () => router.push({ pathname: '/trabajo/[id]/cotizar', params: { id } });
 
   const navigate = () => {
     if (!home) return;
@@ -141,20 +146,30 @@ export default function Trabajo() {
             title={s.categoria_nombre}
             subtitle={s.folio}
             fallbackHref="/trabajos"
-            actions={active ? [
-              ...(s.cliente_telefono ? [{ icon: 'phone' as const, label: `Llamar a ${cliente}`, onPress: () => Linking.openURL(`tel:${s.cliente_telefono}`) }] : []),
-              { icon: 'message-circle', label: 'Chat con el cliente', onPress: () => router.push({ pathname: '/chat/[id]', params: { id } }) },
+            actions={active && liberada ? [
+              { icon: 'message-circle', label: 'Chat con el cliente', onPress: openChat },
             ] : []}
           />
         )}
       >
-        <OrderHero s={s} rol="tecnico" />
-        <Text variant="body" tone="soft" style={styles.hint}>{info.hint}</Text>
+        <OrderHero s={s} rol="tecnico">
+          <StepsWindow oscuro steps={STEPS} current={stepIndex(s.estado, s.estado_previo, pagada)} stopped={s.estado === 'CANCELADA' || s.estado === 'SUSPENDIDA'} />
+        </OrderHero>
         {s.alerta_sos ? <Banner tone="error" title="Alerta SOS activa" body="El equipo de seguridad fue notificado." style={styles.gap} /> : null}
         {s.reprogramacion ? <View style={styles.gap}><ReprogramCard r={s.reprogramacion} onChanged={reload} /></View> : null}
 
         {/* ───── Acción principal por estado ───── */}
-        {s.estado === 'ASIGNADA' ? (
+        {(s.estado === 'ASIGNADA' && !liberada) || (s.estado === 'ESPERANDO_APROBACION' && !pagada) ? (
+          <Surface tint="peach" style={styles.gap}>
+            <Text variant="title">Esperando el pago del precio base</Text>
+            {s.precio_base ? <Money value={s.precio_base} size="lg" /> : null}
+            <Text variant="bodySm" tone="soft">El cliente paga tu precio base en custodia para confirmar el servicio. En cuanto lo haga verás la dirección exacta, se abrirá el chat y podrás salir. Tu cobro queda asegurado.</Text>
+            {s.pago_vence ? <Text variant="bodySm" weight="600" style={styles.mt}>Si no paga antes del {formatDateTime(s.pago_vence)}, la orden se cancela sola y quedas libre para otros trabajos.</Text> : null}
+            <Text variant="caption" tone="muted" style={styles.mt}>¿Hace falta algo más? En el domicilio podrás cotizar un adicional desde la app.</Text>
+          </Surface>
+        ) : null}
+
+        {s.estado === 'ASIGNADA' && liberada ? (
           <Surface tint="sky" style={styles.gap}>
             <Text variant="title">¿Listo para salir?</Text>
             <Text variant="bodySm" tone="soft">Al avisar que vas en camino, el cliente verá tu ubicación en vivo.</Text>
@@ -172,16 +187,50 @@ export default function Trabajo() {
           </Surface>
         ) : null}
 
-        {s.estado === 'EN_SITIO' || s.estado === 'ESPERANDO_APROBACION' ? (
+        {s.estado === 'EN_SITIO' && pagada && s.ultimo_rechazo ? (
           <Surface tint="peach" style={styles.gap}>
-            <Text variant="title">{s.estado === 'EN_SITIO' ? 'Revisa la falla y cotiza' : 'Esperando que el cliente apruebe'}</Text>
-            <Text variant="bodySm" tone="soft">{s.estado === 'EN_SITIO' ? 'Desglosa mano de obra y materiales; el cliente la aprueba desde su app.' : 'Puedes reemplazar la cotización mientras no la apruebe.'}</Text>
-            <Button title={s.estado === 'EN_SITIO' ? 'Crear cotización' : 'Editar cotización'} icon="file-text" onPress={() => router.push({ pathname: '/trabajo/[id]/cotizar', params: { id } })} style={styles.mt} />
+            <View style={styles.live}>
+              <Icon name="x-circle" size={20} color={color.dangerInk} />
+              <Text variant="title" style={styles.flex}>El cliente rechazó tu adicional</Text>
+            </View>
+            <Text variant="bodySm" tone="soft" style={styles.mtSm}>Cotizaste el trabajo completo en <Text variant="bodySm" weight="700">{formatMoney(s.ultimo_rechazo.monto_total)}</Text>.</Text>
+            <View style={styles.motivo}>
+              <Text variant="caption" tone="muted">Motivo</Text>
+              <Text variant="subtitle">{motivoTexto(s.ultimo_rechazo.motivo)}</Text>
+              {s.ultimo_rechazo.comentario ? <Text variant="body" tone="soft">“{s.ultimo_rechazo.comentario}”</Text> : null}
+            </View>
+            <Text variant="bodySm" tone="soft" style={styles.mtSm}>
+              {s.ultimo_rechazo.motivo === 'PRECIO_ALTO'
+                ? 'Puedes mandarle otra cotización con un precio más bajo, o hacer solo el trabajo del precio base.'
+                : 'Puedes hacer solo el trabajo del precio base que ya pagó, o mandarle otra cotización.'}
+            </Text>
+            <Button title="Crear otra cotización" icon="file-plus" variant="filled" onPress={openQuote} full style={styles.mt} />
+          </Surface>
+        ) : null}
+
+        {s.estado === 'EN_SITIO' && pagada ? (
+          <Surface tint="sky" style={styles.gap}>
+            <Text variant="title">Revisa la falla</Text>
+            <Text variant="body" tone="soft">Si el precio base alcanza, inicia el trabajo. Si hace falta más, cotiza un adicional y el cliente paga la diferencia.</Text>
+            <Button title="Iniciar trabajo" icon="tool" variant="filled" onPress={() => run('iniciar', () => solicitudesApi.estado(id, 'EN_PROCESO'))} loading={busy === 'iniciar'} disabled={!!busy} full style={styles.mt} />
+            <Button title="Cotizar un adicional" icon="file-plus" variant="white" onPress={openQuote} full style={styles.mtSm} />
+          </Surface>
+        ) : null}
+
+        {s.estado === 'EN_SITIO' && !pagada ? (
+          <Banner tone="warning" title="Falta el pago del precio base" body="El cliente debe pagar el precio base en custodia antes de iniciar." style={styles.gap} />
+        ) : null}
+
+        {s.estado === 'ESPERANDO_APROBACION' && pagada ? (
+          <Surface tint="peach" style={styles.gap}>
+            <Text variant="title">Esperando que el cliente apruebe el adicional</Text>
+            <Text variant="bodySm" tone="soft">El cliente paga la diferencia en custodia desde su app. Puedes cambiar el adicional mientras no lo pague; si lo rechaza, haces el trabajo del precio base.</Text>
+            <Button title="Editar adicional" icon="file-text" onPress={openQuote} style={styles.mt} />
           </Surface>
         ) : null}
 
         {s.estado === 'POR_CONFIRMAR' ? (
-          <Banner tone="info" title="Esperando confirmación del cliente" body="Cuando confirme y pague, el dinero llegará a tu billetera con su desglose." style={styles.gap} />
+          <Banner tone="info" title="Esperando confirmación del cliente" body={pagada ? 'Cuando confirme, liberamos a tu billetera el pago que está en custodia, con su desglose.' : 'Cuando confirme y pague, el dinero llegará a tu billetera con su desglose.'} style={styles.gap} />
         ) : null}
 
         {s.estado === 'FINALIZADA' ? (
@@ -198,7 +247,14 @@ export default function Trabajo() {
         {s.estado === 'SUSPENDIDA' ? (
           <Banner tone="error" title="Orden en pausa por un reporte" body={`${s.incidencia?.folio || ''} ${s.incidencia?.descripcion || ''}`.trim() || 'El cliente abrió un reporte. Soporte te contactará.'} action={<Button title="Contactar a soporte" variant="text" onPress={() => router.push({ pathname: '/soporte/nuevo', params: { solicitud: id } })} />} style={styles.gap} />
         ) : null}
-        {s.estado === 'CANCELADA' ? <Banner tone="info" title="Servicio cancelado" body={s.motivo_cancelacion || undefined} style={styles.gap} /> : null}
+        {s.estado === 'CANCELADA' ? (
+          <Banner
+            tone="info"
+            title="Servicio cancelado"
+            body={[s.motivo_cancelacion, s.cargo_cancelacion ? `El cliente pagó ${formatMoney(s.cargo_cancelacion)} por tu visita; el neto ya está en tu billetera.` : null].filter(Boolean).join(' ') || undefined}
+            style={styles.gap}
+          />
+        ) : null}
 
         {/* ───── Trabajo en proceso ───── */}
         {s.estado === 'EN_PROCESO' ? (
@@ -251,8 +307,8 @@ export default function Trabajo() {
 
         {s.cotizacion && s.estado !== 'CANCELADA' ? (
           <>
-            <SectionHeader title={s.estado === 'ESPERANDO_APROBACION' ? 'Cotización enviada' : 'Cotización'} />
-            <QuoteCard cotizacion={s.cotizacion} extras={s.extras} total={s.monto_total} title="Conceptos" />
+            <SectionHeader title={s.estado === 'ESPERANDO_APROBACION' ? (pagada ? 'Adicional enviado' : 'Precio base') : 'Precio del servicio'} />
+            <QuoteCard cotizacion={s.cotizacion} extras={s.extras} total={s.monto_total} />
           </>
         ) : null}
 
@@ -261,6 +317,14 @@ export default function Trabajo() {
         <Surface>
           <Text variant="title">{cliente}</Text>
           {s.direccion ? <Text variant="body" tone="soft" style={styles.mtSm}>{s.direccion}{s.referencias ? `\n${s.referencias}` : ''}</Text> : null}
+          {!liberada && active ? (
+            <View style={styles.locked}>
+              <Icon name="lock" size={18} color={color.inkMuted} />
+              <Text variant="bodySm" tone="muted" style={styles.flex}>
+                Zona: {s.zona || 'Lázaro Cárdenas'}. La dirección exacta y el chat aparecen cuando el cliente paga el precio base.
+              </Text>
+            </View>
+          ) : null}
           <Text variant="bodySm" tone="muted" style={styles.mtSm}>
             {s.fecha_preferida ? `Cita: ${formatShortDate(s.fecha_preferida)}${s.hora_preferida ? ` · ${formatTime12(s.hora_preferida)}` : ''}` : 'Lo antes posible'}
           </Text>
@@ -272,7 +336,6 @@ export default function Trabajo() {
           {active ? (
             <View style={styles.row}>
               {home ? <Button title="Cómo llegar" icon="navigation" variant="tonal" onPress={navigate} style={styles.flex} /> : null}
-              {s.cliente_telefono ? <Button title="Llamar" icon="phone" variant="tonal" onPress={() => Linking.openURL(`tel:${s.cliente_telefono}`)} style={styles.flex} /> : null}
             </View>
           ) : null}
         </Surface>
@@ -283,8 +346,6 @@ export default function Trabajo() {
           {s.imagenes?.length ? <View style={styles.mt}><Gallery items={s.imagenes.map((im, i) => ({ url: im.url, label: `Foto ${i + 1}` }))} size={72} /></View> : null}
         </Surface>
 
-        <SectionHeader title="Avance" />
-        <Surface><Steps steps={STEPS} current={stepIndex(s.estado, s.estado_previo)} stopped={s.estado === 'CANCELADA' || s.estado === 'SUSPENDIDA'} /></Surface>
 
         {active ? (
           <>
@@ -319,10 +380,11 @@ export default function Trabajo() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  hint: { marginTop: space.md },
   gap: { marginTop: space.lg },
   mt: { marginTop: space.md },
   mtSm: { marginTop: space.xs },
+  motivo: { marginTop: space.md, paddingLeft: space.md, borderLeftWidth: 3, borderLeftColor: color.dangerInk, gap: 2 },
+  locked: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm, marginTop: space.sm },
   row: { flexDirection: 'row', gap: space.sm, marginTop: space.md, alignItems: 'center' },
   live: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   liveDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: color.success },

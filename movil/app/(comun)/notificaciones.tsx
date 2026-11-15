@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { AppBar, Banner, Divider, Screen, SectionHeader, space, Surface, SwitchRow, Button } from '@/src/design';
+import { AppBar, Divider, Text, Screen, SectionHeader, space, Surface, SwitchRow, Button } from '@/src/design';
 import { errorMessage } from '@/src/api/client';
 import { cuentaApi } from '@/src/api/endpoints';
 import type { User } from '@/src/api/types';
@@ -40,9 +40,9 @@ export default function Notificaciones() {
 
   return (
     <Screen header={<AppBar title="Notificaciones" />}>
-      <Banner tone="info" title="Las alertas de seguridad siempre llegan" body="Avisos de SOS, cambios de contraseña y nuevos inicios de sesión no se pueden desactivar." />
+      <Text variant="body" tone="soft">Los avisos de SOS, cambios de contraseña e inicios de sesión siempre llegan.</Text>
       <SectionHeader title="Canales" />
-      <Surface>
+      <Surface card>
         {CANALES.map((c, i) => (
           <React.Fragment key={c.key}>
             {i ? <Divider /> : null}
@@ -51,7 +51,7 @@ export default function Notificaciones() {
         ))}
       </Surface>
       <SectionHeader title="Novedades" />
-      <Surface>
+      <Surface card>
         <SwitchRow label="Promociones y novedades" description="Descuentos y nuevas funciones. Puedes darte de baja cuando quieras." value={value('promociones')} onChange={(v) => toggle('promociones', v)} />
       </Surface>
       {user?.rol === 'tecnico' ? (

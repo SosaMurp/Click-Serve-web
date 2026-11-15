@@ -8,12 +8,64 @@ import { errorMessage } from '@/src/api/client';
 import { pagosApi } from '@/src/api/endpoints';
 import { cardBrand, filterNameInput, formatCardNumber, isExpiryValid, luhn, normalizePersonName, onlyDigits } from '@/src/lib/validators';
 import { isSandboxPayments, tokenizeCard } from '@/src/lib/tokenizer';
+import { useLoader } from '@/src/lib/useLoader';
+import { agregarTarjetaStripe } from '@/src/features/payments/stripeCard';
 import { toast } from '@/src/ui/toast';
 
 type Field = 'number' | 'name' | 'expiry' | 'cvc';
 
-// RF-90/RNF-02: alta de tarjeta. Se tokeniza en el dispositivo y solo el token llega al backend.
+// RF-90/RNF-02: alta de tarjeta. Con Stripe, la tarjeta se captura en el formulario seguro de Stripe; sin
+// Stripe (pruebas o Conekta), se tokeniza en el dispositivo y solo el token llega al backend.
 export default function TarjetaNueva() {
+  const proveedor = useLoader(() => pagosApi.proveedor().then((r) => r.proveedor), []);
+  if (proveedor.loading && !proveedor.data) return <Screen header={<AppBar title="Agregar tarjeta" />}>{null}</Screen>;
+  if (proveedor.data === 'STRIPE') return <TarjetaStripe />;
+  return <TarjetaFormulario />;
+}
+
+function TarjetaStripe() {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+
+  async function continuar() {
+    setBusy(true);
+    try {
+      const r = await agregarTarjetaStripe();
+      if (r === 'ok') {
+        toast.success('Tarjeta guardada.');
+        goBack(router);
+      } else if (r === 'cancelada') {
+        toast.show('No se guardó ninguna tarjeta.');
+      }
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Screen
+      header={<AppBar title="Agregar tarjeta" />}
+      footer={<Button title="Continuar a Stripe" icon="lock" variant="accent" onPress={continuar} loading={busy} full size="xl" />}
+    >
+      <LinearGradient colors={[color.navy, color.navy]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.card}>
+        <Text variant="title" tone="onColor">Pago seguro con Stripe</Text>
+        <Text variant="number" tone="onColor" tabular style={styles.num}>•••• •••• •••• ••••</Text>
+        <Text variant="label" tone="onColor">Visa · Mastercard · American Express</Text>
+      </LinearGradient>
+      <View style={styles.gap}>
+        <Text variant="bodyLg">Vas a escribir los datos de tu tarjeta en la página segura de Stripe, nuestra pasarela de pagos. Al terminar regresas aquí y tu tarjeta queda guardada.</Text>
+        <Text variant="body" tone="soft" style={styles.gap}>Click & Serve nunca ve ni guarda el número completo ni el CVV: solo la marca y los últimos 4 dígitos. Tu banco puede pedirte confirmar la tarjeta.</Text>
+      </View>
+      {__DEV__ ? (
+        <Banner tone="warning" title="Modo de prueba de Stripe" body="Usa la tarjeta 4242 4242 4242 4242, cualquier fecha futura y cualquier CVV. Para probar un rechazo: 4000 0000 0000 0002." style={styles.gap} />
+      ) : null}
+    </Screen>
+  );
+}
+
+function TarjetaFormulario() {
   const router = useRouter();
   const [number, setNumber] = useState('');
   const [name, setName] = useState('');
@@ -61,7 +113,7 @@ export default function TarjetaNueva() {
         <Text variant="title" tone="onColor">{brand || 'Tarjeta'}</Text>
         <Text variant="number" tone="onColor" tabular style={styles.num}>{formatCardNumber(digits) || '•••• •••• •••• ••••'}</Text>
         <View style={styles.cardRow}>
-          <Text variant="label" tone="onColor" numberOfLines={1} style={styles.flex}>{name || 'NOMBRE DEL TITULAR'}</Text>
+          <Text variant="label" tone="onColor" numberOfLines={1} style={styles.flex}>{name || 'Nombre del titular'}</Text>
           <Text variant="label" tone="onColor" tabular>{expiry || 'MM/AA'}</Text>
         </View>
       </LinearGradient>

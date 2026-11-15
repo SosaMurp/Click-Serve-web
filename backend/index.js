@@ -4,13 +4,22 @@ const { migrate } = require('./src/db/migrate');
 const { createApp } = require('./src/app');
 const realtime = require('./src/lib/realtime');
 const { getPool, closePool } = require('./src/db/pool');
+const { barrerAsignaciones } = require('./src/services/asignacion');
+const { vencerPreciosBase } = require('./src/services/precioBase');
+const { procesarReembolsos } = require('./src/services/stripe');
 
 // RNF-34: un técnico sin latido en 5 minutos deja de figurar como disponible.
+// En el mismo barrido, la búsqueda automática pasa al siguiente técnico más cercano si la propuesta venció.
 function startAvailabilitySweep() {
   const timer = setInterval(() => {
     getPool()
       .query("UPDATE usuarios SET disponible = false WHERE disponible AND id_rol = 2 AND (ultimo_latido IS NULL OR ultimo_latido < NOW() - INTERVAL '5 minutes')")
       .catch((error) => console.error('No se pudo actualizar la disponibilidad:', error.message));
+    barrerAsignaciones().catch((error) => console.error('No se pudo revisar las asignaciones automáticas:', error.message));
+    // Precio base: las órdenes que no se pagaron a tiempo se cancelan solas y el técnico queda libre.
+    vencerPreciosBase().catch((error) => console.error('No se pudo revisar los pagos vencidos del precio base:', error.message));
+    // Stripe: las custodias por devolver (cancelaciones, incidencias) se reembolsan a la tarjeta.
+    procesarReembolsos().catch((error) => console.error('No se pudieron procesar los reembolsos de Stripe:', error.message));
   }, 60 * 1000);
   timer.unref();
 }

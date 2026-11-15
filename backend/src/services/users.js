@@ -6,7 +6,7 @@ const { computeApproved } = require('../middleware/auth');
 const USER_COLUMNS = `id_usuario, nombre, apellido, telefono, correo, fecha_nacimiento, id_rol, contrasena,
   estado_cuenta, identidad_verificada, verificado_sep, biometria_estado, version_sesion, "2FA_Activo",
   totp_secreto, disponible, preferencias, foto_archivo, foto_perfil, anonimizado, fecha_registro, bio,
-  consentimiento_privacidad`;
+  consentimiento_privacidad, estado_cedula, folio_profesional, suspendido_hasta, baneado`;
 
 async function findUserByEmail(email, db = getPool()) {
   const { rows } = await db.query(`SELECT ${USER_COLUMNS} FROM usuarios WHERE correo = $1`, [String(email || '').trim().toLowerCase()]);
@@ -37,6 +37,10 @@ function publicUser(row) {
     aprobado,
     identidad_verificada: row.identidad_verificada === true,
     verificado_sep: row.verificado_sep === true,
+    estado_cedula: row.estado_cedula || null,
+    folio_profesional: row.folio_profesional || null,
+    // Escala de sanciones: suspensión temporal vigente (nivel 2 o 3); null si no hay.
+    suspendido_hasta: row.suspendido_hasta && new Date(row.suspendido_hasta) > new Date() ? new Date(row.suspendido_hasta).toISOString() : null,
     biometria_estado: row.biometria_estado || 'pendiente',
     '2FA_Activo': row['2FA_Activo'] === true || Boolean(row.totp_secreto),
     disponible: row.disponible === true,

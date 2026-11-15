@@ -7,7 +7,7 @@ import { Platform } from 'react-native';
 // El naranja de marca (#FF6B00) da 2.9:1 con texto blanco: los botones naranjas usan #E25900 (3.7:1)
 // con la etiqueta en negrita y mayúsculas, y los enlaces naranjas el tono de texto #B84A00 (5.2:1).
 export const color = {
-  ground: '#FFFFFF',
+  ground: '#F4F5F8',
   groundAlt: '#F7F8F9',
   surface: '#FFFFFF',
   surfaceSunk: '#F7F8F9',
@@ -91,10 +91,10 @@ export const type = {
   body: { fontFamily: font.body, fontSize: 16, lineHeight: 24 },
   bodySm: { fontFamily: font.body, fontSize: 14, lineHeight: 20 },
   label: { fontFamily: font.bodySemibold, fontSize: 15, lineHeight: 20 },
-  button: { fontFamily: font.bodyBold, fontSize: 15, lineHeight: 20, letterSpacing: 0.6, textTransform: 'uppercase' as const },
+  button: { fontFamily: font.bodyBold, fontSize: 16, lineHeight: 20 },
   caption: { fontFamily: font.bodyMedium, fontSize: 12, lineHeight: 16 },
   // Etiquetas de campo y de sección: MAYÚSCULAS pequeñas en negrita (CORREO ELECTRÓNICO).
-  overline: { fontFamily: font.bodyBold, fontSize: 12, lineHeight: 16, letterSpacing: 0.6, textTransform: 'uppercase' as const },
+  overline: { fontFamily: font.bodySemibold, fontSize: 13, lineHeight: 18 },
 } as const;
 
 export type TypeVariant = keyof typeof type;

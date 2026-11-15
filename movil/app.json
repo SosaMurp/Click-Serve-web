@@ -20,7 +20,11 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Permitir que Click & Serve use tu ubicación para ubicar el servicio y mostrar técnicos cercanos."
+          "locationWhenInUsePermission": "Permitir que Click & Serve use tu ubicación para ubicar el servicio y mostrar técnicos cercanos.",
+          "locationAlwaysAndWhenInUsePermission": "Permitir que Click & Serve comparta tu ubicación con el cliente mientras vas en camino a un servicio, aunque la app esté en segundo plano.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ],
       "expo-secure-store",
@@ -47,7 +51,10 @@
       "permissions": [
         "android.permission.CAMERA",
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION"
       ],
       "package": "com.gallo122.clickservemovil"
     },

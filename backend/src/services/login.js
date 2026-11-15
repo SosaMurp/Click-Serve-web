@@ -5,12 +5,18 @@ const { audit } = require('../lib/audit');
 const { fail } = require('../lib/http');
 const { sendCode } = require('../lib/mailer');
 const { publicUser, createSession } = require('./users');
+const { MENSAJES: MENSAJES_SANCION } = require('./sanciones');
 
 const newCode = () => String(crypto.randomInt(0, 1000000)).padStart(6, '0');
 
 // Cierre común de un inicio de sesión ya autenticado (contraseña, Google o Apple):
 // si la cuenta tiene 2FA se crea el reto; si no, se abre la sesión.
 async function finishLogin(req, res, user) {
+  // Escala de sanciones, nivel 4: baneo definitivo.
+  if (user.baneado === true) {
+    audit(req, 'LOGIN_BLOQUEADO', 'usuario', user.id_usuario, { baneado: true });
+    return fail(res, 403, 'ACCOUNT_BANNED', MENSAJES_SANCION[4]);
+  }
   // Una cuenta bloqueada desde el panel de administrador (RF-32, RF-41) no abre sesión.
   if (String(user.estado_cuenta || '').toUpperCase() === 'SUSPENDIDO') {
     audit(req, 'LOGIN_BLOQUEADO', 'usuario', user.id_usuario);

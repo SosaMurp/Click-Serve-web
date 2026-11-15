@@ -49,6 +49,8 @@ function createApp() {
   app.set('trust proxy', !trust ? 'loopback' : /^\d+$/.test(trust) ? Number(trust) : trust);
   app.use(compression());
   app.use(cors(corsOptions()));
+  // Webhook de Stripe: necesita el cuerpo crudo para verificar la firma, así que va antes del JSON.
+  app.post('/api/stripe/webhook', express.raw({ type: '*/*', limit: '1mb' }), require('./routes/stripe').webhook);
   app.use(bodyParsers);
   app.use(securityHeaders);
 
@@ -64,7 +66,9 @@ function createApp() {
   app.use(require('./routes/solicitudes'));
   app.use(require('./routes/incidencias'));
   app.use(require('./routes/pagos'));
+  app.use(require('./routes/stripe'));
   app.use(require('./routes/tecnico'));
+  app.use(require('./routes/chatDirecto'));
   app.use(require('./routes/soporte'));
   app.use(require('./routes/direcciones'));
   app.use(require('./routes/biometria'));
@@ -72,6 +76,9 @@ function createApp() {
   app.use(require('./routes/panel'));
   app.use(require('./routes/reportes'));
   app.use(require('./routes/liquidaciones'));
+  app.use(require('./routes/custodias'));
+  app.use(require('./routes/sanciones'));
+  app.use(require('./routes/catalogo'));
   app.use(require('./routes/comunicados'));
 
   app.use('/api', notFound);

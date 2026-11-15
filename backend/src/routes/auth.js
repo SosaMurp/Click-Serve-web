@@ -203,13 +203,15 @@ router.post('/api/register', registerLimiter, registroUpload, async (req, res) =
   }
 
   // RF-25: la INE debe venir verificada por POST /api/ine/verificar: un ticket por lado, ligado a la misma
-  // imagen que se sube, a la misma CURP y a los mismos nombre y fecha de nacimiento del registro.
+  // imagen que se sube, al mismo documento (CURP, o número del documento con Didit) y a los mismos nombre y
+  // fecha de nacimiento del registro. Los tickets anteriores solo traen la CURP.
   const persona = registroKey({ nombre, apellidos: apellido, fecha_nacimiento: fecha });
   const tFrente = readTicket(b.ticket_ine_frente);
   const tReverso = readTicket(b.ticket_ine_reverso);
+  const documento = (t) => t?.documento || t?.curp;
   const ineOk = tFrente && tReverso && tFrente.lado === 'frente' && tReverso.lado === 'reverso'
     && tFrente.hash === sha256(files.INE_FRENTE.buffer) && tReverso.hash === sha256(files.INE_REVERSO.buffer)
-    && tFrente.curp && tFrente.curp === tReverso.curp && tFrente.persona === persona && tReverso.persona === persona;
+    && documento(tFrente) && documento(tFrente) === documento(tReverso) && tFrente.persona === persona && tReverso.persona === persona;
   if (!ineOk) {
     return fail(res, 400, 'INE_NOT_VERIFIED', 'Toma de nuevo las fotos de tu credencial: necesitamos verificarla antes de crear tu cuenta.');
   }
@@ -232,8 +234,8 @@ router.post('/api/register', registerLimiter, registroUpload, async (req, res) =
       }
       for (const t of [tFrente, tReverso]) {
         await db.query(
-          'INSERT INTO verificaciones_ine (id_usuario, lado, curp, comprobaciones, hash_imagen) VALUES ($1, $2, $3, $4::jsonb, $5)',
-          [user.id_usuario, t.lado, t.curp, JSON.stringify(t.comprobaciones || []), t.hash]
+          'INSERT INTO verificaciones_ine (id_usuario, lado, curp, comprobaciones, hash_imagen, proveedor) VALUES ($1, $2, $3, $4::jsonb, $5, $6)',
+          [user.id_usuario, t.lado, t.curp || null, JSON.stringify(t.comprobaciones || []), t.hash, t.proveedor || 'propio']
         );
       }
       const code = await issueCode(db, user.id_usuario, 'registro');

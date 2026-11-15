@@ -56,7 +56,7 @@ export const ARTICLES: Article[] = [
     slug: 'tarjetas', topic: 'pagos', title: '¿Es seguro guardar mi tarjeta?',
     summary: 'La tarjeta se cifra en tu teléfono; nunca vemos el número completo.',
     body: [
-      'Al agregar una tarjeta, sus datos se envían cifrados directamente al procesador de pagos (Conekta) y nosotros solo guardamos un token, la marca y los últimos 4 dígitos.',
+      'Al agregar una tarjeta, sus datos se envían cifrados directamente al procesador de pagos (Stripe) y nosotros solo guardamos una referencia, la marca y los últimos 4 dígitos.',
       'El código de seguridad (CVV) nunca se guarda. Puedes eliminar una tarjeta en cualquier momento desde Perfil › Métodos de pago.',
     ],
   },
