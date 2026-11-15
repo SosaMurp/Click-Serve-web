@@ -61,13 +61,8 @@ test('el dashboard cuenta con los datos de la app', async () => {
   assert.equal(stats.body.servicios_completados_mes, 1);
 
   const mes = await api(server.url, 'GET', '/api/admin/dashboard/servicios-mes', { token: admin.token });
-  assert.equal(mes.body.puntos.length, 30);
+  assert.equal(mes.body.puntos.length, 30); // sin rango: últimos 30 días
   assert.equal(mes.body.total_completados, 1);
-
-  const recientes = await api(server.url, 'GET', '/api/admin/dashboard/recent-services?limit=5', { token: admin.token });
-  assert.equal(recientes.body.servicios.length, 2);
-  assert.ok(recientes.body.servicios.every((s) => ['En Curso', 'Completado'].includes(s.estatus)));
-  assert.equal(recientes.body.servicios[0].titulo, 'Plomería');
 
   const actividad = await api(server.url, 'GET', '/api/admin/dashboard/actividad', { token: admin.token });
   assert.ok(actividad.body.items.length >= 3);
@@ -114,11 +109,11 @@ test('directorio: filtrar, suspender, reactivar, exportar, coadmin y baja con co
   assert.equal(exp.body.expediente_completo.usuario.id_usuario, tecnico.id);
   assert.equal(exp.body.expediente_completo.usuario.contrasena, undefined);
 
-  const debil = await api(server.url, 'POST', '/api/admin/co-admins', { token: admin.token, body: { nombre: 'Co', apellidos: 'Admin', email: 'co@prueba.test', password: '123' } });
-  assert.equal(debil.status, 400);
-  const co = await api(server.url, 'POST', '/api/admin/co-admins', { token: admin.token, body: { nombre: 'Co', apellidos: 'Admin', email: 'co@prueba.test', password: 'Prueba#2026' } });
+  // El coadministrador se da de alta sin contraseña: el sistema le envía una temporal por correo.
+  const co = await api(server.url, 'POST', '/api/admin/co-admins', { token: admin.token, body: { nombre: 'Co', apellidos: 'Admin', email: 'co@prueba.test' } });
   assert.equal(co.status, 201);
-  assert.equal((await api(server.url, 'POST', '/api/login-admin', { body: { email: 'co@prueba.test', password: 'Prueba#2026' } })).status, 200);
+  const temporalCo = outbox.filter((m) => m.to === 'co@prueba.test').at(-1).code;
+  assert.equal((await api(server.url, 'POST', '/api/login-admin', { body: { email: 'co@prueba.test', password: temporalCo } })).status, 200);
 
   const sinClave = await api(server.url, 'DELETE', `/api/admin/users/${tecnico.id}`, { token: admin.token, body: {} });
   assert.equal(sinClave.status, 403);
@@ -243,4 +238,226 @@ test('a un técnico en revisión la lista de nuevas le sale vacía', async () =>
   assert.equal(res.status, 200);
   assert.equal(res.body.solicitudes.length, 0);
   assert.equal(res.body.contadores.nuevas, 0);
+});
+
+test('el dashboard filtra por el rango de fechas que elige el administrador', async () => {
+  const admin = await as(3);
+  const hoy = require('../src/lib/dates').todayMx();
+  const q = (ruta, qs) => api(server.url, 'GET', `/api/admin/dashboard/${ruta}${qs}`, { token: admin.token });
+
+  // Rango de un solo día = hoy: una sola barra en la gráfica
+  const dia = await q('servicios-mes', `?desde=${hoy}&hasta=${hoy}`);
+  assert.equal(dia.status, 200);
+  assert.equal(dia.body.puntos.length, 1);
+  assert.equal(dia.body.puntos[0].fecha, hoy);
+
+  // Un rango en el pasado no incluye lo creado hoy
+  const pasado = await q('servicios-mes', '?desde=2020-01-01&hasta=2020-01-31');
+  assert.equal(pasado.body.puntos.length, 31);
+  assert.equal(pasado.body.total_completados, 0);
+  const statsPasado = await q('stats', '?desde=2020-01-01&hasta=2020-01-31');
+  assert.equal(statsPasado.body.servicios_completados_periodo, 0);
+  assert.equal(Number(statsPasado.body.ingresos_periodo), 0);
+  assert.deepEqual(statsPasado.body.periodo, { desde: '2020-01-01', hasta: '2020-01-31' });
+  assert.deepEqual((await q('especialidades', '?desde=2020-01-01&hasta=2020-01-31')).body, []);
+  assert.deepEqual((await q('tecnicos-destacados', '?desde=2020-01-01&hasta=2020-01-31')).body.tecnicos, []);
+  assert.deepEqual((await q('actividad', '?desde=2020-01-01&hasta=2020-01-31')).body.items, []);
+
+  // Las filas de actividad traen tipo e id para poder abrirlas
+  const feed = await q('actividad', '');
+  assert.ok(feed.body.items.every((i) => ['servicio', 'tecnico', 'alerta'].includes(i.tipo) && i.id != null));
+});
+
+test('el dashboard rechaza rangos de fechas inválidos', async () => {
+  const admin = await as(3);
+  const q = (qs) => api(server.url, 'GET', `/api/admin/dashboard/stats${qs}`, { token: admin.token });
+  assert.equal((await q('?desde=2026-02-30&hasta=2026-03-01')).status, 400);
+  assert.equal((await q('?desde=ayer&hasta=hoy')).status, 400);
+  assert.equal((await q('?desde=2026-03-10&hasta=2026-03-01')).status, 400);
+  assert.equal((await q('?desde=2024-01-01&hasta=2026-01-01')).status, 400);
+  assert.equal((await q('?desde=2026-03-01')).status, 400);
+});
+
+test('el centro de actividad pagina, filtra por tipo e incluye retiros y tickets', async () => {
+  const admin = await as(3);
+  const cliente = await createUser({ rol: 1 });
+  const tecnico = await createUser({ rol: 2 });
+  for (let i = 0; i < 3; i += 1) await solicitud(cliente.id, tecnico.id, 'EN_PROCESO');
+  const { rows: [w] } = await getPool().query('INSERT INTO billetera_tecnico (id_usuario, saldo_actual) VALUES ($1, 0) RETURNING id_billetera', [tecnico.id]);
+  await getPool().query(
+    "INSERT INTO transacciones (id_billetera, monto, tipo, estado, folio, concepto) VALUES ($1, 350, 'RETIRO', 'EN_PROCESO', 'TRX-ACT1', 'RETIRO')", [w.id_billetera]);
+  await getPool().query("INSERT INTO soporte_tickets (folio, id_usuario, asunto, prioridad) VALUES ('TCK-ACT1', $1, 'No puedo pagar', 'ALTA')", [cliente.id]);
+  const q = (qs) => api(server.url, 'GET', `/api/admin/dashboard/actividad${qs}`, { token: admin.token });
+
+  const p1 = await q('?tipo=servicios&limite=2');
+  assert.equal(p1.body.items.length, 2);
+  assert.equal(p1.body.hay_mas, true);
+  assert.ok(p1.body.items.every((i) => i.tipo === 'servicio'));
+  const p2 = await q('?tipo=servicios&limite=2&pagina=2');
+  assert.ok(p2.body.items.length >= 1);
+  assert.ok(!p2.body.items.some((i) => p1.body.items.some((x) => x.id === i.id)), 'las páginas no se repiten');
+
+  const retiros = await q('?tipo=finanzas');
+  assert.equal(retiros.body.items.length, 1);
+  assert.match(retiros.body.items[0].descripcion, /Retiro por autorizar: \$350\.00 \(TRX-ACT1\)/);
+  const tickets = await q('?tipo=soporte');
+  assert.equal(tickets.body.items[0].tipo, 'ticket');
+  assert.equal(tickets.body.items[0].urgente, true);
+
+  const todo = await q('?limite=50');
+  assert.ok(['servicio', 'tecnico', 'retiro', 'ticket'].every((t) => todo.body.items.some((i) => i.tipo === t)));
+  assert.equal((await q('?tipo=otra')).status, 400);
+
+  const pend = await api(server.url, 'GET', '/api/admin/dashboard/pendientes', { token: admin.token });
+  assert.equal(pend.status, 200);
+  assert.equal(pend.body.retiros, 1);
+  assert.equal(pend.body.tickets, 1);
+  assert.ok(pend.body.validaciones >= 0 && pend.body.incidencias >= 0);
+});
+
+test('la lista de servicios filtra por estado, busca y pagina, con conteos por estado', async () => {
+  const admin = await as(3);
+  const cliente = await createUser({ rol: 1, nombre: 'Ximena' });
+  const tecnico = await createUser({ rol: 2, nombre: 'Rogelio' });
+  const a = await solicitud(cliente.id, tecnico.id, 'FINALIZADA');
+  await solicitud(cliente.id, tecnico.id, 'CANCELADA');
+  await solicitud(cliente.id, tecnico.id, 'EN_CAMINO');
+  const q = (qs) => api(server.url, 'GET', `/api/admin/servicios${qs}`, { token: admin.token });
+
+  const todos = await q('?q=Ximena');
+  assert.equal(todos.status, 200);
+  assert.equal(todos.body.total, 3);
+  assert.deepEqual([todos.body.conteos.completado, todos.body.conteos.cancelado, todos.body.conteos.en_curso, todos.body.conteos.pendiente], [1, 1, 1, 0]);
+  assert.ok(todos.body.servicios.every((s) => s.cliente_nombre === 'Ximena'));
+
+  const fin = await q('?q=Ximena&estado=completado');
+  assert.equal(fin.body.servicios.length, 1);
+  assert.equal(fin.body.servicios[0].id_servicio, Number(a));
+  assert.equal(fin.body.conteos.todos, 3, 'los conteos no cambian con el filtro de estado');
+
+  const pag = await q('?q=Rogelio&limite=2');
+  assert.equal(pag.body.servicios.length, 2);
+  assert.equal(pag.body.paginas, 2);
+  assert.equal((await q('?q=Rogelio&limite=2&pagina=2')).body.servicios.length, 1);
+  assert.equal((await q('?q=zzzzzz')).body.total, 0);
+  assert.equal((await q('?q=%25%25')).body.total, 0, 'los comodines de LIKE se buscan como texto');
+  assert.equal((await q('?estado=raro')).status, 400);
+  assert.equal((await q('?desde=2020-01-01&hasta=2020-01-31&q=Ximena')).body.total, 0);
+});
+
+test('el directorio entrega métricas distintas por rol: técnicos (calificación), clientes (servicios) y última conexión', async () => {
+  const admin = await as(3);
+  const cliente = await createUser({ rol: 1, nombre: 'Berenice' });
+  const tecnico = await createUser({ rol: 2 });
+  await solicitud(cliente.id, tecnico.id, 'FINALIZADA');
+  await solicitud(cliente.id, tecnico.id, 'CANCELADA');
+  const lista = async (rol) => (await api(server.url, 'GET', `/api/admin/users?role=${rol}`, { token: admin.token })).body;
+
+  const clientes = await lista(1);
+  const ella = clientes.find((u) => u.id_usuario === cliente.id);
+  assert.equal(ella.metricas.servicios, 2);
+  assert.equal(ella.metricas.calificacion, undefined, 'un cliente no tiene calificación de técnico');
+  const tecnicos = await lista(2);
+  const el = tecnicos.find((u) => u.id_usuario === tecnico.id);
+  assert.equal(Number(el.metricas.trabajos), 1);
+  assert.equal(el.metricas.servicios, undefined);
+  const admins = await lista(3);
+  assert.equal(admins[0].metricas, null);
+  assert.ok('ultima_conexion' in admins[0]);
+});
+
+async function altaCoadmin(adminToken, email) {
+  const res = await api(server.url, 'POST', '/api/admin/co-admins', { token: adminToken, body: { nombre: 'Nuevo', apellidos: 'Admin', email } });
+  const mail = outbox.filter((m) => m.to === email).at(-1);
+  return { res, temporal: mail?.code, mail };
+}
+const ultimoCodigo = (email) => outbox.filter((m) => m.to === email).at(-1).code;
+
+test('un coadministrador recibe una contraseña temporal de un solo uso y debe cambiarla antes de usar el panel', async () => {
+  const admin = await as(3);
+  const email = 'nuevo.admin@prueba.test';
+  const { res, temporal, mail } = await altaCoadmin(admin.token, email);
+
+  // Quien da de alta nunca ve la contraseña: solo viaja por correo
+  assert.equal(res.status, 201);
+  assert.ok(!JSON.stringify(res.body).includes(temporal));
+  assert.match(mail.subject, /Tu acceso al panel/);
+  assert.match(temporal, /^[A-Za-z0-9]{12}$/);
+  const fila = (await getPool().query('SELECT contrasena, debe_cambiar_contrasena, contrasena_temporal_expira FROM usuarios WHERE correo = $1', [email])).rows[0];
+  assert.notEqual(fila.contrasena, temporal, 'se guarda con hash');
+  assert.equal(fila.debe_cambiar_contrasena, true);
+  const horas = (new Date(fila.contrasena_temporal_expira) - Date.now()) / 3_600_000;
+  assert.ok(horas > 47 && horas <= 48, `vence en ${horas} h`);
+
+  // Primer acceso con la temporal (más el código del correo)
+  assert.equal((await api(server.url, 'POST', '/api/login-admin', { body: { email, password: temporal } })).status, 200);
+  const paso2 = await api(server.url, 'POST', '/api/verify-login-admin', { body: { email, token: ultimoCodigo(email) } });
+  assert.equal(paso2.status, 200);
+  assert.equal(paso2.body.usuario.debe_cambiar_contrasena, true);
+  const tokenTemporal = paso2.body.token;
+
+  // Con la sesión temporal solo se puede cambiar la contraseña, ver el perfil o salir
+  const bloqueado = await api(server.url, 'GET', '/api/admin/dashboard/stats', { token: tokenTemporal });
+  assert.equal(bloqueado.status, 403);
+  assert.equal(bloqueado.body.code, 'PASSWORD_CHANGE_REQUIRED');
+  assert.equal((await api(server.url, 'GET', '/api/me', { token: tokenTemporal })).body.usuario.debe_cambiar_contrasena, true);
+
+  // La temporal ya no sirve para volver a entrar
+  const reuso = await api(server.url, 'POST', '/api/login-admin', { body: { email, password: temporal } });
+  assert.equal(reuso.status, 403);
+  assert.equal(reuso.body.code, 'TEMP_PASSWORD_USED');
+
+  // Cambio obligatorio: distinta de la temporal y fuerte
+  const igual = await api(server.url, 'POST', '/api/update-password', { token: tokenTemporal, body: { currentPassword: temporal, newPassword: temporal } });
+  assert.equal(igual.body.code, 'SAME_PASSWORD');
+  const debil = await api(server.url, 'POST', '/api/update-password', { token: tokenTemporal, body: { currentPassword: temporal, newPassword: 'abc' } });
+  assert.equal(debil.body.code, 'WEAK_PASSWORD');
+  const cambio = await api(server.url, 'POST', '/api/update-password', { token: tokenTemporal, body: { currentPassword: temporal, newPassword: 'Definitiva#2026' } });
+  assert.equal(cambio.status, 200);
+  assert.equal((await api(server.url, 'GET', '/api/admin/dashboard/stats', { token: cambio.body.token })).status, 200);
+  const despues = (await getPool().query('SELECT debe_cambiar_contrasena, contrasena_temporal_expira FROM usuarios WHERE correo = $1', [email])).rows[0];
+  assert.deepEqual(despues, { debe_cambiar_contrasena: false, contrasena_temporal_expira: null });
+
+  // Desde ahora entra con la suya; la temporal ya no existe
+  assert.equal((await api(server.url, 'POST', '/api/login-admin', { body: { email, password: 'Definitiva#2026' } })).status, 200);
+  assert.equal((await api(server.url, 'POST', '/api/login-admin', { body: { email, password: temporal } })).status, 401);
+});
+
+test('la contraseña temporal vence, y si el correo no sale el alta se revierte', async () => {
+  const admin = await as(3);
+  const { res, temporal } = await altaCoadmin(admin.token, 'vencido.admin@prueba.test');
+  assert.equal(res.status, 201);
+  await getPool().query("UPDATE usuarios SET contrasena_temporal_expira = NOW() - INTERVAL '1 hour' WHERE correo = 'vencido.admin@prueba.test'");
+  const vencida = await api(server.url, 'POST', '/api/login-admin', { body: { email: 'vencido.admin@prueba.test', password: temporal } });
+  assert.equal(vencida.status, 403);
+  assert.equal(vencida.body.code, 'TEMP_PASSWORD_EXPIRED');
+  assert.equal((await api(server.url, 'POST', '/api/admin/co-admins', { token: admin.token, body: { nombre: 'Nuevo', apellidos: 'Admin', email: 'vencido.admin@prueba.test' } })).status, 409);
+
+  // Sin proveedor de correo (producción) no se crea la cuenta
+  const previo = process.env.NODE_ENV;
+  process.env.NODE_ENV = 'production';
+  let sinCorreo;
+  try {
+    sinCorreo = await api(server.url, 'POST', '/api/admin/co-admins', { token: admin.token, body: { nombre: 'Sin', apellidos: 'Correo', email: 'sin.correo@prueba.test' } });
+  } finally {
+    process.env.NODE_ENV = previo;
+  }
+  assert.equal(sinCorreo.status, 503);
+  assert.equal(sinCorreo.body.code, 'MAIL_UNAVAILABLE');
+  assert.equal((await getPool().query("SELECT 1 FROM usuarios WHERE correo = 'sin.correo@prueba.test'")).rowCount, 0);
+});
+
+test('recuperar la contraseña también quita la obligación de cambiar la temporal', async () => {
+  const admin = await as(3);
+  const email = 'recupera.admin@prueba.test';
+  await altaCoadmin(admin.token, email);
+  await getPool().query("UPDATE usuarios SET contrasena_temporal_expira = NOW() - INTERVAL '1 hour' WHERE correo = $1", [email]);
+
+  assert.equal((await api(server.url, 'POST', '/api/request-recovery', { body: { email } })).status, 200);
+  const verif = await api(server.url, 'POST', '/api/verify-recovery', { body: { email, token: ultimoCodigo(email) } });
+  assert.equal(verif.status, 200);
+  const reset = await api(server.url, 'POST', '/api/reset-password', { body: { email, reset_token: verif.body.reset_token, newPassword: 'Propia#2026x' } });
+  assert.equal(reset.status, 200);
+  assert.equal((await api(server.url, 'POST', '/api/login-admin', { body: { email, password: 'Propia#2026x' } })).status, 200);
+  assert.equal((await getPool().query('SELECT debe_cambiar_contrasena FROM usuarios WHERE correo = $1', [email])).rows[0].debe_cambiar_contrasena, false);
 });

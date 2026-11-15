@@ -60,7 +60,13 @@ async function start(port = process.env.PORT || 3000) {
 
 if (require.main === module) {
   start().catch((error) => {
-    console.error('No se pudo iniciar el servidor:', error);
+    // Base remota por túnel SSH: si el túnel no está abierto, se dice directamente qué hacer.
+    if (error.code === 'ECONNREFUSED' && process.env.SSH_HOST && String(error.port) === String(process.env.DB_PORT)) {
+      console.error(`No se pudo conectar a la base en ${error.address}:${error.port}: el túnel SSH no está abierto.`);
+      console.error('Ábrelo en otra terminal con "npm run tunel", escribe la contraseña SSH y vuelve a iniciar el backend.');
+    } else {
+      console.error('No se pudo iniciar el servidor:', error);
+    }
     process.exit(1);
   });
 }

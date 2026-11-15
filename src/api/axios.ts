@@ -45,6 +45,12 @@ api.interceptors.response.use(
       }
     }
 
+    // La sesión sigue con contraseña temporal (p. ej. se recargó la página): se lleva a la pantalla de cambio.
+    if (status === 403 && error.response?.data?.code === 'PASSWORD_CHANGE_REQUIRED') {
+      useAuthStore.getState().exigirCambioContrasena()
+      appNavigate('/cambiar-contrasena', { replace: true })
+    }
+
     if (status === 503 && error.response?.data?.code === 'MAINTENANCE') {
       window.dispatchEvent(new CustomEvent('maintenance_active', { detail: error.response?.data }))
     }

@@ -12,9 +12,12 @@ export interface UsuarioRow {
   id_expediente?: number | null
   especialidad?: string | null
   estatus_expediente?: string | null
-  metricas?: { calificacion?: number | string | null; trabajos?: number | null; cancelados?: number | null }
+  metricas?: { calificacion?: number | string | null; trabajos?: number | null; cancelados?: number | null; servicios?: number | null }
   identidad_verificada?: boolean
   fecha_registro?: string
+  ultima_conexion?: string | null
+  /** Administrador con contraseña temporal: todavía no define la suya */
+  debe_cambiar_contrasena?: boolean
 }
 
 export interface ExpedienteTecnicoRow {
@@ -23,7 +26,7 @@ export interface ExpedienteTecnicoRow {
   especialidad: string
   estatus: 'Pendiente' | 'En Revisión' | 'Aprobado' | 'Rechazado'
   fecha_solicitud: string
-  metricas?: { calificacion?: number | string | null; trabajos?: number | null; cancelados?: number | null }
+  metricas?: { calificacion?: number | string | null; trabajos?: number | null; cancelados?: number | null; servicios?: number | null }
   documentos?: unknown
   nombre: string
   apellido: string

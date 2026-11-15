@@ -9,6 +9,8 @@ interface AdminUser {
   id_rol: number
   estado_cuenta?: string
   version_sesion: number
+  /** Contraseña temporal de un coadministrador: debe definir una propia antes de usar el panel */
+  debe_cambiar_contrasena?: boolean
 }
 
 interface AuthState {
@@ -18,6 +20,10 @@ interface AuthState {
   login: (user: AdminUser, token: string) => void
   logout: () => void
   updateToken: (token: string) => void
+  /** El servidor exige cambiar la contraseña temporal (403 PASSWORD_CHANGE_REQUIRED) */
+  exigirCambioContrasena: () => void
+  /** Ya definió su contraseña: token nuevo y se levanta la restricción */
+  contrasenaCambiada: (token: string) => void
 }
 
 const STORAGE_KEY = 'admin-auth'
@@ -35,6 +41,10 @@ export const useAuthStore = create<AuthState>()(
 
       // Tras cambiar la contraseña el servidor entrega un token nuevo para esta sesión.
       updateToken: (token) => set({ token }),
+
+      exigirCambioContrasena: () => set(s => (s.user ? { user: { ...s.user, debe_cambiar_contrasena: true } } : s)),
+
+      contrasenaCambiada: (token) => set(s => ({ token, user: s.user ? { ...s.user, debe_cambiar_contrasena: false } : s.user })),
 
       // Solo borra el estado local; el cierre completo (revocar en el servidor, limpiar caché) está en lib/sesion.
       logout: () => set({ user: null, token: null, isAuthenticated: false }),

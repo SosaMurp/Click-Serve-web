@@ -8,11 +8,10 @@ process.env.DB_PASSWORD = process.env.TEST_DB_PASSWORD || 'G4llo0909';
 process.env.DB_NAME = process.env.TEST_DB_NAME || 'clickyserve_test';
 process.env.JWT_SECRET = 'test-jwt-secret';
 process.env.FILES_SECRET = 'test-files-secret';
-// Las pruebas nunca usan las llaves reales del .env (Didit, Stripe): cada prueba que las necesita pone una falsa.
-// Vacías y no borradas, para que dotenv no las vuelva a cargar desde el .env.
-process.env.DIDIT_API_KEY = '';
-process.env.STRIPE_SECRET_KEY = '';
-process.env.STRIPE_WEBHOOK_SECRET = '';
+// Las pruebas nunca usan servicios reales aunque backend/.env los tenga configurados (correo, SMS, pagos,
+// Didit, Stripe): valores vacíos, que dotenv no sobrescribe. Cada prueba que necesita una llave pone una falsa.
+for (const k of ['SMTP_USER', 'SMTP_PASS', 'TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_FROM', 'CONEKTA_PRIVATE_KEY', 'INE_PROVIDER', 'INE_PROVIDER_KEY',
+  'DIDIT_API_KEY', 'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET']) process.env[k] = '';
 
 const http = require('http');
 const { randomUUID } = require('crypto');

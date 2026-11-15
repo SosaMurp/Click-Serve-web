@@ -7,6 +7,7 @@ import { toast } from '@components/ui/Toaster'
 import { cerrarSesion } from '@/lib/sesion'
 import { contrasenaFuerte } from '@/lib/formatos'
 import { mensajeDeError } from '@/lib/errores'
+import '@components/modals/modals.css'
 import './perfil.css'
 
 // Interfaz para mapear lo que devuelve tu backend

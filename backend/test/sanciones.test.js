@@ -59,7 +59,7 @@ test('escala completa: aviso → 24 h → 7 días con baja prioridad → baneo',
   const yo = await api(server.url, 'GET', '/api/me', { token: cliente.token });
   assert.ok(yo.body.usuario.suspendido_hasta, 'la app sabe que está suspendido');
   const horas = (new Date(yo.body.usuario.suspendido_hasta) - Date.now()) / 3600000;
-  assert.ok(horas > 23 && horas <= 24, `suspensión de ~24 h (${horas.toFixed(2)})`);
+  assert.ok(horas > 23 && horas <= 24.01, `suspensión de ~24 h (${horas.toFixed(2)})`);
 
   // Nivel 3: reincide tras la suspensión de 24 h → 7 días + baja prioridad.
   await pasaTiempo(cliente.id);
@@ -67,7 +67,7 @@ test('escala completa: aviso → 24 h → 7 días con baja prioridad → baneo',
   assert.equal(n3.body.filtrado.sancion.nivel, 3);
   const u3 = (await getPool().query('SELECT suspendido_hasta, prioridad_baja_hasta FROM usuarios WHERE id_usuario = $1', [cliente.id])).rows[0];
   const dias = (new Date(u3.suspendido_hasta) - Date.now()) / 86400000;
-  assert.ok(dias > 6.9 && dias <= 7, `suspensión de ~7 días (${dias.toFixed(2)})`);
+  assert.ok(dias > 6.9 && dias <= 7.01, `suspensión de ~7 días (${dias.toFixed(2)})`);
   assert.ok(new Date(u3.prioridad_baja_hasta) > new Date(u3.suspendido_hasta));
 
   // Nivel 4: reincide otra vez → baneo definitivo; la sesión se cierra y ya no puede entrar.

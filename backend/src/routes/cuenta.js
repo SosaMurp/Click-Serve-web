@@ -155,7 +155,8 @@ router.get('/api/cuenta/exportar', auth, async (req, res) => {
   audit(req, 'DATOS_EXPORTADOS', 'usuario', id);
   return res.json({
     generado: new Date().toISOString(),
-    usuario: publicUser(await findUserById(id)),
+    // Se exportan los datos de la persona, no el estado interno del acceso (contraseña temporal)
+    usuario: (({ debe_cambiar_contrasena, ...datos }) => datos)(publicUser(await findUserById(id))),
     direcciones: direcciones.rows,
     metodos_pago: tarjetas.rows,
     solicitudes: solicitudes.rows,

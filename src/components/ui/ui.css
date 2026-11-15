@@ -126,3 +126,26 @@
 /* Botón de icono dentro de un campo (mostrar/ocultar contraseña) */
 button.field-icon { background: none; border: none; padding: 0; cursor: pointer; }
 button.field-icon:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+/* ── Franja de métricas (reemplaza la fila de tarjetas) ── */
+.ms {
+  display: flex; flex-wrap: wrap; gap: 4px; padding: 4px;
+  background: #fff; border: 1px solid var(--border-light); border-radius: var(--radius-md);
+  width: fit-content; max-width: 100%;
+}
+.ms-item {
+  display: flex; align-items: baseline; gap: 8px; padding: 8px 14px; border-radius: 9px;
+  background: none; border: none; font-family: inherit; color: var(--text-dark);
+}
+.ms-item--btn { cursor: pointer; transition: background var(--transition); }
+.ms-item--btn:hover { background: var(--bg-input); }
+.ms-item--btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ms-item--on { background: var(--navy); color: #fff; }
+.ms-item--on:hover { background: var(--navy); }
+.ms-value { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.ms-value--alert { color: var(--accent); }
+.ms-value--ok { color: var(--success); }
+.ms-item--on .ms-value--alert, .ms-item--on .ms-value--ok { color: #fff; }
+.ms-label { font-size: 12.5px; font-weight: 500; color: var(--text-mid); white-space: nowrap; }
+.ms-item--on .ms-label { color: rgba(255, 255, 255, .8); }
+@media (max-width: 640px) { .ms { width: 100%; } .ms-item { flex: 1 1 45%; justify-content: space-between; } }

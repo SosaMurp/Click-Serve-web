@@ -329,7 +329,7 @@ router.post('/api/reset-password', codeLimiter, async (req, res) => {
 
   await withTransaction(async (db) => {
     await db.query(
-      'UPDATE usuarios SET contrasena = $1, version_sesion = COALESCE(version_sesion, 1) + 1, fecha_actualizacion_contrasena = NOW() WHERE id_usuario = $2',
+      'UPDATE usuarios SET contrasena = $1, version_sesion = COALESCE(version_sesion, 1) + 1, fecha_actualizacion_contrasena = NOW(), debe_cambiar_contrasena = false, contrasena_temporal_expira = NULL WHERE id_usuario = $2',
       [await bcrypt.hash(newPassword, 10), user.id_usuario]
     );
     await db.query("UPDATE sesiones_activas SET estado = 'revocada' WHERE id_usuario = $1 AND estado = 'activa'", [user.id_usuario]);
@@ -347,11 +347,15 @@ router.post('/api/update-password', auth, async (req, res) => {
     return fail(res, 400, 'PASSWORD_INCORRECT', 'La contraseña actual no es correcta.');
   }
   if (!isStrongPassword(newPassword)) return fail(res, 400, 'WEAK_PASSWORD', WEAK);
+  if (await bcrypt.compare(String(newPassword), user.contrasena)) {
+    return fail(res, 400, 'SAME_PASSWORD', 'La nueva contraseña debe ser distinta de la actual.');
+  }
 
   const version = (user.version_sesion || 1) + 1;
   await withTransaction(async (db) => {
     await db.query(
-      'UPDATE usuarios SET contrasena = $1, version_sesion = $2, fecha_actualizacion_contrasena = NOW() WHERE id_usuario = $3',
+      `UPDATE usuarios SET contrasena = $1, version_sesion = $2, fecha_actualizacion_contrasena = NOW(),
+                           debe_cambiar_contrasena = false, contrasena_temporal_expira = NULL WHERE id_usuario = $3`,
       [await bcrypt.hash(String(newPassword), 10), version, user.id_usuario]
     );
     await db.query(
@@ -361,7 +365,7 @@ router.post('/api/update-password', auth, async (req, res) => {
   });
   audit(req, 'CONTRASENA_CAMBIADA', 'usuario', user.id_usuario);
   const token = signSession({ id_usuario: user.id_usuario, id_rol: user.id_rol, version_sesion: version, sessionId: req.user.sessionId });
-  return res.json({ mensaje: 'Contraseña actualizada. Cerramos tus sesiones en otros dispositivos.', token });
+  return res.json({ mensaje: 'Contraseña actualizada. Cerramos tus sesiones en otros dispositivos.', token, debe_cambiar_contrasena: false });
 });
 
 // ───────────────────────── Sesiones (RF-12) ─────────────────────────
@@ -411,6 +415,15 @@ router.post('/api/login-admin', loginLimiter, async (req, res) => {
   if (String(user.estado_cuenta).toLowerCase().startsWith('pendiente') || user.estado_cuenta === 'No verificado') {
     return res.status(403).json({ codigo: 'CUENTA_PENDIENTE', estado_cuenta: 'PENDIENTE', code: 'ACCOUNT_PENDING', error: 'Tu cuenta administrativa está PENDIENTE de validación.' });
   }
+  // Contraseña temporal: vale para un solo acceso y mientras no haya vencido.
+  if (user.debe_cambiar_contrasena) {
+    if (!user.contrasena_temporal_expira) {
+      return fail(res, 403, 'TEMP_PASSWORD_USED', 'Tu contraseña temporal ya se usó. Usa «¿Olvidaste tu contraseña?» para crear una nueva.');
+    }
+    if (new Date(user.contrasena_temporal_expira) < new Date()) {
+      return fail(res, 403, 'TEMP_PASSWORD_EXPIRED', 'Tu contraseña temporal venció. Usa «¿Olvidaste tu contraseña?» para crear una nueva o pide a otro administrador que te dé de alta de nuevo.');
+    }
+  }
   const code = await issueCode(getPool(), user.id_usuario, 'login_admin');
   await sendMail({ to: user.correo, subject: 'Código de acceso al panel - Click & Serve', html: `<p>Tu código de acceso es <b>${code}</b>.</p>`, code });
   return res.json({ mensaje: 'Credenciales correctas. Código enviado al correo.', requiere2FA: true });
@@ -425,6 +438,10 @@ router.post('/api/verify-login-admin', codeLimiter, async (req, res) => {
   const idToken = await checkCode(getPool(), user.id_usuario, 'login_admin', req.body?.token);
   if (!idToken) return fail(res, 400, 'CODE_INVALID', 'Código de seguridad incorrecto o expirado.');
   await getPool().query("UPDATE tokens_temporales SET estado_uso = 'usado' WHERE id_token = $1", [idToken]);
+  // Primer acceso con contraseña temporal completado: ya no se puede volver a usar para entrar.
+  if (user.debe_cambiar_contrasena) {
+    await getPool().query('UPDATE usuarios SET contrasena_temporal_expira = NULL WHERE id_usuario = $1', [user.id_usuario]);
+  }
   const { rows } = await getPool().query(
     'INSERT INTO sesiones_activas (id_usuario, id_rol, dispositivo) VALUES ($1, 3, $2) RETURNING id_sesion',
     [user.id_usuario, String(req.headers['user-agent'] || 'Panel Web Administrativo').slice(0, 255)]
@@ -436,6 +453,7 @@ router.post('/api/verify-login-admin', codeLimiter, async (req, res) => {
     usuario: {
       id_usuario: user.id_usuario, id_rol: 3, version_sesion: user.version_sesion,
       nombre: user.nombre, apellido: user.apellido, correo: user.correo, estado_cuenta: user.estado_cuenta,
+      debe_cambiar_contrasena: user.debe_cambiar_contrasena === true,
     },
     token,
   });

@@ -29,6 +29,7 @@ const STEPS = [
   { id: '015_stripe', file: 'migrations/015_stripe.sql' },
   { id: '016_catalogo_servicios', file: 'migrations/016_catalogo_servicios.sql' },
   { id: '017_motivo_rechazo', file: 'migrations/017_motivo_rechazo.sql' },
+  { id: '010_contrasena_temporal', file: 'migrations/010_contrasena_temporal.sql' },
 ];
 
 async function migrate(pool = getPool(), { silent = false } = {}) {

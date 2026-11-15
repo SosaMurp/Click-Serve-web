@@ -12,6 +12,9 @@ const { sendPush } = require('../lib/push');
 const { deletionBlocker, anonymizeUser } = require('../services/bajas');
 const S = require('../services/solicitudes');
 const { signFileUrl } = require('../lib/files');
+const { sendMail, tempPasswordEmailHtml } = require('../lib/mailer');
+const { generateTempPassword, HORAS_TEMPORAL } = require('../lib/temporal');
+const { todayMx } = require('../lib/dates');
 
 // Dashboard, directorio de usuarios y detalle de servicios del panel de administrador.
 // Antes los resolvía un backend aparte con tablas propias; ahora leen las mismas tablas que la app.
@@ -32,7 +35,7 @@ const EN_LINEA = `u.id_rol = 2 AND u.disponible = true AND u.ultimo_latido > NOW
 const SERVICIO_SELECT = `
   SELECT s.id_solicitud AS id_servicio, s.folio AS codigo,
          COALESCE(c.nombre, s.categoria, 'Servicio') AS titulo, ${ESTATUS_PANEL} AS estatus, s.estado AS estado_app,
-         COALESCE(s.monto_total, s.monto_cotizacion) AS monto, s.direccion, s.fecha_creacion, s.latitud, s.longitud,
+         COALESCE(s.monto_total, s.monto_cotizacion) AS monto, s.direccion, s.fecha_creacion, s.latitud, s.longitud, COALESCE(s.alerta_sos, false) AS alerta_sos,
          t.nombre AS tecnico_nombre, t.apellido AS tecnico_apellido,
          cl.nombre AS cliente_nombre, cl.apellido AS cliente_apellido
   FROM solicitudes_servicio s
@@ -41,7 +44,42 @@ const SERVICIO_SELECT = `
   LEFT JOIN usuarios cl ON cl.id_usuario = s.id_usuario`;
 
 // ───────────────────────── Dashboard ─────────────────────────
-router.get('/api/admin/dashboard/stats', ...adminOnly, async (_req, res) => {
+// Rango de fechas que elige el administrador (?desde=YYYY-MM-DD&hasta=YYYY-MM-DD, ambos inclusivos y en la
+// fecha de Lázaro Cárdenas). Sin parámetros se usan los últimos 30 días. Máximo un año.
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const DIA_MS = 86_400_000;
+const MAX_DIAS = 366;
+const aMs = (iso) => Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)));
+const aIso = (ms) => new Date(ms).toISOString().slice(0, 10);
+
+function parseRango(req, { opcional = false } = {}) {
+  const { desde, hasta } = req.query;
+  if (desde == null && hasta == null) {
+    if (opcional) return null;
+    const fin = todayMx();
+    return { desde: aIso(aMs(fin) - 29 * DIA_MS), hasta: fin };
+  }
+  const valida = (v) => ISO_DATE.test(String(v)) && aIso(aMs(String(v))) === String(v);
+  if (!valida(desde) || !valida(hasta)) {
+    throw new HttpError(400, 'VALIDATION_ERROR', 'Las fechas deben tener el formato AAAA-MM-DD.', { field: 'desde' });
+  }
+  const dias = (aMs(hasta) - aMs(desde)) / DIA_MS + 1;
+  if (dias < 1) throw new HttpError(400, 'VALIDATION_ERROR', 'La fecha de inicio no puede ser posterior a la de fin.', { field: 'desde' });
+  if (dias > MAX_DIAS) throw new HttpError(400, 'VALIDATION_ERROR', 'El rango máximo es de un año.', { field: 'hasta' });
+  return { desde: String(desde), hasta: String(hasta) };
+}
+
+// Periodo inmediatamente anterior y de la misma duración (para las variaciones).
+function periodoAnterior({ desde, hasta }) {
+  const dias = (aMs(hasta) - aMs(desde)) / DIA_MS + 1;
+  return { desde: aIso(aMs(desde) - dias * DIA_MS), hasta: aIso(aMs(desde) - DIA_MS) };
+}
+
+const MX = "'America/Mexico_City'";
+
+router.get('/api/admin/dashboard/stats', ...adminOnly, async (req, res) => {
+  const rango = parseRango(req);
+  const previo = periodoAnterior(rango);
   const { rows } = await db().query(`
     WITH
       online AS (SELECT COUNT(*)::int AS n FROM usuarios u WHERE ${EN_LINEA}),
@@ -51,9 +89,18 @@ router.get('/api/admin/dashboard/stats', ...adminOnly, async (_req, res) => {
         WHERE u.id_rol = 2 AND u.anonimizado = false AND u.identidad_verificada = false
           AND UPPER(COALESCE(u.estado_cuenta, '')) NOT IN ('RECHAZADO', 'SUSPENDIDO')
       ),
-      hoy AS (SELECT COALESCE(SUM(monto), 0) AS total FROM pagos WHERE estado = 'PAGADO' AND (fecha AT TIME ZONE 'America/Mexico_City')::date = (NOW() AT TIME ZONE 'America/Mexico_City')::date),
-      ayer AS (SELECT COALESCE(SUM(monto), 0) AS total FROM pagos WHERE estado = 'PAGADO' AND (fecha AT TIME ZONE 'America/Mexico_City')::date = (NOW() AT TIME ZONE 'America/Mexico_City')::date - 1),
-      completados AS (
+      hoy AS (SELECT COALESCE(SUM(monto), 0) AS total FROM pagos WHERE estado = 'PAGADO' AND (fecha AT TIME ZONE ${MX})::date = (NOW() AT TIME ZONE ${MX})::date),
+      periodo AS (SELECT COALESCE(SUM(monto), 0) AS total FROM pagos WHERE estado = 'PAGADO' AND (fecha AT TIME ZONE ${MX})::date BETWEEN $1::date AND $2::date),
+      previo AS (SELECT COALESCE(SUM(monto), 0) AS total FROM pagos WHERE estado = 'PAGADO' AND (fecha AT TIME ZONE ${MX})::date BETWEEN $3::date AND $4::date),
+      completados_periodo AS (
+        SELECT COUNT(*)::int AS n FROM solicitudes_servicio s
+        WHERE s.estado = 'FINALIZADA' AND (COALESCE(s.fecha_finalizacion, s.fecha_creacion) AT TIME ZONE ${MX})::date BETWEEN $1::date AND $2::date
+      ),
+      completados_previo AS (
+        SELECT COUNT(*)::int AS n FROM solicitudes_servicio s
+        WHERE s.estado = 'FINALIZADA' AND (COALESCE(s.fecha_finalizacion, s.fecha_creacion) AT TIME ZONE ${MX})::date BETWEEN $3::date AND $4::date
+      ),
+      completados_mes AS (
         SELECT COUNT(*)::int AS n FROM solicitudes_servicio s
         WHERE s.estado = 'FINALIZADA' AND DATE_TRUNC('month', COALESCE(s.fecha_finalizacion, s.fecha_creacion)) = DATE_TRUNC('month', NOW())
       ),
@@ -62,81 +109,202 @@ router.get('/api/admin/dashboard/stats', ...adminOnly, async (_req, res) => {
            (SELECT n FROM en_curso) AS servicios_en_curso,
            (SELECT n FROM validaciones) AS validaciones_pendientes,
            (SELECT total FROM hoy) AS ingresos_hoy,
-           (SELECT n FROM completados) AS servicios_completados_mes,
+           (SELECT total FROM periodo) AS ingresos_periodo,
+           (SELECT n FROM completados_periodo) AS servicios_completados_periodo,
+           (SELECT n FROM completados_mes) AS servicios_completados_mes,
            (SELECT n FROM clientes) AS total_clientes,
            NULL::numeric AS variacion_tecnicos_pct,
-           CASE WHEN (SELECT total FROM ayer) = 0 THEN NULL
-                ELSE ROUND(((SELECT total FROM hoy) - (SELECT total FROM ayer)) / (SELECT total FROM ayer) * 100, 1) END AS variacion_ingresos_pct`);
-  res.json(rows[0]);
+           CASE WHEN (SELECT total FROM previo) = 0 THEN NULL
+                ELSE ROUND(((SELECT total FROM periodo) - (SELECT total FROM previo)) / (SELECT total FROM previo) * 100, 1) END AS variacion_ingresos_pct,
+           CASE WHEN (SELECT n FROM completados_previo) = 0 THEN NULL
+                ELSE ROUND(((SELECT n FROM completados_periodo) - (SELECT n FROM completados_previo))::numeric / (SELECT n FROM completados_previo) * 100, 1) END AS variacion_completados_pct`,
+    [rango.desde, rango.hasta, previo.desde, previo.hasta]);
+  res.json({ ...rows[0], periodo: rango });
 });
 
-router.get('/api/admin/dashboard/servicios-mes', ...adminOnly, async (_req, res) => {
+router.get('/api/admin/dashboard/servicios-mes', ...adminOnly, async (req, res) => {
+  const rango = parseRango(req);
   const { rows } = await db().query(`
     WITH rango AS (
-      SELECT GENERATE_SERIES(CURRENT_DATE - INTERVAL '29 days', CURRENT_DATE, '1 day'::interval)::date AS fecha
+      SELECT GENERATE_SERIES($1::date, $2::date, '1 day'::interval)::date AS fecha
     ), datos AS (
-      SELECT s.fecha_creacion::date AS fecha,
+      SELECT (s.fecha_creacion AT TIME ZONE ${MX})::date AS fecha,
              COUNT(*) FILTER (WHERE s.estado = 'FINALIZADA') AS completados,
              COUNT(*) FILTER (WHERE s.estado = 'CANCELADA') AS cancelados,
              COUNT(*) FILTER (WHERE ${EN_CURSO}) AS en_curso
       FROM solicitudes_servicio s
-      WHERE s.fecha_creacion >= CURRENT_DATE - INTERVAL '29 days'
+      WHERE (s.fecha_creacion AT TIME ZONE ${MX})::date BETWEEN $1::date AND $2::date
       GROUP BY 1
     )
-    SELECT r.fecha, TO_CHAR(r.fecha, 'DD Mon') AS dia,
+    SELECT TO_CHAR(r.fecha, 'YYYY-MM-DD') AS fecha,
            COALESCE(d.completados, 0)::int AS completados, COALESCE(d.cancelados, 0)::int AS cancelados,
            COALESCE(d.en_curso, 0)::int AS en_curso
     FROM rango r LEFT JOIN datos d ON d.fecha = r.fecha
-    ORDER BY r.fecha`);
+    ORDER BY r.fecha`, [rango.desde, rango.hasta]);
   res.json({
+    periodo: rango,
     puntos: rows,
     total_completados: rows.reduce((s, r) => s + r.completados, 0),
     total_cancelados: rows.reduce((s, r) => s + r.cancelados, 0),
   });
 });
 
-router.get('/api/admin/dashboard/recent-services', ...adminOnly, async (req, res) => {
-  const limit = Math.min(Math.max(parseInt(req.query.limit ?? '8', 10) || 8, 1), 50);
-  const { rows } = await db().query(`${SERVICIO_SELECT} ORDER BY s.fecha_creacion DESC LIMIT $1`, [limit]);
-  res.json({ servicios: rows, total: rows.length });
+// Técnicos con más servicios finalizados en el rango.
+router.get('/api/admin/dashboard/tecnicos-destacados', ...adminOnly, async (req, res) => {
+  const rango = parseRango(req);
+  const { rows } = await db().query(`
+    SELECT t.id_usuario, t.nombre, t.apellido, COUNT(*)::int AS servicios, COALESCE(SUM(s.monto_total), 0) AS monto
+    FROM solicitudes_servicio s JOIN usuarios t ON t.id_usuario = s.id_tecnico
+    WHERE s.estado = 'FINALIZADA'
+      AND (COALESCE(s.fecha_finalizacion, s.fecha_creacion) AT TIME ZONE ${MX})::date BETWEEN $1::date AND $2::date
+    GROUP BY t.id_usuario, t.nombre, t.apellido
+    ORDER BY servicios DESC, monto DESC
+    LIMIT 5`, [rango.desde, rango.hasta]);
+  res.json({ periodo: rango, tecnicos: rows });
 });
 
-router.get('/api/admin/dashboard/actividad', ...adminOnly, async (_req, res) => {
-  const { rows } = await db().query(`
-    (SELECT s.id_solicitud AS id, 'servicio' AS tipo,
+// Centro de actividad: servicios, técnicos nuevos, incidencias abiertas, retiros por autorizar y tickets
+// de soporte sin atender, en un solo feed paginado. `tipo` limita a un grupo (servicios, tecnicos, alertas,
+// finanzas, soporte); con ?desde&hasta solo muestra lo ocurrido en el rango. Cada elemento trae `tipo` e `id`
+// para que el panel abra el servicio, el técnico, la incidencia, el retiro o el ticket.
+const GRUPOS_ACTIVIDAD = {
+  servicios: ['servicio'],
+  tecnicos: ['tecnico'],
+  alertas: ['alerta'],
+  finanzas: ['retiro'],
+  soporte: ['ticket'],
+};
+
+router.get('/api/admin/dashboard/actividad', ...adminOnly, async (req, res) => {
+  const rango = parseRango(req, { opcional: true });
+  const grupo = String(req.query.tipo || 'todos').toLowerCase();
+  if (grupo !== 'todos' && !GRUPOS_ACTIVIDAD[grupo]) return fail(res, 400, 'VALIDATION_ERROR', 'Tipo de actividad no válido.', { field: 'tipo' });
+  const limite = Math.min(Math.max(parseInt(req.query.limite ?? '20', 10) || 20, 1), 50);
+  const pagina = Math.max(parseInt(req.query.pagina ?? '1', 10) || 1, 1);
+  const incluir = (t) => grupo === 'todos' || GRUPOS_ACTIVIDAD[grupo].includes(t);
+  const params = rango ? [rango.desde, rango.hasta] : [];
+  const en = (col) => (rango ? `AND (${col} AT TIME ZONE ${MX})::date BETWEEN $1::date AND $2::date` : '');
+
+  const ramas = [];
+  if (incluir('servicio')) {
+    ramas.push(`SELECT s.id_solicitud::int AS id, 'servicio' AS tipo,
             CONCAT(CASE s.estado WHEN 'FINALIZADA' THEN 'Servicio completado: ' WHEN 'CANCELADA' THEN 'Servicio cancelado: '
                                  WHEN 'PENDIENTE' THEN 'Nueva solicitud: ' ELSE 'Servicio en curso: ' END,
                    COALESCE(c.nombre, 'Servicio'), ' (', s.folio, ')') AS descripcion,
-            s.direccion AS sub, s.fecha_creacion AS creado_en, (s.estado = 'CANCELADA' OR s.alerta_sos) AS urgente
+            s.direccion AS sub, s.fecha_creacion AS creado_en, COALESCE(s.estado = 'CANCELADA' OR s.alerta_sos, false) AS urgente
      FROM solicitudes_servicio s LEFT JOIN categorias_servicio c ON c.codigo = s.categoria
-     ORDER BY s.fecha_creacion DESC LIMIT 8)
-    UNION ALL
-    (SELECT u.id_usuario, 'tecnico', CONCAT('Nuevo técnico registrado: ', u.nombre, ' ', u.apellido),
+     WHERE TRUE ${en('s.fecha_creacion')}`);
+  }
+  if (incluir('tecnico')) {
+    ramas.push(`SELECT u.id_usuario::int, 'tecnico', CONCAT('Nuevo técnico registrado: ', u.nombre, ' ', u.apellido),
             CASE WHEN u.identidad_verificada THEN 'Aprobado' ELSE 'Pendiente de revisión' END,
             u.fecha_registro, (u.identidad_verificada = false)
-     FROM usuarios u WHERE u.id_rol = 2 AND u.anonimizado = false
-     ORDER BY u.fecha_registro DESC LIMIT 5)
-    UNION ALL
-    (SELECT i.id_incidencia, 'alerta', CONCAT('Incidencia ', i.folio, ': ', CASE i.tipo
+     FROM usuarios u WHERE u.id_rol = 2 AND u.anonimizado = false ${en('u.fecha_registro')}`);
+  }
+  if (incluir('alerta')) {
+    ramas.push(`SELECT i.id_incidencia::int, 'alerta', CONCAT('Incidencia ', i.folio, ': ', CASE i.tipo
               WHEN 'NO_SE_PRESENTO' THEN 'el técnico no llegó' WHEN 'COBRO_INDEBIDO' THEN 'cobro indebido'
               WHEN 'MALA_CALIDAD' THEN 'mala calidad' WHEN 'DANOS' THEN 'daños' WHEN 'SEGURIDAD' THEN 'seguridad / SOS'
               WHEN 'GARANTIA' THEN 'garantía' ELSE 'otro' END),
             i.descripcion, i.fecha_creacion, (i.prioridad = 'ALTA')
-     FROM incidencias i WHERE i.estado = 'ABIERTA'
-     ORDER BY i.fecha_creacion DESC LIMIT 5)
-    ORDER BY creado_en DESC NULLS LAST
-    LIMIT 20`);
-  res.json({ items: rows });
+     FROM incidencias i WHERE i.estado = 'ABIERTA' ${en('i.fecha_creacion')}`);
+  }
+  if (incluir('retiro')) {
+    ramas.push(`SELECT t.id_transaccion::int, 'retiro', CONCAT('Retiro por autorizar: $', TRIM(TO_CHAR(t.monto, 'FM999,999,990.00')), ' (', t.folio, ')'),
+            CONCAT(u.nombre, ' ', u.apellido), t.fecha, false
+     FROM transacciones t JOIN billetera_tecnico b ON b.id_billetera = t.id_billetera JOIN usuarios u ON u.id_usuario = b.id_usuario
+     WHERE t.tipo = 'RETIRO' AND t.estado = 'EN_PROCESO' ${en('t.fecha')}`);
+  }
+  if (incluir('ticket')) {
+    ramas.push(`SELECT k.id_ticket::int, 'ticket', CONCAT('Ticket de soporte ', k.folio, ': ', k.asunto),
+            CONCAT(u.nombre, ' ', u.apellido), k.fecha_creacion, (k.prioridad = 'ALTA')
+     FROM soporte_tickets k JOIN usuarios u ON u.id_usuario = k.id_usuario
+     WHERE k.estado <> 'CERRADO' ${en('k.fecha_creacion')}`);
+  }
+
+  const { rows } = await db().query(
+    `SELECT * FROM (${ramas.map((r) => `(${r})`).join(' UNION ALL ')}) a(id, tipo, descripcion, sub, creado_en, urgente)
+     ORDER BY creado_en DESC NULLS LAST, id DESC LIMIT ${limite + 1} OFFSET ${(pagina - 1) * limite}`,
+    params
+  );
+  res.json({ items: rows.slice(0, limite), pagina, limite, hay_mas: rows.length > limite });
 });
 
-router.get('/api/admin/dashboard/especialidades', ...adminOnly, async (_req, res) => {
+// Lo que espera una decisión del administrador (alimenta "Por atender" del tablero y la campana).
+router.get('/api/admin/dashboard/pendientes', ...adminOnly, async (_req, res) => {
+  const { rows } = await db().query(`
+    SELECT (SELECT COUNT(*)::int FROM usuarios u WHERE u.id_rol = 2 AND u.anonimizado = false AND u.identidad_verificada = false
+              AND UPPER(COALESCE(u.estado_cuenta, '')) NOT IN ('RECHAZADO', 'SUSPENDIDO')) AS validaciones,
+           (SELECT COUNT(*)::int FROM transacciones WHERE tipo = 'RETIRO' AND estado = 'EN_PROCESO') AS retiros,
+           (SELECT COUNT(*)::int FROM incidencias WHERE estado = 'ABIERTA') AS incidencias,
+           (SELECT COUNT(*)::int FROM soporte_tickets t WHERE t.estado <> 'CERRADO'
+              AND NOT COALESCE((SELECT m.es_asesor FROM soporte_mensajes m WHERE m.id_ticket = t.id_ticket
+                                ORDER BY m.fecha_envio DESC, m.id_mensaje DESC LIMIT 1), false)) AS tickets`);
+  res.json(rows[0]);
+});
+
+router.get('/api/admin/dashboard/especialidades', ...adminOnly, async (req, res) => {
+  const rango = parseRango(req);
   const { rows } = await db().query(`
     SELECT COALESCE(c.nombre, 'Sin categoría') AS especialidad, COUNT(*)::int AS total,
            ROUND(COUNT(*)::numeric / NULLIF(SUM(COUNT(*)) OVER (), 0) * 100, 1) AS porcentaje
     FROM solicitudes_servicio s LEFT JOIN categorias_servicio c ON c.codigo = s.categoria
-    WHERE s.estado = 'FINALIZADA' AND s.fecha_creacion >= CURRENT_DATE - INTERVAL '30 days'
-    GROUP BY 1 ORDER BY total DESC LIMIT 8`);
+    WHERE s.estado = 'FINALIZADA' AND (s.fecha_creacion AT TIME ZONE ${MX})::date BETWEEN $1::date AND $2::date
+    GROUP BY 1 ORDER BY total DESC LIMIT 8`, [rango.desde, rango.hasta]);
   res.json(rows);
+});
+
+// ───────────────────────── Servicios (lista del panel) ─────────────────────────
+// Todos los servicios con filtro por estado, búsqueda y fechas. Los conteos por estado respetan la búsqueda y las
+// fechas pero no el filtro de estado, para que las pestañas de la pantalla siempre sumen lo mismo.
+const GRUPOS_ESTATUS = { pendiente: 'Pendiente', en_curso: 'En Curso', completado: 'Completado', cancelado: 'Cancelado' };
+
+router.get('/api/admin/servicios', ...adminOnly, async (req, res) => {
+  const estado = String(req.query.estado || 'todos').toLowerCase();
+  if (estado !== 'todos' && !GRUPOS_ESTATUS[estado]) return fail(res, 400, 'VALIDATION_ERROR', 'Estado no válido.', { field: 'estado' });
+  const rango = parseRango(req, { opcional: true });
+  const limite = Math.min(Math.max(parseInt(req.query.limite ?? '25', 10) || 25, 1), 100);
+  const pagina = Math.max(parseInt(req.query.pagina ?? '1', 10) || 1, 1);
+  const q = String(req.query.q || '').trim().slice(0, 80);
+
+  const params = [];
+  const donde = [];
+  if (q) {
+    params.push(`%${q.replace(/[\\%_]/g, '\\$&')}%`);
+    const n = params.length;
+    donde.push(`(s.folio ILIKE $${n} OR s.descripcion ILIKE $${n} OR s.direccion ILIKE $${n}
+      OR CONCAT(cl.nombre, ' ', cl.apellido) ILIKE $${n} OR CONCAT(t.nombre, ' ', t.apellido) ILIKE $${n})`);
+  }
+  if (rango) {
+    params.push(rango.desde, rango.hasta);
+    donde.push(`(s.fecha_creacion AT TIME ZONE ${MX})::date BETWEEN $${params.length - 1}::date AND $${params.length}::date`);
+  }
+  const filtro = donde.length ? `WHERE ${donde.join(' AND ')}` : '';
+  const desde = `FROM solicitudes_servicio s
+    LEFT JOIN categorias_servicio c ON c.codigo = s.categoria
+    LEFT JOIN usuarios t ON t.id_usuario = s.id_tecnico
+    LEFT JOIN usuarios cl ON cl.id_usuario = s.id_usuario`;
+
+  const conteos = (await db().query(
+    `SELECT ${ESTATUS_PANEL} AS estatus, COUNT(*)::int AS n ${desde} ${filtro} GROUP BY 1`, params
+  )).rows;
+  const por = Object.fromEntries(conteos.map((r) => [r.estatus, r.n]));
+  const totales = { todos: conteos.reduce((a, r) => a + r.n, 0) };
+  for (const [clave, etiqueta] of Object.entries(GRUPOS_ESTATUS)) totales[clave] = por[etiqueta] ?? 0;
+
+  const filtroEstado = estado === 'todos' ? '' : `${filtro ? 'AND' : 'WHERE'} (${ESTATUS_PANEL}) = $${params.length + 1}`;
+  const paramsLista = estado === 'todos' ? params : [...params, GRUPOS_ESTATUS[estado]];
+  const { rows } = await db().query(
+    `SELECT s.id_solicitud::int AS id_servicio, s.folio AS codigo, COALESCE(c.nombre, s.categoria, 'Servicio') AS titulo,
+            ${ESTATUS_PANEL} AS estatus, s.estado AS estado_app, COALESCE(s.monto_total, s.monto_cotizacion) AS monto,
+            s.direccion, s.fecha_creacion, COALESCE(s.alerta_sos, false) AS alerta_sos,
+            t.nombre AS tecnico_nombre, t.apellido AS tecnico_apellido, cl.nombre AS cliente_nombre, cl.apellido AS cliente_apellido
+     ${desde} ${filtro} ${filtroEstado}
+     ORDER BY s.fecha_creacion DESC, s.id_solicitud DESC LIMIT ${limite} OFFSET ${(pagina - 1) * limite}`,
+    paramsLista
+  );
+  const total = totales[estado];
+  res.json({ servicios: rows, pagina, limite, total, paginas: Math.max(1, Math.ceil(total / limite)), conteos: totales });
 });
 
 // ───────────────────────── Servicios (buscador y detalle del panel) ─────────────────────────
@@ -217,45 +385,6 @@ router.patch('/api/admin/solicitudes/:id/estado', ...adminOnly, async (req, res)
   res.json({ mensaje: `Servicio ${row.folio} cancelado sin cargo.`, servicio: { id_servicio: row.id_solicitud, estatus: 'Cancelado' } });
 });
 
-// ───────────────────────── Búsqueda global (RF-44) ─────────────────────────
-// Resultados segmentados entre técnicos, clientes y servicios. `tipo` limita la búsqueda a un segmento.
-router.get('/api/admin/buscar', ...adminOnly, async (req, res) => {
-  const q = String(req.query.q || '').trim().slice(0, 80);
-  const tipo = String(req.query.tipo || 'todos').toLowerCase();
-  if (!['todos', 'tecnicos', 'clientes', 'servicios'].includes(tipo)) return fail(res, 400, 'VALIDATION_ERROR', 'Tipo de búsqueda no válido.', { field: 'tipo' });
-  const vacio = { tecnicos: [], clientes: [], servicios: [] };
-  if (q.length < 2) return res.json({ q, ...vacio });
-
-  const patron = `%${q.replace(/[\\%_]/g, '\\$&')}%`;
-  const limite = tipo === 'todos' ? 5 : 25;
-  const personas = (rol) => db().query(
-    `SELECT u.id_usuario, u.nombre, u.apellido, u.correo, u.telefono, u.estado_cuenta
-     FROM usuarios u
-     WHERE u.id_rol = $1 AND u.anonimizado = false
-       AND (CONCAT(u.nombre, ' ', u.apellido) ILIKE $2 OR u.correo ILIKE $2 OR u.telefono ILIKE $2 OR ('ID-' || u.id_usuario) ILIKE $2)
-     ORDER BY u.id_usuario DESC LIMIT $3`,
-    [rol, patron, limite]
-  ).then((r) => r.rows);
-  const servicios = () => db().query(
-    `SELECT s.id_solicitud, s.folio, s.estado, COALESCE(c.nombre, s.categoria) AS categoria,
-            CONCAT(cl.nombre, ' ', cl.apellido) AS cliente, CONCAT(t.nombre, ' ', t.apellido) AS tecnico
-     FROM solicitudes_servicio s
-     LEFT JOIN categorias_servicio c ON c.codigo = s.categoria
-     LEFT JOIN usuarios cl ON cl.id_usuario = s.id_usuario
-     LEFT JOIN usuarios t ON t.id_usuario = s.id_tecnico
-     WHERE s.folio ILIKE $1 OR s.descripcion ILIKE $1 OR s.direccion ILIKE $1
-     ORDER BY s.fecha_creacion DESC LIMIT $2`,
-    [patron, limite]
-  ).then((r) => r.rows);
-
-  const [tecnicos, clientes, srv] = await Promise.all([
-    tipo === 'todos' || tipo === 'tecnicos' ? personas(2) : [],
-    tipo === 'todos' || tipo === 'clientes' ? personas(1) : [],
-    tipo === 'todos' || tipo === 'servicios' ? servicios() : [],
-  ]);
-  res.json({ q, tecnicos, clientes, servicios: srv });
-});
-
 // ───────────────────────── Directorio de usuarios (RF-16, RF-17, RF-26, RF-32, RF-33, RF-37, RF-38) ─────────────────────────
 router.get('/api/admin/users', ...adminOnly, async (req, res) => {
   const { role, status, specialty, search } = req.query;
@@ -276,13 +405,15 @@ router.get('/api/admin/users', ...adminOnly, async (req, res) => {
   }
   const { rows } = await db().query(
     `SELECT u.id_usuario, u.nombre, u.apellido, u.correo, u.telefono, u.id_rol, u.estado_cuenta, u.fecha_nacimiento,
-            u.identidad_verificada, u.fecha_registro,
+            u.identidad_verificada, u.fecha_registro, u.ultima_conexion, u.debe_cambiar_contrasena,
             (SELECT string_agg(COALESCE(c.nombre, e.nombre), ', ' ORDER BY c.orden) FROM especialidades_tecnico e
                LEFT JOIN categorias_servicio c ON c.codigo = e.categoria WHERE e.id_usuario = u.id_usuario) AS especialidad,
             CASE WHEN u.id_rol <> 2 THEN NULL WHEN u.identidad_verificada THEN 'Aprobado' ELSE 'Pendiente' END AS estatus_expediente,
             CASE WHEN u.id_rol = 2 THEN json_build_object(
               'calificacion', (SELECT ROUND(AVG(q.puntuacion_tecnico)::numeric, 1) FROM calificaciones_servicio q WHERE q.id_tecnico = u.id_usuario),
               'trabajos', (SELECT COUNT(*) FROM solicitudes_servicio f WHERE f.id_tecnico = u.id_usuario AND f.estado = 'FINALIZADA')
+            ) WHEN u.id_rol = 1 THEN json_build_object(
+              'servicios', (SELECT COUNT(*)::int FROM solicitudes_servicio f WHERE f.id_usuario = u.id_usuario)
             ) END AS metricas
      FROM usuarios u
      WHERE ${where.join(' AND ')}
@@ -300,26 +431,42 @@ router.post('/api/admin/co-admins', ...adminOnly, async (req, res) => {
   const correo = normalizeEmail(req.body?.email || req.body?.correo);
   const telefonoRaw = req.body?.telefono;
   const telefono = telefonoRaw ? normalizePhoneMx(telefonoRaw) : null;
-  const password = String(req.body?.password || '');
   if (!nombre || !apellido) return fail(res, 400, 'VALIDATION_ERROR', 'Escribe nombre y apellidos usando solo letras.', { field: 'nombre' });
   if (!isEmail(correo)) return fail(res, 400, 'VALIDATION_ERROR', 'Escribe un correo electrónico válido.', { field: 'email' });
   if (telefonoRaw && !telefono) return fail(res, 400, 'VALIDATION_ERROR', 'Escribe un teléfono de 10 dígitos, por ejemplo 753 123 4567.', { field: 'telefono' });
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) return fail(res, 400, 'VALIDATION_ERROR', 'Escribe un correo válido.', { field: 'email' });
-  if (!isStrongPassword(password)) {
-    return fail(res, 400, 'WEAK_PASSWORD', 'La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número.', { field: 'password' });
-  }
+
+  // La contraseña la genera el sistema y solo viaja por correo: quien da de alta nunca la conoce.
+  const temporal = generateTempPassword();
+  let creado;
   try {
-    const { rows } = await db().query(
-      `INSERT INTO usuarios (nombre, apellido, correo, contrasena, telefono, id_rol, estado, estado_cuenta, identidad_verificada)
-       VALUES ($1, $2, $3, $4, $5, 3, 'APROBADO', 'Activo', true) RETURNING id_usuario`,
-      [nombre, apellido, correo, await bcrypt.hash(password, 10), telefono]
-    );
-    audit(req, 'COADMIN_CREADO', 'usuario', rows[0].id_usuario, { correo });
-    res.status(201).json({ mensaje: 'Coadministrador registrado. Ya puede iniciar sesión en el panel.', id_usuario: rows[0].id_usuario });
+    creado = await withTransaction(async (tx) => {
+      const { rows } = await tx.query(
+        `INSERT INTO usuarios (nombre, apellido, correo, contrasena, telefono, id_rol, estado, estado_cuenta, identidad_verificada,
+                               debe_cambiar_contrasena, contrasena_temporal_expira)
+         VALUES ($1, $2, $3, $4, $5, 3, 'APROBADO', 'Activo', true, true, NOW() + make_interval(hours => $6)) RETURNING id_usuario`,
+        [nombre, apellido, correo, await bcrypt.hash(temporal, 10), telefono, HORAS_TEMPORAL]
+      );
+      // Si el correo no sale, el alta se revierte: nunca queda una cuenta cuya contraseña nadie conoce.
+      await sendMail({
+        to: correo,
+        subject: 'Tu acceso al panel de administración - Click & Serve',
+        html: tempPasswordEmailHtml({ nombre, password: temporal, horas: HORAS_TEMPORAL, url: process.env.PANEL_URL }),
+        code: temporal,
+      });
+      return rows[0];
+    });
   } catch (error) {
     if (error.code === '23505') return fail(res, 409, 'EMAIL_TAKEN', 'Ese correo ya está registrado.', { field: 'email' });
+    if (error instanceof HttpError && error.status === 503) {
+      return fail(res, 503, 'MAIL_UNAVAILABLE', 'No pudimos enviar el correo con la contraseña temporal, así que no se creó la cuenta. Intenta de nuevo en unos minutos.');
+    }
     throw error;
   }
+  audit(req, 'COADMIN_CREADO', 'usuario', creado.id_usuario, { correo });
+  res.status(201).json({
+    mensaje: `Coadministrador registrado. Enviamos una contraseña temporal a ${correo}: sirve para su primer acceso (vence en ${HORAS_TEMPORAL} horas) y deberá cambiarla al entrar.`,
+    id_usuario: creado.id_usuario,
+  });
 });
 
 // RF-17: expediente completo para descarga (sin contraseña ni secretos).

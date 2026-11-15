@@ -2,13 +2,14 @@ import { useState } from 'react'
 import { X, UserPlus } from 'lucide-react'
 import { Button, Input } from '@components/ui'
 import { useCreateCoAdmin } from '../../hooks/useAdminQueries'
-import { contrasenaFuerte, correoValido, normalizarCorreo, normalizarTelefono, nombreValido } from '../../lib/formatos'
+import { correoValido, normalizarCorreo, normalizarTelefono, nombreValido } from '../../lib/formatos'
+import { mensajeDeError } from '../../lib/errores'
 import './modals.css'
 
 // RF-26: un administrador da de alta a otro. El registro público no crea administradores.
 export default function CoAdminModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const crear = useCreateCoAdmin()
-  const [form, setForm] = useState({ nombre: '', apellidos: '', email: '', telefono: '', password: '', confirmar: '' })
+  const [form, setForm] = useState({ nombre: '', apellidos: '', email: '', telefono: '' })
   const [error, setError] = useState('')
   const [hecho, setHecho] = useState('')
 
@@ -27,24 +28,21 @@ export default function CoAdminModal({ isOpen, onClose }: { isOpen: boolean; onC
     if (!nombre || !apellidos) return setError('Escribe nombre y apellidos usando solo letras.')
     if (!correoValido(form.email)) return setError('Escribe un correo electrónico válido, por ejemplo ana@correo.mx.')
     if (telefono === null) return setError('El teléfono debe tener 10 dígitos, por ejemplo 753 123 4567.')
-    if (!contrasenaFuerte(form.password)) return setError('La contraseña necesita de 8 a 64 caracteres con mayúscula, minúscula y número.')
-    if (form.password !== form.confirmar) return setError('Las contraseñas no coinciden.')
     try {
       const res = await crear.mutateAsync({
         nombre,
         apellidos,
         email: normalizarCorreo(form.email),
         telefono: telefono ?? undefined,
-        password: form.password,
       })
       setHecho(res.mensaje)
     } catch (err) {
-      setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'No se pudo registrar al coadministrador.')
+      setError(mensajeDeError(err, 'No se pudo registrar al coadministrador.'))
     }
   }
 
   const cerrar = () => {
-    setForm({ nombre: '', apellidos: '', email: '', telefono: '', password: '', confirmar: '' })
+    setForm({ nombre: '', apellidos: '', email: '', telefono: '' })
     setError('')
     setHecho('')
     onClose()
@@ -66,7 +64,7 @@ export default function CoAdminModal({ isOpen, onClose }: { isOpen: boolean; onC
             <div className="modal-body">
               <p style={{ margin: 0, fontSize: 14 }}>{hecho}</p>
               <p style={{ margin: 0, fontSize: 13, color: 'var(--text-mid)' }}>
-                Comparte la contraseña por un medio seguro. Al entrar recibirá un código de acceso en su correo.
+                En su primer acceso usará esa contraseña temporal, recibirá un código de verificación en el mismo correo y deberá crear su propia contraseña.
               </p>
             </div>
             <div className="modal-footer"><Button variant="primary" size="sm" onClick={cerrar}>LISTO</Button></div>
@@ -80,19 +78,16 @@ export default function CoAdminModal({ isOpen, onClose }: { isOpen: boolean; onC
               </div>
               <Input label="Correo" type="email" value={form.email} onChange={set('email')} required />
               <Input label="Teléfono (opcional)" type="tel" value={form.telefono} onChange={set('telefono')} />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <Input label="Contraseña" type="password" value={form.password} onChange={set('password')} required />
-                <Input label="Confirmar" type="password" value={form.confirmar} onChange={set('confirmar')} required />
-              </div>
-              <p style={{ margin: 0, fontSize: 12, color: 'var(--text-mid)' }}>
-                Mínimo 8 caracteres con una mayúscula, una minúscula y un número.
+              <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.5, background: 'var(--bg-sunk)', padding: '10px 12px', borderRadius: 8 }}>
+                No necesitas elegir una contraseña: le enviaremos una <strong>contraseña temporal</strong> a este correo. Sirve solo para su
+                primer acceso (vence en 48 horas) y tendrá que cambiarla al entrar.
               </p>
-              {error && <p style={{ margin: 0, fontSize: 12, color: 'var(--danger-ink)' }}>{error}</p>}
+              {error && <p role="alert" style={{ margin: 0, fontSize: 12, color: 'var(--danger-ink)' }}>{error}</p>}
             </div>
             <div className="modal-footer">
               <Button type="button" variant="ghost" size="sm" onClick={cerrar}>CANCELAR</Button>
               <Button type="submit" variant="primary" size="sm" loading={crear.isPending}>
-                <UserPlus size={13} /> REGISTRAR
+                <UserPlus size={13} /> REGISTRAR Y ENVIAR ACCESO
               </Button>
             </div>
           </form>

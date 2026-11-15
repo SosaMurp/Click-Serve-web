@@ -1,285 +1,171 @@
-import { useState, useEffect, useMemo } from 'react'
-import {
-  MapContainer,
-  TileLayer,
-  Marker,
-  Popup,
-  useMap,
-} from 'react-leaflet'
+import { useMemo, useState, useEffect } from 'react'
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import { MapPin, RotateCcw, ExternalLink, AlertTriangle } from 'lucide-react'
+import { RotateCcw, ExternalLink, AlertTriangle, WifiOff } from 'lucide-react'
 import ServiceDetailModal from '@components/modals/ServiceDetailModal'
 import { useServiciosUbicados } from '@hooks/useServicios'
-import { useActividad, useDashboardStats } from '@hooks/useDashboard'
-import { getServicioById, type ServicioUbicado } from '@api/servicios'
-import type { ServicioDetalle } from '@/types/servicios'
+import type { ServicioUbicado } from '@api/servicios'
 import 'leaflet/dist/leaflet.css'
 import './mapa.css'
 
-// ── Coordenadas Reales de Lázaro Cárdenas, Michoacán ─────────────────────────
+// ── Coordenadas de Lázaro Cárdenas, Michoacán ────────────────────────────────
 const LZC_CENTER: [number, number] = [17.9750, -102.2050]
 const DEFAULT_ZOOM = 13
 
-interface ServicioNodo {
+// Un punto por servicio, coloreado por estado. El SOS es un punto rojo que parpadea.
+type Grupo = 'pendiente' | 'en_curso' | 'completado' | 'cancelado' | 'sos'
+
+const GRUPOS: { id: Grupo; label: string; color: string }[] = [
+  { id: 'sos', label: 'SOS', color: '#D92D20' },
+  { id: 'pendiente', label: 'Pendientes', color: '#0C1C40' },
+  { id: 'en_curso', label: 'En curso', color: '#E25900' },
+  { id: 'completado', label: 'Completados', color: '#0E7A42' },
+  { id: 'cancelado', label: 'Cancelados', color: '#98A2B3' },
+]
+const COLOR = Object.fromEntries(GRUPOS.map(g => [g.id, g.color])) as Record<Grupo, string>
+// Lo que se ve al abrir: lo que está pasando ahora. Lo cerrado se activa desde la leyenda.
+const VISIBLES_AL_ABRIR: Grupo[] = ['sos', 'pendiente', 'en_curso']
+
+interface Punto {
   id: number
   codigo: string
   lat: number
   lng: number
-  color: string
+  grupo: Grupo
   titulo: string
   direccion: string
   estatus: string
 }
 
-// Colores de estado de la paleta compartida con la app móvil
-function colorPorEstatus(estatus: string) {
-  const e = estatus.toLowerCase()
-  if (e.includes('cancel')) return '#D92D20'
-  if (e.includes('complet') || e.includes('finaliz')) return '#0E7A42'
-  if (e.includes('curso') || e.includes('progreso') || e.includes('camino')) return '#E25900'
-  return '#0C1C40'
+function grupoDe(s: ServicioUbicado): Grupo {
+  if (s.alerta_sos && !['Completado', 'Cancelado'].includes(s.estatus)) return 'sos'
+  const e = s.estatus.toLowerCase()
+  if (e.includes('cancel')) return 'cancelado'
+  if (e.includes('complet')) return 'completado'
+  if (e.includes('curso')) return 'en_curso'
+  return 'pendiente'
 }
 
-const codigo = (id: number) => `SRV-${String(id).padStart(3, '0')}`
-
-function toNodo(s: ServicioUbicado): ServicioNodo | null {
+function aPunto(s: ServicioUbicado): Punto | null {
   const lat = Number(s.latitud)
   const lng = Number(s.longitud)
   if (s.latitud == null || s.longitud == null || Number.isNaN(lat) || Number.isNaN(lng)) return null
   return {
     id: s.id_servicio,
-    codigo: codigo(s.id_servicio),
-    lat,
-    lng,
-    color: colorPorEstatus(s.estatus),
+    codigo: s.codigo || `#${s.id_servicio}`,
+    lat, lng,
+    grupo: grupoDe(s),
     titulo: s.titulo || 'Servicio sin título',
     direccion: s.direccion || 'Sin dirección registrada',
     estatus: s.estatus,
   }
 }
 
-// ── Marcador personalizado HTML con Leaflet DivIcon ──────────────────────────
-function createNodeDivIcon(node: ServicioNodo, isSelected: boolean) {
+function iconoPunto(p: Punto, seleccionado: boolean) {
   return L.divIcon({
-    className: 'mapa-custom-leaflet-marker',
-    html: `
-      <div class="mapa-pin-wrapper ${isSelected ? 'mapa-pin-wrapper--selected' : ''}" style="--marker-color: ${node.color}">
-        <div class="mapa-pulse-ring" style="background-color: ${node.color};"></div>
-        <div class="mapa-pin-badge" style="background-color: ${node.color};">
-          <span class="mapa-pin-code">#${node.id}</span>
-        </div>
-      </div>
-    `,
-    iconSize: [44, 44],
-    iconAnchor: [22, 22],
-    popupAnchor: [0, -20],
+    className: 'mapa-dot-marker',
+    html: `<span class="mapa-pt ${p.grupo === 'sos' ? 'mapa-pt--sos' : ''} ${seleccionado ? 'mapa-pt--sel' : ''}" style="--c:${COLOR[p.grupo]}"></span>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 11],
+    popupAnchor: [0, -10],
   })
 }
 
-// ── Controlador imperativo de cámara Leaflet ─────────────────────────────────
-function MapFlightController({
-  target,
-  zoom,
-}: {
-  target: [number, number] | null
-  zoom?: number
-}) {
+// Cámara: vuela al punto elegido o vuelve a centrar
+function Camara({ destino }: { destino: { pos: [number, number]; zoom: number; n: number } | null }) {
   const map = useMap()
   useEffect(() => {
-    if (target) {
-      map.flyTo(target, zoom ?? 15, { duration: 1.2 })
-    }
-  }, [target, zoom, map])
+    if (destino) map.flyTo(destino.pos, destino.zoom, { duration: 1 })
+  }, [destino, map])
   return null
 }
 
-const hora = (iso: string) =>
-  new Date(iso).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
-
 export default function MapaPage() {
   const servicios = useServiciosUbicados()
-  const stats = useDashboardStats()
-  const actividad = useActividad()
+  const [visibles, setVisibles] = useState<Set<Grupo>>(new Set(VISIBLES_AL_ABRIR))
+  const [seleccionado, setSeleccionado] = useState<number | null>(null)
+  const [destino, setDestino] = useState<{ pos: [number, number]; zoom: number; n: number } | null>(null)
+  const [detalleId, setDetalleId] = useState<number | null>(null)
 
-  const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [flyTarget, setFlyTarget] = useState<[number, number] | null>(null)
-  const [flyZoom, setFlyZoom] = useState<number | undefined>(undefined)
-  const [detalle, setDetalle] = useState<ServicioDetalle | null>(null)
-  const [detalleError, setDetalleError] = useState('')
-
-  const nodos = useMemo(
-    () => (servicios.data ?? []).map(toNodo).filter((n): n is ServicioNodo => n !== null),
+  const puntos = useMemo(
+    () => (servicios.data ?? []).map(aPunto).filter((p): p is Punto => p !== null),
     [servicios.data],
   )
+  const conteo = useMemo(() => {
+    const c: Record<Grupo, number> = { sos: 0, pendiente: 0, en_curso: 0, completado: 0, cancelado: 0 }
+    for (const p of puntos) c[p.grupo] += 1
+    return c
+  }, [puntos])
+  const mostrados = puntos.filter(p => visibles.has(p.grupo))
 
-  const handleSelectNode = (node: ServicioNodo) => {
-    setSelectedId(node.id)
-    setFlyTarget([node.lat, node.lng])
-    setFlyZoom(15)
-  }
-
-  const handleOpenDetail = async (id: number) => {
-    setDetalleError('')
-    try {
-      setDetalle(await getServicioById(id))
-    } catch {
-      setDetalleError(`No se pudo abrir ${codigo(id)}`)
-    }
-  }
-
-  const handleRecenter = () => {
-    setFlyTarget(LZC_CENTER)
-    setFlyZoom(DEFAULT_ZOOM)
-  }
-
-  const statValue = (v: number | undefined) => (stats.isError || v === undefined ? '—' : v)
+  const alternar = (g: Grupo) => setVisibles(prev => {
+    const n = new Set(prev)
+    if (n.has(g)) n.delete(g); else n.add(g)
+    return n
+  })
+  const centrar = () => setDestino({ pos: LZC_CENTER, zoom: DEFAULT_ZOOM, n: Date.now() })
 
   return (
     <div className="mapa-page fade-in">
-      {/* Header row */}
-      <div className="dash-page-header">
-        <div>
-          <h1 className="dash-page-title">Mapa en vivo</h1>
-          <p className="dash-page-sub">Servicios con ubicación en Lázaro Cárdenas, Michoacán</p>
-        </div>
-        <div className="mapa-date">
-          <span className="mapa-dot" />
-          {servicios.isError ? 'SIN CONEXIÓN CON EL SERVIDOR' : `${nodos.length} SERVICIOS EN EL MAPA`}
-        </div>
-      </div>
-
-      <div className="mapa-layout">
-        {/* Real Leaflet Map Canvas */}
-        <div className="mapa-canvas">
-          {/* Herramientas flotantes */}
-          <div className="mapa-map-overlay-tools">
-            <button
-              type="button"
-              className="mapa-recenter-btn"
-              onClick={handleRecenter}
-              title="Centrar mapa en Lázaro Cárdenas"
-            >
-              <RotateCcw size={13} /> Centrar LZC
-            </button>
-          </div>
-
-          <div className="mapa-badge-city">
-            <MapPin size={12} color="#E25900" />
-            <span>Lázaro Cárdenas, Michoacán</span>
-          </div>
-
-          <MapContainer
-            center={LZC_CENTER}
-            zoom={DEFAULT_ZOOM}
-            scrollWheelZoom={true}
-            style={{ width: '100%', height: '100%' }}
-          >
-            {/* Tiles OpenStreetMap limpios y de alta velocidad */}
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              maxZoom={18}
-            />
-
-            <MapFlightController target={flyTarget} zoom={flyZoom} />
-
-            {nodos.map((node) => (
-              <Marker
-                key={node.id}
-                position={[node.lat, node.lng]}
-                icon={createNodeDivIcon(node, selectedId === node.id)}
-                eventHandlers={{ click: () => handleSelectNode(node) }}
-              >
-                <Popup>
-                  <div className="mapa-popup-card">
-                    <div className="mapa-popup-header">
-                      <span
-                        className="mapa-popup-tag"
-                        style={{ backgroundColor: `${node.color}1a`, color: node.color }}
-                      >
-                        {node.estatus}
-                      </span>
-                      <strong style={{ fontSize: 11, color: '#667085' }}>{node.codigo}</strong>
-                    </div>
-
-                    <h4 className="mapa-popup-title">{node.titulo}</h4>
-                    <p className="mapa-popup-sub">{node.direccion}</p>
-
-                    <button
-                      type="button"
-                      className="mapa-popup-btn"
-                      onClick={() => handleOpenDetail(node.id)}
-                    >
-                      <ExternalLink size={12} /> Ver detalle del servicio
-                    </button>
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
-          </MapContainer>
-        </div>
-
-        {/* Right panel */}
-        <div className="mapa-panel">
-          <div className="mapa-status-grid">
-            <div className="mapa-stat">
-              <p className="mapa-stat-label">TÉCNICOS EN LÍNEA</p>
-              <p className="mapa-stat-value" style={{ color: 'var(--accent)' }}>{statValue(stats.data?.tecnicos_online)}</p>
-            </div>
-            <div className="mapa-stat">
-              <p className="mapa-stat-label">SERVICIOS EN CURSO</p>
-              <p className="mapa-stat-value" style={{ color: '#0C1C40' }}>{statValue(stats.data?.servicios_en_curso)}</p>
-            </div>
-          </div>
-
-          {detalleError && (
-            <p className="mapa-log-text" style={{ color: 'var(--danger-ink)' }}>{detalleError}</p>
-          )}
-
-          {/* Actividad real del sistema */}
-          <div className="mapa-log-header">
-            <p className="mapa-log-title">ACTIVIDAD RECIENTE</p>
-            <span className="mapa-live-dot" />
-          </div>
-
-          <div className="mapa-log">
-            {actividad.isError && (
-              <p className="mapa-log-text"><AlertTriangle size={12} /> Sin conexión con el registro de actividad.</p>
-            )}
-            {!actividad.isError && (actividad.data?.items ?? []).length === 0 && !actividad.isLoading && (
-              <p className="mapa-log-text">Todavía no hay actividad registrada.</p>
-            )}
-            {(actividad.data?.items ?? []).map((entry) => {
-              const nodo = entry.tipo === 'servicio' ? nodos.find((n) => n.id === entry.id) : undefined
-              return (
-                <div
-                  key={`${entry.tipo}-${entry.id}`}
-                  className={`mapa-log-entry ${nodo && selectedId === nodo.id ? 'mapa-log-entry--active' : ''}`}
-                  style={{ cursor: nodo ? 'pointer' : 'default' }}
-                  onClick={() => nodo && handleSelectNode(nodo)}
-                >
-                  <div className="mapa-log-meta">
-                    <span>{hora(entry.creado_en)}</span>
-                    <span className={`mapa-log-type mapa-log-type--${entry.urgente ? 'danger' : 'info'}`}>
-                      {entry.tipo === 'servicio' ? 'SERVICIO' : 'TÉCNICO'}
-                    </span>
-                  </div>
-                  <p className="mapa-log-text">{entry.descripcion}</p>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-
-      {detalle && (
-        <ServiceDetailModal
-          key={detalle.id_servicio}
-          isOpen
-          onClose={() => setDetalle(null)}
-          serviceId={detalle.id_servicio}
+      <MapContainer center={LZC_CENTER} zoom={DEFAULT_ZOOM} scrollWheelZoom style={{ width: '100%', height: '100%' }}>
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          maxZoom={18}
         />
+        <Camara destino={destino} />
+
+        {mostrados.map(p => (
+          <Marker
+            key={p.id}
+            position={[p.lat, p.lng]}
+            icon={iconoPunto(p, seleccionado === p.id)}
+            eventHandlers={{ click: () => { setSeleccionado(p.id); setDestino({ pos: [p.lat, p.lng], zoom: 15, n: Date.now() }) } }}
+          >
+            <Popup eventHandlers={{ remove: () => setSeleccionado(s => (s === p.id ? null : s)) }}>
+              <div className="mapa-popup-card">
+                <div className="mapa-popup-header">
+                  <span className="mapa-popup-tag" style={{ backgroundColor: `${COLOR[p.grupo]}1a`, color: COLOR[p.grupo] }}>
+                    {p.grupo === 'sos' ? 'SOS' : p.estatus}
+                  </span>
+                  <strong style={{ fontSize: 11, color: '#667085' }}>{p.codigo}</strong>
+                </div>
+                <h4 className="mapa-popup-title">{p.titulo}</h4>
+                <p className="mapa-popup-sub">{p.direccion}</p>
+                <button type="button" className="mapa-popup-btn" onClick={() => setDetalleId(p.id)}>
+                  <ExternalLink size={12} /> Ver detalle del servicio
+                </button>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
+
+      {/* Leyenda: puntos, conteo y filtro en una sola pieza flotante */}
+      <div className="mapa-legend" role="group" aria-label="Estados de los servicios en el mapa">
+        {GRUPOS.map(g => (
+          <button key={g.id} type="button" aria-pressed={visibles.has(g.id)}
+            className={`mapa-chip ${visibles.has(g.id) ? 'mapa-chip--on' : ''}`} onClick={() => alternar(g.id)}
+            title={`${visibles.has(g.id) ? 'Ocultar' : 'Mostrar'} ${g.label.toLowerCase()}`}>
+            <span className={`mapa-chip-dot ${g.id === 'sos' && conteo.sos > 0 ? 'mapa-chip-dot--sos' : ''}`} style={{ background: g.color }} />
+            {g.label}
+            <span className="mapa-chip-n">{servicios.isLoading ? '…' : conteo[g.id]}</span>
+          </button>
+        ))}
+      </div>
+
+      <button type="button" className="mapa-recenter" onClick={centrar} title="Centrar mapa en Lázaro Cárdenas">
+        <RotateCcw size={14} /> Centrar
+      </button>
+
+      {servicios.isError && (
+        <div className="mapa-aviso" role="alert"><WifiOff size={14} /> Sin conexión con el servidor</div>
       )}
+      {!servicios.isError && !servicios.isLoading && puntos.length === 0 && (
+        <div className="mapa-aviso"><AlertTriangle size={14} /> Ningún servicio tiene ubicación todavía</div>
+      )}
+
+      {detalleId != null && <ServiceDetailModal isOpen onClose={() => setDetalleId(null)} serviceId={detalleId} />}
     </div>
   )
 }

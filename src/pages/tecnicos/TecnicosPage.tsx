@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react'
-import { useLocation } from 'react-router-dom'
 import { Search, Star, Filter, UserPlus } from 'lucide-react'
 import { Badge } from '@components/ui'
 import TechProfileModal from '@components/modals/TechProfileModal'
+import PageHeader from '@components/ui/PageHeader'
 import AdvancedFiltersModal from '@components/modals/AdvancedFiltersModal'
 import CoAdminModal from '@components/modals/CoAdminModal'
 import './tecnicos.css'
 
 import { useAdminUsers } from '../../hooks/useAdminQueries'
-import { CATEGORIAS, SIN_FILTROS, filtrosActivos, pasaFiltros, type Filtros } from '../../lib/filtros'
+import {
+  SIN_FILTROS, CATEGORIAS, CAMPOS_TECNICOS, CAMPOS_CLIENTES, CAMPOS_ADMINS, filtrosActivos, pasaFiltros, type CampoFiltro, type Filtros,
+} from '../../lib/filtros'
 
 // estado_cuenta de la app → etiqueta del filtro. Un técnico sin identidad verificada sigue en revisión
 // aunque su cuenta figure como activa.
@@ -20,19 +22,31 @@ function estadoLegible(estado?: string | null, sinVerificar = false) {
   return 'EN REVISIÓN'
 }
 
+type Tab = 'tecnicos' | 'clientes' | 'admins'
+
+// Qué filtros tiene cada pestaña: un cliente no tiene especialidad ni calificación, un administrador tampoco
+const CAMPOS_POR_PESTANA: Record<Tab, CampoFiltro[]> = {
+  tecnicos: CAMPOS_TECNICOS,
+  clientes: CAMPOS_CLIENTES,
+  admins: CAMPOS_ADMINS,
+}
+
+const fechaCorta = (iso: string | null, conHora = false) =>
+  iso
+    ? new Date(iso).toLocaleString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', ...(conHora ? { hour: '2-digit', minute: '2-digit' } : {}) })
+    : '—'
+
 export default function TecnicosPage() {
-  const location = useLocation()
-  const [tab, setTab] = useState<'tecnicos' | 'clientes' | 'admins'>('tecnicos')
+  const [tab, setTabState] = useState<Tab>('tecnicos')
   const [isCoAdminOpen, setIsCoAdminOpen] = useState(false)
   const [search, setSearch] = useState('')
 
-  // Búsqueda enviada desde el buscador global de la barra superior
-  useEffect(() => {
-    const q = (location.state as { q?: string } | null)?.q
-    if (q) setSearch(q)
-  }, [location.key])
   const [filters, setFilters] = useState<Filtros>(SIN_FILTROS)
   const setFiltro = (k: keyof Filtros, v: string) => setFilters(f => ({ ...f, [k]: v }))
+  // Cada pestaña tiene sus propios filtros: al cambiar se parte de cero para no filtrar con algo que ya no se ve
+  const setTab = (t: Tab) => { setTabState(t); setFilters(SIN_FILTROS) }
+  const campos = CAMPOS_POR_PESTANA[tab]
+  const tiene = (c: CampoFiltro) => campos.includes(c)
   const [selectedItem, setSelectedItem] = useState<{ realId: number } | null>(null)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
@@ -50,11 +64,14 @@ export default function TecnicosPage() {
       name: `${u.nombre} ${u.apellido}`,
       phone: u.telefono,
       email: u.correo,
-      specialty: u.especialidad || (tab === 'clientes' ? 'Cliente' : tab === 'admins' ? 'Administrador' : 'Sin especialidades'),
+      specialty: u.especialidad || 'Sin especialidades',
       status,
       statusV: (status === 'ACTIVO' ? 'success' : status === 'EN REVISIÓN' ? 'warning' : 'danger') as 'success' | 'warning' | 'danger',
       rating: u.metricas?.calificacion || null,
       jobs: u.metricas?.trabajos ?? null,
+      servicios: u.metricas?.servicios ?? 0,
+      ultimaConexion: u.ultima_conexion ?? null,
+      pendienteActivar: u.debe_cambiar_contrasena === true,
       verificado: !!u.identidad_verificada,
       registro: u.fecha_registro ?? null,
     }
@@ -65,8 +82,8 @@ export default function TecnicosPage() {
     const matchSearch = !search || r.name.toLowerCase().includes(s) || r.id.toLowerCase().includes(s) || (r.email ?? '').toLowerCase().includes(s)
     return matchSearch && pasaFiltros(filters, {
       specialty: r.specialty, rating: r.rating != null ? Number(r.rating) : null,
-      verificado: r.verificado, fecha: r.registro, status: r.status,
-    })
+      verificado: r.verificado, fecha: r.registro, status: r.status, servicios: r.servicios,
+    }, campos)
   })
 
   const handleOpenProfile = (row: (typeof data)[number]) => {
@@ -76,15 +93,11 @@ export default function TecnicosPage() {
 
   return (
     <div className="tec-page fade-in">
-      <div className="dash-page-header">
-        <div>
-          <h1 className="dash-page-title">Directorio de Cuentas</h1>
-          <p className="dash-page-sub">GESTIÓN DE RED LÁZARO CÁRDENAS</p>
-        </div>
+      <PageHeader title="Técnicos y usuarios" sub="Cuentas de técnicos, clientes y administradores">
         <button className="fin-approve-batch" onClick={() => setIsCoAdminOpen(true)}>
           <UserPlus size={14} /> Nuevo coadministrador
         </button>
-      </div>
+      </PageHeader>
 
       {/* Tabs (RF-37) */}
       <div className="tec-tabs">
@@ -112,12 +125,14 @@ export default function TecnicosPage() {
           <option value="RECHAZADO">Rechazado</option>
           <option value="SUSPENDIDO">Suspendido</option>
         </select>
-        <select className="tec-select" aria-label="Filtrar por especialidad" value={filters.specialty} onChange={e => setFiltro('specialty', e.target.value)}>
-          <option value="ALL">Especialidad: Todo</option>
-          {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
+        {tiene('specialty') && (
+          <select className="tec-select" aria-label="Filtrar por especialidad" value={filters.specialty} onChange={e => setFiltro('specialty', e.target.value)}>
+            <option value="ALL">Especialidad: Todo</option>
+            {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        )}
         <button className="dash-export-btn" onClick={() => setIsFilterOpen(true)}>
-          <Filter size={13} /> FILTROS AVANZADOS{filtrosActivos(filters) > 0 ? ` (${filtrosActivos(filters)})` : ''}
+          <Filter size={13} /> FILTROS AVANZADOS{filtrosActivos(filters, campos) > 0 ? ` (${filtrosActivos(filters, campos)})` : ''}
         </button>
       </div>
 
@@ -132,9 +147,9 @@ export default function TecnicosPage() {
             <thead>
               <tr>
                 <th>{tab === 'tecnicos' ? 'TÉCNICO / CONTACTO' : tab === 'clientes' ? 'CLIENTE / CONTACTO' : 'ADMINISTRADOR / CONTACTO'}</th>
-                <th>ESPECIALIDAD PRINCIPAL</th>
+                <th>{tab === 'tecnicos' ? 'ESPECIALIDAD PRINCIPAL' : 'REGISTRO'}</th>
                 <th>ESTADO DE CUENTA</th>
-                <th>MÉTRICAS</th>
+                <th>{tab === 'tecnicos' ? 'MÉTRICAS' : tab === 'clientes' ? 'SERVICIOS' : 'ÚLTIMA CONEXIÓN'}</th>
                 <th>ACCIONES</th>
               </tr>
             </thead>
@@ -157,18 +172,33 @@ export default function TecnicosPage() {
                       </div>
                     </div>
                   </td>
-                  <td><span className="dash-table-spec">{row.specialty}</span></td>
                   <td>
-                    <Badge variant={row.statusV}>▲ {row.status}</Badge>
+                    {tab === 'tecnicos'
+                      ? <span className="dash-table-spec">{row.specialty}</span>
+                      : <span className="dash-table-id">{fechaCorta(row.registro)}</span>}
                   </td>
                   <td>
-                    {row.rating ? (
-                      <div className="tec-rating">
-                        <Star size={12} fill="currentColor" />
-                        <strong>{row.rating}</strong>
-                        <span>{row.jobs} {row.jobs === 1 ? 'trabajo' : 'trabajos'}</span>
-                      </div>
-                    ) : <span className="dash-table-id">Sin historial</span>}
+                    <Badge variant={row.statusV}>▲ {row.status}</Badge>
+                    {tab === 'admins' && row.pendienteActivar && (
+                      <p className="dash-table-id" style={{ marginTop: 4 }}>Aún no cambia su contraseña temporal</p>
+                    )}
+                  </td>
+                  <td>
+                    {tab === 'tecnicos' ? (
+                      row.rating ? (
+                        <div className="tec-rating">
+                          <Star size={12} fill="currentColor" />
+                          <strong>{row.rating}</strong>
+                          <span>{row.jobs} {row.jobs === 1 ? 'trabajo' : 'trabajos'}</span>
+                        </div>
+                      ) : <span className="dash-table-id">Sin historial</span>
+                    ) : tab === 'clientes' ? (
+                      row.servicios > 0
+                        ? <span className="dash-table-spec">{row.servicios} {row.servicios === 1 ? 'servicio' : 'servicios'}</span>
+                        : <span className="dash-table-id">Sin servicios</span>
+                    ) : (
+                      <span className="dash-table-id">{row.ultimaConexion ? fechaCorta(row.ultimaConexion, true) : 'Nunca'}</span>
+                    )}
                   </td>
                   <td>
                     <button className="tec-action-btn" onClick={() => handleOpenProfile(row)}>
@@ -201,6 +231,8 @@ export default function TecnicosPage() {
         onClose={() => setIsFilterOpen(false)}
         value={filters}
         onApply={setFilters}
+        campos={campos}
+        contexto={tab === 'tecnicos' ? 'prestadores de servicio' : tab === 'clientes' ? 'clientes' : 'administradores'}
         verificationLabel="identidad verificada"
       />
     </div>
