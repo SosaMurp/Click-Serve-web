@@ -217,7 +217,7 @@ router.get('/api/tecnicos/recomendados', auth, async (req, res) => {
   res.json({
     tecnicos: rows.map((t) => ({
       ...t,
-      foto_url: t.foto_archivo ? signFileUrl(t.foto_archivo, 3600) : null,
+      foto_url: t.foto_archivo ? signFileUrl(t.foto_archivo) : null,
       foto_archivo: undefined,
       distancia_km: t.distancia_km == null ? null : Number(t.distancia_km),
       eta_min: t.distancia_km == null ? null : Math.max(1, Math.round((Number(t.distancia_km) / 25) * 60)),

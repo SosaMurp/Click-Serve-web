@@ -24,5 +24,3 @@ export { DateField, TimeField, Calendar, Folio, Money } from './Pickers';
 export { Entrance, usePressScale, PulseRing, Breathe, useFill, useCountUp, Confetti, Celebration, useReduceMotion, NATIVE } from './motion';
 export { Ilustracion, ilustracionDe } from './Ilustracion';
 export type { IlustracionNombre } from './Ilustracion';
-export { figuraDeIcono } from './figuras';
-export type { FiguraNombre } from './figuras';

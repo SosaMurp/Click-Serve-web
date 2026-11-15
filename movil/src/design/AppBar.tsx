@@ -65,6 +65,23 @@ export function AppBar({ title, subtitle, back = true, onBack, confirmDiscard, a
     return () => sub.remove();
   }, [guard, focused]);
 
+  // Pestaña (sin regresar): el nombre ya está en la barra de abajo, así que no se repite arriba.
+  // Solo queda el espacio de la barra de estado y, si hay, las acciones como botones discretos.
+  if (!back) {
+    return (
+      <View style={[styles.tabBar, { paddingTop: insets.top + space.xs }]}>
+        <StatusBar style="dark" />
+        <Text accessibilityRole="header" style={styles.srOnly}>{title}</Text>
+        {actions.length || right ? (
+          <View style={styles.tabActions}>
+            {actions.map((a) => <CircleIcon key={a.label} icon={a.icon} label={a.label} onPress={a.onPress} badge={a.badge} />)}
+            {right}
+          </View>
+        ) : null}
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.bar, { paddingTop: insets.top + space.xs }]}>
       <StatusBar style="light" />
@@ -102,6 +119,10 @@ const styles = StyleSheet.create({
   bar: { backgroundColor: color.navy, alignItems: 'center', borderBottomLeftRadius: 24, borderBottomRightRadius: 24, paddingBottom: space.sm },
   inner: { width: '100%', maxWidth: 640, minHeight: 60, flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.lg, gap: space.sm },
   subtitle: { color: '#C9D0E0' },
+  tabBar: { alignItems: 'center' },
+  tabActions: { width: '100%', maxWidth: 640, flexDirection: 'row', justifyContent: 'flex-end', gap: space.sm, paddingHorizontal: space.lg },
+  // Solo para lector de pantalla: el título sigue anunciándose aunque no se vea.
+  srOnly: { position: 'absolute', width: 1, height: 1, overflow: 'hidden', opacity: 0 },
   side: { minWidth: 48, flexDirection: 'row', alignItems: 'center', gap: space.sm },
   sideRight: { justifyContent: 'flex-end' },
   titles: { flex: 1 },

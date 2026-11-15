@@ -235,7 +235,7 @@ export default function NuevaSolicitud() {
                 onPress={() => { if (categoria !== c.codigo) setIdServicio(null); setCategoria(c.codigo); clear('categoria'); }}
                 style={[styles.cat, categoria === c.codigo && styles.catOn]}
               >
-                <Ilustracion nombre={ilustracionDe(c.nombre)} size={48} />
+                <Ilustracion nombre={ilustracionDe(c.nombre)} size={48} tono="gris" />
                 <Text variant="subtitle" weight="700" style={[styles.catText, categoria === c.codigo && { color: color.inkOnColor }]}>{c.nombre}</Text>
               </Pressable>
             ))}

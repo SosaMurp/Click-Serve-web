@@ -5,6 +5,7 @@ import { currentLocation, hapticSuccess, quietLocation } from '../lib/media';
 import { toast } from '../ui/toast';
 import { useSession } from './session';
 import { detenerRastreo, iniciarRastreo } from '../features/location/backgroundTrack';
+import { useMantenerSesion } from './inactividad';
 
 // RF-21 + RNF-34: interruptor ONLINE del técnico y latido cada 20 s mientras está en línea.
 type Value = { disponible: boolean; cambiando: boolean; setDisponible: (v: boolean) => Promise<void> };
@@ -54,6 +55,7 @@ export function AvailabilityProvider({ children }: { children: React.ReactNode }
 // RNF-43: mientras va en camino, el técnico comparte su ubicación. En una compilación propia se usa una tarea en
 // segundo plano (sigue con la app minimizada); en Expo Go, la web o sin permiso "Todo el tiempo", cada 4 s con la app abierta.
 export function useLocationBroadcast(active: boolean) {
+  useMantenerSesion(active);
   useEffect(() => {
     if (!active) return undefined;
     let cancelado = false;

@@ -47,7 +47,7 @@ function publicUser(row) {
     disponible: row.disponible === true,
     preferencias: row.preferencias || {},
     debe_cambiar_contrasena: row.debe_cambiar_contrasena === true,
-    foto_url: row.foto_archivo ? signFileUrl(row.foto_archivo, 3600) : null,
+    foto_url: row.foto_archivo ? signFileUrl(row.foto_archivo) : null,
     bio: row.bio || null,
     fecha_registro: row.fecha_registro,
   };

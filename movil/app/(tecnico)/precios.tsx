@@ -64,7 +64,7 @@ export default function MisPrecios() {
                 const bloqueado = !!s.cambiar_desde && new Date(s.cambiar_desde) > new Date();
                 return (
                   <View key={s.id_servicio} style={[styles.row, i > 0 && styles.divider]}>
-                    <Ilustracion nombre={s.es_diagnostico ? 'general' : ilustracionDe(cat)} size={40} />
+                    <Ilustracion nombre={s.es_diagnostico ? 'general' : ilustracionDe(cat)} size={40} tono="gris" />
                     <View style={styles.flex}>
                       <Text variant="subtitle">{s.nombre}</Text>
                       <Text variant="caption" tone="muted">

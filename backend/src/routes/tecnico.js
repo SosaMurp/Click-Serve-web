@@ -116,7 +116,7 @@ router.get('/api/tecnicos/buscar', auth, requireRole(ROL.CLIENTE), requireApprov
       id_usuario: r.id_usuario,
       nombre: r.nombre,
       apellido: r.apellido,
-      foto_url: r.foto_archivo ? signFileUrl(r.foto_archivo, 3600) : null,
+      foto_url: r.foto_archivo ? signFileUrl(r.foto_archivo) : null,
       disponible: r.disponible === true,
       verificado_sep: r.verificado_sep === true,
       calificacion: r.calificacion,
@@ -217,7 +217,7 @@ router.get('/api/tecnicos/:id/perfil', auth, async (req, res) => {
       id_usuario: t.id_usuario,
       nombre: t.nombre,
       apellido: t.apellido,
-      foto_url: t.foto_archivo ? signFileUrl(t.foto_archivo, 3600) : null,
+      foto_url: t.foto_archivo ? signFileUrl(t.foto_archivo) : null,
       bio: t.bio,
       verificado_sep: t.verificado_sep,
       identidad_verificada: t.identidad_verificada === true,
@@ -228,7 +228,7 @@ router.get('/api/tecnicos/:id/perfil', auth, async (req, res) => {
       trabajos: t.trabajos,
       efectividad: total > 0 ? Math.round((t.trabajos / total) * 100) : null,
       especialidades: esp.rows,
-      portafolio: port.rows.map((p) => ({ ...p, url: signFileUrl(p.id_archivo, 3600) })),
+      portafolio: port.rows.map((p) => ({ ...p, url: signFileUrl(p.id_archivo) })),
       certificaciones: certs.rows,
       resenas: resenas.rows,
     },
@@ -305,7 +305,7 @@ router.delete('/api/tecnico/especialidades/:id', ...techOnly, async (req, res) =
 // ───────────────────────── Portafolio (RF-24) ─────────────────────────
 router.get('/api/tecnico/portafolio', ...techOnly, async (req, res) => {
   const { rows } = await db().query('SELECT id_item, titulo, descripcion, id_archivo, fecha_creacion FROM portafolio_tecnico WHERE id_usuario = $1 ORDER BY id_item DESC', [req.user.id_usuario]);
-  res.json({ portafolio: rows.map((p) => ({ ...p, url: signFileUrl(p.id_archivo, 3600) })) });
+  res.json({ portafolio: rows.map((p) => ({ ...p, url: signFileUrl(p.id_archivo) })) });
 });
 
 router.post('/api/tecnico/portafolio', ...techOnly, uploader({ maxFiles: 1 }).single('foto'), async (req, res) => {
@@ -320,7 +320,7 @@ router.post('/api/tecnico/portafolio', ...techOnly, uploader({ maxFiles: 1 }).si
     );
     return rows[0];
   });
-  res.status(201).json({ item: { ...item, url: signFileUrl(item.id_archivo, 3600) } });
+  res.status(201).json({ item: { ...item, url: signFileUrl(item.id_archivo) } });
 });
 
 router.delete('/api/tecnico/portafolio/:id', ...techOnly, async (req, res) => {

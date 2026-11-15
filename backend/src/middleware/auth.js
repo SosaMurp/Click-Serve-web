@@ -22,7 +22,8 @@ async function loadSessionUser(decoded) {
   const { rows } = await getPool().query(
     `SELECT u.id_usuario, u.id_rol, u.nombre, u.apellido, u.correo, u.telefono, u.estado_cuenta,
             u.identidad_verificada, u.version_sesion, u.anonimizado, u.debe_cambiar_contrasena,
-            s.estado AS estado_sesion, s.id_rol AS rol_sesion
+            s.estado AS estado_sesion, s.id_rol AS rol_sesion,
+            EXTRACT(EPOCH FROM (NOW() - s.ultima_actividad))::int AS inactivo_seg
      FROM usuarios u
      LEFT JOIN sesiones_activas s ON s.id_sesion = $2 AND s.id_usuario = u.id_usuario
      WHERE u.id_usuario = $1`,
@@ -32,6 +33,14 @@ async function loadSessionUser(decoded) {
   if (!row || row.anonimizado) return { error: 'AUTH_REVOKED' };
   if ((row.version_sesion || 1) !== (decoded.version_sesion || 1)) return { error: 'AUTH_REVOKED' };
   if (row.estado_sesion !== 'activa' || Number(row.rol_sesion) !== Number(row.id_rol)) return { error: 'AUTH_REVOKED' };
+
+  // RNF-04: en la app (cliente y técnico) la sesión se cierra tras 3 minutos sin actividad.
+  // El panel de administrador no entra en esta regla.
+  const idleSeg = minutosInactividad() * 60;
+  if (idleSeg > 0 && [1, 2].includes(Number(row.id_rol)) && Number(row.inactivo_seg) > idleSeg) {
+    await getPool().query("UPDATE sesiones_activas SET estado = 'inactiva' WHERE id_sesion = $1 AND estado = 'activa'", [decoded.sessionId]);
+    return { error: 'AUTH_IDLE' };
+  }
 
   return {
     user: {
@@ -50,13 +59,25 @@ async function loadSessionUser(decoded) {
       debe_cambiar_contrasena: row.debe_cambiar_contrasena === true,
       aprobado: computeApproved(row),
     },
+    inactivoSeg: Number(row.inactivo_seg) || 0,
   };
 }
+
+// Minutos sin actividad antes de cerrar la sesión de la app (RNF-04). SESSION_IDLE_MIN=0 lo desactiva.
+function minutosInactividad() {
+  const v = Number(process.env.SESSION_IDLE_MIN ?? 3);
+  return Number.isFinite(v) && v >= 0 ? v : 3;
+}
+
+// Peticiones automáticas que no cuentan como "usar la app": el latido de disponibilidad del técnico.
+// La ubicación en camino sí cuenta, para no cerrar la sesión del técnico mientras va manejando.
+const SEGUNDO_PLANO = new Set(['/api/tecnico/latido']);
 
 const MESSAGES = {
   AUTH_REQUIRED: 'Inicia sesión para continuar.',
   AUTH_INVALID: 'Tu sesión no es válida. Inicia sesión de nuevo.',
   AUTH_REVOKED: 'Tu sesión terminó o fue cerrada desde otro dispositivo. Inicia sesión de nuevo.',
+  AUTH_IDLE: 'Cerramos tu sesión por 3 minutos sin actividad. Inicia sesión de nuevo.',
 };
 
 const PERMITIDO_CON_TEMPORAL = new Set(['/api/update-password', '/api/logout', '/api/me', '/api/check-session']);
@@ -76,6 +97,10 @@ async function auth(req, res, next) {
   const result = await loadSessionUser(decoded);
   if (result.error) return fail(res, 401, result.error, MESSAGES[result.error]);
   req.user = result.user;
+  // Registra la actividad (como mucho una escritura cada 20 s por sesión).
+  if (result.inactivoSeg >= 20 && !SEGUNDO_PLANO.has(req.path)) {
+    getPool().query('UPDATE sesiones_activas SET ultima_actividad = NOW() WHERE id_sesion = $1', [result.user.sessionId]).catch(() => {});
+  }
   // Con contraseña temporal solo se puede cambiarla, ver el propio perfil o cerrar sesión.
   if (result.user.debe_cambiar_contrasena && !PERMITIDO_CON_TEMPORAL.has(req.path)) {
     return fail(res, 403, 'PASSWORD_CHANGE_REQUIRED', 'Debes cambiar tu contraseña temporal para continuar.');

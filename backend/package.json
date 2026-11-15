@@ -20,6 +20,7 @@
   "dependencies": {
     "@tesseract.js-data/eng": "^1.0.0",
     "@tesseract.js-data/spa": "^1.0.0",
+    "argon2": "^0.41.1",
     "bcrypt": "^6.0.0",
     "compression": "^1.8.2",
     "conekta": "^9.0.6",

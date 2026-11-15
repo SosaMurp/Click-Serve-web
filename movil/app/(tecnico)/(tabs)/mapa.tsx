@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { AppBar, Button, color, elevation, Icon, radius, Screen, space, Surface, Text, TAB_BAR_SPACE, Ilustracion } from '@/src/design';
+import { AppBar, Button, color, elevation, Icon, radius, Screen, space, Surface, Text, TAB_BAR_SPACE } from '@/src/design';
 import type { Solicitud } from '@/src/api/types';
 import { formatDistance, formatShortDate } from '@/src/lib/format';
 import { LZC_CENTER, quietLocation } from '@/src/lib/media';
@@ -62,7 +62,7 @@ export default function Mapa() {
         <View style={styles.overlay} pointerEvents="box-none">
           {!disponible ? (
             <Surface card style={styles.offline}>
-              <Ilustracion nombre="luna" size={40} />
+              <Icon name="moon" size={20} color={color.brandInk} />
               <Text variant="subtitle" style={styles.flex}>Estás desconectado</Text>
               <Button title="Conectarme" onPress={() => setDisponible(true)} loading={cambiando} />
             </Surface>

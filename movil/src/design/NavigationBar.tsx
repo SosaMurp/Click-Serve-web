@@ -17,14 +17,14 @@ export type TabBarProps = {
 
 // Espacio que el contenido de una pestaña deja libre abajo para que la barra flotante no lo tape
 // (alto de la barra + su separación del borde). Screen con `inTabs` ya lo aplica.
-export const TAB_BAR_SPACE = 96;
+export const TAB_BAR_SPACE = 80;
 
 // Barra flotante en azul marino: la pestaña activa es una píldora naranja con ícono y nombre;
 // las demás, círculos con su ícono (el nombre va en la etiqueta de accesibilidad).
 // `comfortable` agranda los botones para las pantallas del cliente (CILIM).
 export function makeNavigationBar(meta: TabMeta, { comfortable = false }: { comfortable?: boolean } = {}) {
-  const size = comfortable ? 56 : 52;
-  const iconSize = comfortable ? 24 : 22;
+  const size = comfortable ? 46 : 44;
+  const iconSize = 20;
   return function NavigationBar({ state, descriptors, navigation }: TabBarProps) {
     const insets = useSafeAreaInsets();
     const reduce = useReduceMotion();
@@ -120,15 +120,15 @@ function TabItem({ children, onLayout, size, focused, ...a11y }: {
 const styles = StyleSheet.create({
   wrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   bar: {
-    flexDirection: 'row', gap: 6, padding: 6, borderRadius: 999, backgroundColor: color.navy,
+    flexDirection: 'row', gap: 4, padding: 4, borderRadius: 999, backgroundColor: color.navy,
     shadowColor: color.navy, shadowOpacity: 0.28, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 10,
   },
   item: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm },
-  itemOn: { backgroundColor: 'transparent', paddingHorizontal: space.lg },
-  slider: { position: 'absolute', top: 6, backgroundColor: color.accent },
+  itemOn: { backgroundColor: 'transparent', paddingHorizontal: space.md },
+  slider: { position: 'absolute', top: 4, backgroundColor: color.accent },
   itemOff: { backgroundColor: 'rgba(255,255,255,0.10)' },
   itemPressed: { backgroundColor: 'rgba(255,255,255,0.22)' },
-  labelOn: { color: color.ink },
+  labelOn: { color: color.ink, fontSize: 14, lineHeight: 18 },
   badge: {
     position: 'absolute', top: 4, right: 4, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: color.accent,
     borderWidth: 2, borderColor: color.navy, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,

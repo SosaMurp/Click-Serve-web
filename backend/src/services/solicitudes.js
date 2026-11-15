@@ -175,7 +175,7 @@ function shape(row, viewer, extra = {}) {
       id_usuario: row.id_tecnico,
       nombre: row.tecnico_nombre,
       apellido: row.tecnico_apellido,
-      foto_url: row.tecnico_foto ? signFileUrl(row.tecnico_foto, 3600) : null,
+      foto_url: row.tecnico_foto ? signFileUrl(row.tecnico_foto) : null,
       calificacion: row.tecnico_calificacion,
       trabajos: row.tecnico_trabajos,
       verificado_sep: row.tecnico_verificado_sep,

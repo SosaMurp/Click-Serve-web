@@ -1,5 +1,5 @@
 const express = require('express');
-const bcrypt = require('bcrypt');
+const { verifyPassword } = require('../lib/passwords');
 const { getPool } = require('../db/pool');
 const { auth } = require('../middleware/auth');
 const { fail } = require('../lib/http');
@@ -114,7 +114,7 @@ router.post('/api/usuarios/2fa/confirmar', auth, async (req, res) => {
 async function disable2fa(req, res) {
   const user = await findUserById(req.user.id_usuario);
   const byCode = user.totp_secreto && verifyTotp(user.totp_secreto, req.body?.codigo);
-  const byPassword = req.body?.password && await bcrypt.compare(String(req.body.password), user.contrasena);
+  const byPassword = req.body?.password && await verifyPassword(String(req.body.password), user.contrasena);
   if (!byCode && !byPassword) {
     return fail(res, 400, 'TWO_FA_INVALID', 'Confirma con el código de tu app autenticadora o con tu contraseña.');
   }
@@ -176,7 +176,7 @@ async function deleteAccount(req, res) {
   const password = req.body?.password;
   if (!password) return fail(res, 400, 'PASSWORD_REQUIRED', 'Escribe tu contraseña para confirmar la eliminación.');
   const user = await findUserById(req.user.id_usuario);
-  if (!(await bcrypt.compare(String(password), user.contrasena))) {
+  if (!(await verifyPassword(String(password), user.contrasena))) {
     return fail(res, 400, 'PASSWORD_INCORRECT', 'La contraseña no es correcta.');
   }
   const blocker = await deletionBlocker(user.id_usuario);

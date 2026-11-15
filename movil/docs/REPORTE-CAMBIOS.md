@@ -196,8 +196,8 @@ Algunos dependen de infraestructura que no existe en un entorno local (TLS 1.3, 
 | RNF-01 Acceso seguro y anti-enumeración | Cumple | bcrypt, mensajes genéricos (la recuperación responde igual si el correo no existe), `src/middleware/rateLimit.js`; la app exige HTTPS en producción (`src/lib/apiUrl.ts`) |
 | RNF-02 PCI: sin PAN ni CVV | Cumple | `src/lib/tokenizer.ts`; el backend rechaza número y CVV y guarda solo el token |
 | RNF-03 PII en tránsito | Parcial | Dirección exacta y teléfono solo para el técnico asignado, validado en el servidor (prueba incluida). TLS 1.3 se configura en el servidor de producción |
-| RNF-04 MFA TOTP | Parcial | RFC 6238 en el servidor, ±30 s, reto de 3 min destruido tras 3 intentos (`src/lib/totp.js`, pruebas). Falta cerrar sesiones por 3 min de inactividad (hoy duran 7 días) |
-| RNF-05 TLS 1.3, AES-256, Argon2id | Parcial | Contraseñas con bcrypt, no Argon2id; TLS y cifrado dependen del despliegue |
+| RNF-04 MFA TOTP | Cumple | RFC 6238 en el servidor, ±30 s, reto de 3 min destruido tras 3 intentos (`src/lib/totp.js`). La sesión de la app se cierra tras 3 min sin actividad: el servidor la marca `inactiva` (`middleware/auth.js`, `sesiones_activas.ultima_actividad`, migración 018) y la app cierra a tiempo con toques y escritura (`src/state/inactividad.tsx`); no corta al técnico en camino ni al cliente que espera respuesta. Pruebas en `seguridad-rnf.test.js` |
+| RNF-05 TLS 1.3, AES-256, Argon2id | Parcial | Contraseñas con Argon2id (19 MiB, 2 iteraciones) en `src/lib/passwords.js`; las bcrypt anteriores se re-guardan solas al iniciar sesión (pruebas incluidas). TLS 1.3 y el cifrado en tránsito dependen del despliegue |
 | RNF-06 WAF y saneamiento | Parcial | Límite de intentos por IP en memoria, `sanitizeText`, SQL parametrizado; sin WAF ni bloqueo automático de IP |
 | RNF-07 Kill switch | Parcial | La revocación por usuario es inmediata (sesión validada en la base en cada petición); para todos, rotar `JWT_SECRET`. Sin Redis |
 | RNF-08 bcrypt y protección de documentos | Parcial | bcrypt y URLs firmadas; el AES-256 en tránsito depende del TLS del despliegue |
@@ -218,7 +218,7 @@ Algunos dependen de infraestructura que no existe en un entorno local (TLS 1.3, 
 | RNF-23 Bloqueo pesimista de tickets | Parcial | `FOR UPDATE` en solicitudes, incidencias y pagos; la edición simultánea de tickets por administradores es del panel |
 | RNF-24 Row locks en finanzas | Cumple | `SELECT … FOR UPDATE` en aceptar, pagar y retirar; prueba de aceptación concurrente |
 | RNF-25 Trazabilidad | Parcial | Tabla `auditoria` (IP, user-agent, UTC); sin ELK ni retención de 12 meses |
-| RNF-26 URLs firmadas de 5 min | Parcial | `signFileUrl` usa 5 min por defecto; avatares y portafolio usan 1 h |
+| RNF-26 URLs firmadas de 5 min | Cumple | Todos los enlaces de archivos (`signFileUrl`) vencen a los 5 min, incluidos avatares y portafolio; si un enlace vence en pantalla se muestran las iniciales y `/api/me` lo renueva cada minuto de uso (prueba incluida) |
 | RNF-27 Logs inmutables | Parcial | Registro síncrono con IP y user-agent en la base; no es WORM |
 | RNF-28 Feedback de conexión | Cumple | Indicadores de carga en botones, esqueletos y banner de conexión |
 | RNF-29 Validación en tiempo real | Cumple | `src/lib/validators.ts` (Luhn, CLABE, correo, contraseña); el servidor valida de nuevo |

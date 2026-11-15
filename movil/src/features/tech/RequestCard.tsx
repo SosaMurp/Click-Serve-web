@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Avatar, Button, color, Icon, IconName, radius, space, Surface, Text, Ilustracion, ilustracionDe, figuraDeIcono } from '../../design';
+import { Avatar, Button, color, Icon, IconName, radius, space, Surface, Text, Ilustracion, ilustracionDe } from '../../design';
 import type { Solicitud } from '../../api/types';
 import { formatDistance, formatMoney, formatRelative, formatShortDate, formatTime12 } from '../../lib/format';
 
@@ -25,7 +25,7 @@ export function RequestCard({ s, onAccept, onReject, onOpen, busy, canAccept }: 
       <Pressable accessibilityRole="button" accessibilityLabel={`Ver la solicitud de ${cliente}, ${s.categoria_nombre}`} onPress={onOpen}>
         <View style={styles.head}>
           <View style={styles.catIcon}>
-            <Ilustracion nombre={ilustracionDe(s.categoria_nombre)} size={52} />
+            <Ilustracion nombre={ilustracionDe(s.categoria_nombre)} size={52} tono="gris" />
           </View>
           <View style={styles.flex}>
             <Text variant="title" numberOfLines={1}>{s.categoria_nombre}</Text>
@@ -93,7 +93,7 @@ export function RequestCard({ s, onAccept, onReject, onOpen, busy, canAccept }: 
 function Tile({ icon, label, value, destacado }: { icon: IconName; label: string; value: string; destacado?: boolean }) {
   return (
     <View style={[styles.tile, destacado && styles.tileOn]} accessibilityLabel={`${label}: ${value}`}>
-      {figuraDeIcono(icon) ? <Ilustracion nombre={figuraDeIcono(icon)!} size={34} /> : <Icon name={icon} size={20} color={destacado ? color.accentStrong : color.brand} />}
+      <Icon name={icon} size={20} color={destacado ? color.accentStrong : color.brand} />
       <Text variant="caption" tone="muted">{label}</Text>
       <Text variant="subtitle" numberOfLines={2} style={destacado ? styles.tileOnText : undefined}>{value}</Text>
     </View>
@@ -104,7 +104,7 @@ function Tile({ icon, label, value, destacado }: { icon: IconName; label: string
 export function InfoBox({ icon, label, value }: { icon?: IconName; label: string; value: string }) {
   return (
     <View style={styles.box} accessibilityLabel={`${label}: ${value}`}>
-      {icon ? (figuraDeIcono(icon) ? <Ilustracion nombre={figuraDeIcono(icon)!} size={34} /> : <Icon name={icon} size={18} color={color.inkSoft} />) : null}
+      {icon ? <Icon name={icon} size={18} color={color.inkSoft} /> : null}
       <View style={styles.flex}>
         <Text variant="overline" tone="muted" style={styles.boxLabel}>{label}</Text>
         <Text variant="subtitle" weight="700" numberOfLines={1}>{value}</Text>

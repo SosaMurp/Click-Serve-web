@@ -1,4 +1,4 @@
-const bcrypt = require('bcrypt');
+const { hashPassword } = require('../lib/passwords');
 const crypto = require('crypto');
 const { getPool, withTransaction } = require('../db/pool');
 
@@ -32,7 +32,7 @@ async function anonymizeUser(idUsuario) {
          url_ine_front = NULL, url_ine_rev = NULL, referencia_facial = NULL, bio = NULL, disponible = false,
          estado_cuenta = 'Eliminado', anonimizado = true, version_sesion = COALESCE(version_sesion, 1) + 1
        WHERE id_usuario = $1`,
-      [idUsuario, `eliminado+${idUsuario}.${crypto.randomUUID().slice(0, 8)}@clickserve.invalid`, await bcrypt.hash(crypto.randomUUID(), 4)]
+      [idUsuario, `eliminado+${idUsuario}.${crypto.randomUUID().slice(0, 8)}@clickserve.invalid`, await hashPassword(crypto.randomUUID())]
     );
     await db.query("UPDATE sesiones_activas SET estado = 'revocada' WHERE id_usuario = $1", [idUsuario]);
     await db.query('DELETE FROM direcciones WHERE id_usuario = $1', [idUsuario]);

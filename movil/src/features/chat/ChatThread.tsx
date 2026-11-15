@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Image, Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, font, Icon, IconButton, radius, space, Text } from '../../design';
+import { marcarActividad } from '../../state/inactividad';
 import { fileUrl } from '../../api/client';
 import type { LocalFile } from '../../api/types';
 import { formatTime12 } from '../../lib/format';
@@ -111,7 +112,7 @@ export function ChatThread({ items, onSend, disabled, disabledText, emptyText }:
             <IconButton icon="paperclip" label="Adjuntar foto o PDF" onPress={attach} />
             <TextInput
               value={text}
-              onChangeText={setText}
+              onChangeText={(t) => { marcarActividad(); setText(t); }}
               placeholder="Escribe un mensaje"
               placeholderTextColor={color.inkMuted}
               style={styles.input}

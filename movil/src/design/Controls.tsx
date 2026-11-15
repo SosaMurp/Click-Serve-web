@@ -3,8 +3,6 @@ import { Image, Pressable, StyleSheet, Switch, View, ViewStyle } from 'react-nat
 import { Icon, IconName } from './Icon';
 import { Text } from './Text';
 import { color, elevation, font, radius, space, touch } from './tokens';
-import { Ilustracion } from './Ilustracion';
-import { figuraDeIcono } from './figuras';
 import { initials } from '../lib/format';
 
 // ───────── Chip: blanco con borde; el seleccionado se rellena de marino ─────────
@@ -104,8 +102,11 @@ export function Checkbox({ checked, onChange, children, error }: { checked: bool
 // ───────── Avatar circular ─────────
 export function Avatar({ uri, nombre, apellido, size = 44, ring }: { uri?: string | null; nombre?: string | null; apellido?: string | null; size?: number; ring?: boolean }) {
   const ringStyle = ring ? { borderWidth: 4, borderColor: color.surface } : null;
-  if (uri) {
-    return <Image source={{ uri }} style={[{ width: size, height: size, borderRadius: size / 2, backgroundColor: color.groundAlt }, ringStyle]} accessibilityLabel={`Foto de ${nombre || 'usuario'}`} />;
+  // RNF-26: los enlaces de las fotos vencen a los 5 minutos; si uno ya no carga, se muestran las iniciales.
+  const [rota, setRota] = React.useState(false);
+  React.useEffect(() => { setRota(false); }, [uri]);
+  if (uri && !rota) {
+    return <Image source={{ uri }} onError={() => setRota(true)} style={[{ width: size, height: size, borderRadius: size / 2, backgroundColor: color.groundAlt }, ringStyle]} accessibilityLabel={`Foto de ${nombre || 'usuario'}`} />;
   }
   return (
     <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }, ringStyle]} accessibilityLabel={`Iniciales de ${nombre || 'usuario'}`}>
@@ -118,7 +119,7 @@ export function Avatar({ uri, nombre, apellido, size = 44, ring }: { uri?: strin
 export function EmptyState({ icon, title, body, action }: { icon: IconName; title: string; body?: string; action?: React.ReactNode }) {
   return (
     <View style={styles.empty}>
-      {figuraDeIcono(icon) ? <Ilustracion nombre={figuraDeIcono(icon)!} size={96} /> : <View style={styles.emptyIcon}><Icon name={icon} size={28} color={color.brandInk} /></View>}
+      <View style={styles.emptyIcon}><Icon name={icon} size={28} color={color.brandInk} /></View>
       <Text variant="title" align="center">{title}</Text>
       {body ? <Text variant="body" tone="muted" align="center" style={styles.emptyBody}>{body}</Text> : null}
       {action ? <View style={styles.emptyAction}>{action}</View> : null}

@@ -1,5 +1,5 @@
 const express = require('express');
-const bcrypt = require('bcrypt');
+const { hashPassword, verifyPassword } = require('../lib/passwords');
 const { getPool, withTransaction } = require('../db/pool');
 const { auth } = require('../middleware/auth');
 const { ROL, requireRole } = require('../middleware/roles');
@@ -348,7 +348,7 @@ router.get('/api/admin/solicitudes/:id', ...adminOnly, async (req, res) => {
     ...rows[0],
     ...extra.rows[0],
     tareas: tareas.rows,
-    evidencias: evidencias.rows.map(({ id_archivo, ...e }) => ({ ...e, url: signFileUrl(id_archivo, 600) })),
+    evidencias: evidencias.rows.map(({ id_archivo, ...e }) => ({ ...e, url: signFileUrl(id_archivo) })),
     calificacion: calificacion.rows[0] || null,
     pago: pago.rows[0] || null,
     incidencias: incidencias.rows,
@@ -444,7 +444,7 @@ router.post('/api/admin/co-admins', ...adminOnly, async (req, res) => {
         `INSERT INTO usuarios (nombre, apellido, correo, contrasena, telefono, id_rol, estado, estado_cuenta, identidad_verificada,
                                debe_cambiar_contrasena, contrasena_temporal_expira)
          VALUES ($1, $2, $3, $4, $5, 3, 'APROBADO', 'Activo', true, true, NOW() + make_interval(hours => $6)) RETURNING id_usuario`,
-        [nombre, apellido, correo, await bcrypt.hash(temporal, 10), telefono, HORAS_TEMPORAL]
+        [nombre, apellido, correo, await hashPassword(temporal), telefono, HORAS_TEMPORAL]
       );
       // Si el correo no sale, el alta se revierte: nunca queda una cuenta cuya contraseña nadie conoce.
       await sendMail({
@@ -533,7 +533,7 @@ router.delete('/api/admin/users/:id', ...adminOnly, async (req, res) => {
   const id = Number(req.params.id);
   if (id === req.user.id_usuario) return fail(res, 409, 'SELF_ACTION', 'No puedes eliminar tu propia cuenta desde aquí.');
   const admin = (await db().query('SELECT contrasena FROM usuarios WHERE id_usuario = $1', [req.user.id_usuario])).rows[0];
-  if (!req.body?.password || !(await bcrypt.compare(String(req.body.password), admin.contrasena))) {
+  if (!req.body?.password || !(await verifyPassword(String(req.body.password), admin.contrasena))) {
     return fail(res, 403, 'PASSWORD_INCORRECT', 'Confirma con tu contraseña de administrador.');
   }
   const exists = (await db().query('SELECT 1 FROM usuarios WHERE id_usuario = $1 AND anonimizado = false', [id])).rowCount;

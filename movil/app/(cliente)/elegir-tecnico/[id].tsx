@@ -10,6 +10,7 @@ import { hapticSuccess, LZC_CENTER } from '@/src/lib/media';
 import { MapView } from '@/src/features/map/MapView';
 import { TechFicha } from '@/src/features/orders/TechFicha';
 import { cancelOrder } from '@/src/features/orders/actions';
+import { useMantenerSesion } from '@/src/state/inactividad';
 import { useSolicitud } from '@/src/features/orders/hooks';
 import { toast } from '@/src/ui/toast';
 
@@ -24,6 +25,8 @@ export default function ElegirTecnico() {
   const [busy, setBusy] = useState<string | null>(null);
   const carousel = useRef<ScrollView>(null);
   const s = orden.data;
+  // Mientras espera la respuesta del técnico propuesto, la sesión no se cierra por inactividad (RNF-04).
+  useMantenerSesion(!!s?.tecnico_propuesto);
   const list = tecnicos.data || [];
   const cardW = Math.min(width, 640) - space.lg * 2 - 24;
   const { reload } = tecnicos;

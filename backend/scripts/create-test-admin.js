@@ -9,7 +9,7 @@ require('dotenv').config({ quiet: true });
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const bcrypt = require('bcrypt');
+const { hashPassword } = require('../src/lib/passwords');
 const { Pool } = require('pg');
 
 const EMAIL = 'admin.pruebas@clickserve.test';
@@ -25,7 +25,7 @@ const pool = new Pool({
 
 async function createAdmin() {
   const password = crypto.randomBytes(9).toString('base64url');
-  const hash = await bcrypt.hash(password, 10);
+  const hash = await hashPassword(password);
 
   const existing = await pool.query('SELECT id_usuario FROM usuarios WHERE correo = $1', [EMAIL]);
   if (existing.rows.length) {

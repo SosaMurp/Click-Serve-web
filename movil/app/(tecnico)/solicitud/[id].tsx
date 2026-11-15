@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { goBack } from '@/src/lib/nav';
-import { AppBar, Banner, Button, color, Icon, radius, Screen, SectionHeader, Skeleton, space, Surface, Text, Ilustracion, ilustracionDe, figuraDeIcono } from '@/src/design';
+import { AppBar, Banner, Button, color, Icon, radius, Screen, SectionHeader, Skeleton, space, Surface, Text, Ilustracion, ilustracionDe } from '@/src/design';
 import { errorMessage } from '@/src/api/client';
 import { solicitudesApi } from '@/src/api/endpoints';
 import { formatDateTime, formatDistance, formatShortDate, formatTime12 } from '@/src/lib/format';
@@ -116,7 +116,7 @@ export default function SolicitudNueva() {
 function Fact({ icon, label, value, linea }: { icon: 'navigation' | 'calendar' | 'user'; label: string; value: string; linea?: boolean }) {
   return (
     <View style={[styles.fact, linea && styles.factLinea]}>
-      {figuraDeIcono(icon) ? <Ilustracion nombre={figuraDeIcono(icon)!} size={36} /> : <Icon name={icon} size={18} color={color.brandInk} />}
+      <Icon name={icon} size={18} color={color.brandInk} />
       <Text variant="caption" tone="muted">{label}</Text>
       <Text variant="label" numberOfLines={2} align="center">{value}</Text>
     </View>

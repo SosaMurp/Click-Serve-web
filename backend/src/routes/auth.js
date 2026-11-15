@@ -1,4 +1,5 @@
 const express = require('express');
+const { hashPassword, verifyPassword, needsRehash, dummyHash } = require('../lib/passwords');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const { getPool, withTransaction } = require('../db/pool');
@@ -18,8 +19,16 @@ const { readTicket, registroKey, sha256 } = require('../lib/ine/ticket');
 
 const router = express.Router();
 
-// Hash ficticio para que el tiempo de respuesta no revele si el correo existe (RNF-01).
-const DUMMY_HASH = bcrypt.hashSync('clave-ficticia-para-tiempo-constante', 10);
+// El hash ficticio (dummyHash) hace que el tiempo de respuesta no revele si el correo existe (RNF-01).
+// RNF-05: si la contraseña aún está en bcrypt (o con parámetros viejos), se re-guarda con Argon2id
+// justo después de comprobarla. No cambia la contraseña ni cierra sesiones; si falla, el acceso sigue.
+async function rehashSiHaceFalta(user, plain) {
+  if (!user?.contrasena || !needsRehash(user.contrasena)) return;
+  try {
+    await getPool().query('UPDATE usuarios SET contrasena = $1 WHERE id_usuario = $2 AND contrasena = $3', [await hashPassword(plain), user.id_usuario, user.contrasena]);
+  } catch { /* se intentará en el próximo inicio de sesión */ }
+}
+
 const INVALID = 'Credenciales incorrectas. Verifica tus datos e intenta nuevamente.';
 const WEAK = 'La contraseña debe tener al menos 8 caracteres, con mayúscula, minúscula y número.';
 const MAX_CODE_ATTEMPTS = 5;
@@ -102,11 +111,12 @@ router.post('/api/login', loginLimiter, async (req, res) => {
   if (!email || !password) return fail(res, 400, 'VALIDATION_ERROR', 'Ingresa tu correo y contraseña.');
 
   const user = await findUserByEmail(email);
-  const valid = await bcrypt.compare(password, user && !user.anonimizado ? user.contrasena : DUMMY_HASH);
+  const valid = await verifyPassword(password, user && !user.anonimizado ? user.contrasena : await dummyHash());
   if (!user || user.anonimizado || !valid) {
     audit(req, 'LOGIN_FALLIDO', 'usuario', user?.id_usuario ?? null, { email });
     return fail(res, 401, 'INVALID_CREDENTIALS', INVALID);
   }
+  await rehashSiHaceFalta(user, password);
   return finishLogin(req, res, user);
 });
 
@@ -216,7 +226,7 @@ router.post('/api/register', registerLimiter, registroUpload, async (req, res) =
     return fail(res, 400, 'INE_NOT_VERIFIED', 'Toma de nuevo las fotos de tu credencial: necesitamos verificarla antes de crear tu cuenta.');
   }
 
-  const hash = await bcrypt.hash(password, 10);
+  const hash = await hashPassword(password);
   let created;
   try {
     created = await withTransaction(async (db) => {
@@ -330,7 +340,7 @@ router.post('/api/reset-password', codeLimiter, async (req, res) => {
   await withTransaction(async (db) => {
     await db.query(
       'UPDATE usuarios SET contrasena = $1, version_sesion = COALESCE(version_sesion, 1) + 1, fecha_actualizacion_contrasena = NOW(), debe_cambiar_contrasena = false, contrasena_temporal_expira = NULL WHERE id_usuario = $2',
-      [await bcrypt.hash(newPassword, 10), user.id_usuario]
+      [await hashPassword(newPassword), user.id_usuario]
     );
     await db.query("UPDATE sesiones_activas SET estado = 'revocada' WHERE id_usuario = $1 AND estado = 'activa'", [user.id_usuario]);
     await db.query("UPDATE tokens_temporales SET estado_uso = 'usado' WHERE id_token = $1", [rows[0].id_token]);
@@ -343,11 +353,11 @@ router.post('/api/reset-password', codeLimiter, async (req, res) => {
 router.post('/api/update-password', auth, async (req, res) => {
   const { currentPassword, newPassword } = req.body || {};
   const user = await findUserById(req.user.id_usuario);
-  if (!currentPassword || !(await bcrypt.compare(String(currentPassword), user.contrasena))) {
+  if (!currentPassword || !(await verifyPassword(String(currentPassword), user.contrasena))) {
     return fail(res, 400, 'PASSWORD_INCORRECT', 'La contraseña actual no es correcta.');
   }
   if (!isStrongPassword(newPassword)) return fail(res, 400, 'WEAK_PASSWORD', WEAK);
-  if (await bcrypt.compare(String(newPassword), user.contrasena)) {
+  if (await verifyPassword(String(newPassword), user.contrasena)) {
     return fail(res, 400, 'SAME_PASSWORD', 'La nueva contraseña debe ser distinta de la actual.');
   }
 
@@ -356,7 +366,7 @@ router.post('/api/update-password', auth, async (req, res) => {
     await db.query(
       `UPDATE usuarios SET contrasena = $1, version_sesion = $2, fecha_actualizacion_contrasena = NOW(),
                            debe_cambiar_contrasena = false, contrasena_temporal_expira = NULL WHERE id_usuario = $3`,
-      [await bcrypt.hash(String(newPassword), 10), version, user.id_usuario]
+      [await hashPassword(String(newPassword)), version, user.id_usuario]
     );
     await db.query(
       "UPDATE sesiones_activas SET estado = 'revocada' WHERE id_usuario = $1 AND id_sesion <> $2 AND estado = 'activa'",
@@ -404,8 +414,9 @@ router.get('/api/perfil-protegido', auth, (req, res) => res.json({ mensaje: 'Acc
 // ───────────────────────── Panel de administrador (sin cambios de contrato) ─────────────────────────
 router.post('/api/login-admin', loginLimiter, async (req, res) => {
   const user = await findUserByEmail(req.body?.email);
-  const valid = await bcrypt.compare(String(req.body?.password || ''), user ? user.contrasena : DUMMY_HASH);
+  const valid = await verifyPassword(String(req.body?.password || ''), user ? user.contrasena : await dummyHash());
   if (!user || !valid) return fail(res, 401, 'INVALID_CREDENTIALS', 'Correo o contraseña incorrectos.');
+  await rehashSiHaceFalta(user, String(req.body?.password || ''));
   if (Number(user.id_rol) !== 3) {
     return fail(res, 403, 'ROLE_FORBIDDEN', 'Acceso denegado. Credenciales no válidas para el panel web administrativo.');
   }

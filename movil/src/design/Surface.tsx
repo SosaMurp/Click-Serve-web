@@ -4,8 +4,6 @@ import { CircleArrow } from './Button';
 import { Icon, IconName } from './Icon';
 import { Text } from './Text';
 import { color, radius, space } from './tokens';
-import { Ilustracion } from './Ilustracion';
-import { figuraDeIcono } from './figuras';
 
 export type SurfaceTint = 'plain' | 'sunk' | 'brand' | 'sky' | 'peach' | 'accent' | 'navy';
 
@@ -75,10 +73,9 @@ const ICON_TONES = {
 // Fila de lista: ícono en círculo pastel, texto y valor o flecha a la derecha (como "Cuándo · Cualquiera").
 export function ListItem({ title, subtitle, icon, iconTone = 'neutral', trailing, trailingText, onPress, chevron = !!onPress, destructive, disabled }: ListItemProps) {
   const t = ICON_TONES[destructive ? 'danger' : iconTone];
-  const figura = destructive ? null : figuraDeIcono(icon);
   const content = (
     <>
-      {figura ? <Ilustracion nombre={figura} size={44} /> : icon ? <View style={[styles.leading, { backgroundColor: t.bg }]}><Icon name={icon} size={18} color={t.fg} /></View> : null}
+      {icon ? <View style={[styles.leading, { backgroundColor: t.bg }]}><Icon name={icon} size={18} color={t.fg} /></View> : null}
       <View style={styles.texts}>
         <Text variant="subtitle" tone={destructive ? 'danger' : 'default'} numberOfLines={2}>{title}</Text>
         {subtitle ? <Text variant="bodySm" tone="muted" numberOfLines={3}>{subtitle}</Text> : null}

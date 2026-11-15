@@ -6,6 +6,7 @@ import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } f
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { SessionProvider, useSession } from '@/src/state/session';
+import { InactividadHost } from '@/src/state/inactividad';
 import { ConnectivityBanner, ConnectivityProvider } from '@/src/state/connectivity';
 import { RealtimeProvider } from '@/src/state/realtime';
 import { DialogHost } from '@/src/ui/dialog';
@@ -57,6 +58,7 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <SessionProvider>
+        <InactividadHost>
         <ConnectivityProvider>
           <RealtimeProvider>
             {fontsLoaded ? <RootStack /> : <Splash />}
@@ -67,6 +69,7 @@ export default function RootLayout() {
             <WebCameraHost />
           </RealtimeProvider>
         </ConnectivityProvider>
+        </InactividadHost>
       </SessionProvider>
     </SafeAreaProvider>
   );

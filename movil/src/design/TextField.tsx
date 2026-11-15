@@ -3,6 +3,7 @@ import { Platform, Pressable, StyleSheet, TextInput, TextInputProps, View } from
 import { Icon, IconName } from './Icon';
 import { Text } from './Text';
 import { color, font, radius, space } from './tokens';
+import { marcarActividad } from '../state/inactividad';
 
 type Props = TextInputProps & {
   label: string;
@@ -18,7 +19,7 @@ type Props = TextInputProps & {
 // Campo blanco con borde gris (3:1) y etiqueta en MAYÚSCULAS arriba; al enfocar el borde pasa a marino.
 // El error nombra el problema y cómo corregirlo.
 export const TextField = forwardRef<TextInput, Props>(function TextField(
-  { label, helper, error, icon, password, right, counter, multiline, maxLength, value, style, onFocus, onBlur, hideLabel, ...rest },
+  { label, helper, error, icon, password, right, counter, multiline, maxLength, value, style, onFocus, onBlur, hideLabel, onChangeText, ...rest },
   ref
 ) {
   const [focused, setFocused] = useState(false);
@@ -43,6 +44,7 @@ export const TextField = forwardRef<TextInput, Props>(function TextField(
           onBlur={(e) => { setFocused(false); onBlur?.(e); }}
           style={[styles.input, multiline && styles.inputMultiline, Platform.OS === 'web' && styles.webInput, style]}
           {...rest}
+          onChangeText={(t) => { marcarActividad(); onChangeText?.(t); }}
         />
         {password ? (
           <Pressable accessibilityRole="button" accessibilityLabel={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'} onPress={() => setVisible((v) => !v)} hitSlop={8} style={styles.eye}>

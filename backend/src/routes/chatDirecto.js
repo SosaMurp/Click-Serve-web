@@ -111,7 +111,7 @@ router.get('/api/chat-directo', auth, async (req, res) => {
         id_usuario: r.otro_id,
         nombre: r.otro_nombre,
         apellido: r.otro_apellido,
-        foto_url: r.otro_foto ? signFileUrl(r.otro_foto, 3600) : null,
+        foto_url: r.otro_foto ? signFileUrl(r.otro_foto) : null,
       },
       ultimo_mensaje: r.ultimo_mensaje,
       fecha: r.ultima_fecha,

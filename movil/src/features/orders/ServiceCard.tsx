@@ -24,7 +24,7 @@ export function ServiceCard({ s, onOpen, overline }: { s: Solicitud; onOpen: () 
       <Pressable accessibilityRole="button" accessibilityLabel={`${s.categoria_nombre}: ${t.titulo}. Ver detalle`} onPress={onOpen}>
         <View style={[styles.head, !activo && styles.headCerrada]}>
           <View style={[styles.catIcon, !activo && styles.catIconCerrada]}>
-            <Ilustracion nombre={ilustracionDe(s.categoria_nombre)} size={52} />
+            <Ilustracion nombre={ilustracionDe(s.categoria_nombre)} size={52} tono="gris" />
           </View>
           <View style={styles.flex}>
             {overline ? <Text variant="overline" tone="muted">{overline}</Text> : null}
