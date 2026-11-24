@@ -41,23 +41,23 @@ export default function TicketsPanel() {
         <div className="table-scroll"><table className="dash-table sop-table">
           <thead>
             <tr>
-              <th>FOLIO / ACTUALIZADO</th>
-              <th>PERSONA</th>
-              <th>ASUNTO / ÚLTIMO MENSAJE</th>
-              <th>ESTADO</th>
-              <th>PRIORIDAD</th>
+              <th>Folio / actualizado</th>
+              <th>Persona</th>
+              <th>Asunto / último mensaje</th>
+              <th>Estado</th>
+              <th>Prioridad</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {isLoading && <tr><td colSpan={6} className="sop-empty">Cargando tickets…</td></tr>}
+            {isLoading && <tr><td colSpan={6} className="sop-empty table-empty">Cargando tickets…</td></tr>}
             {isError && (
-              <tr><td colSpan={6} className="sop-empty">
-                No se pudieron cargar los tickets. <button className="sop-view-btn" onClick={() => refetch()}>REINTENTAR</button>
+              <tr><td colSpan={6} className="sop-empty table-empty">
+                No se pudieron cargar los tickets. <button className="sop-view-btn" onClick={() => refetch()}>Reintentar</button>
               </td></tr>
             )}
             {data && data.length === 0 && (
-              <tr><td colSpan={6} className="sop-empty">{vista === 'ACTIVOS' ? 'No hay tickets pendientes.' : 'Todavía no hay tickets cerrados.'}</td></tr>
+              <tr><td colSpan={6} className="sop-empty table-empty">{vista === 'ACTIVOS' ? 'No hay tickets pendientes.' : 'Todavía no hay tickets cerrados.'}</td></tr>
             )}
             {data?.map(t => (
               <tr key={t.id_ticket}>
@@ -173,7 +173,7 @@ function TicketChat({ id, onClose }: { id: number; onClose: () => void }) {
                   </a>
                 )}
               </div>
-              <p style={{ margin: '2px 4px 0', fontSize: 11, color: 'var(--text-muted)', textAlign: m.es_asesor ? 'right' : 'left' }}>
+              <p style={{ margin: '2px 4px 0', fontSize: 12, color: 'var(--text-muted)', textAlign: m.es_asesor ? 'right' : 'left' }}>
                 {m.es_asesor ? (m.id_emisor ? 'Soporte' : 'Respuesta automática') : `${t?.nombre ?? ''}`} · {fecha(m.fecha_envio)}
               </p>
             </div>
@@ -187,7 +187,7 @@ function TicketChat({ id, onClose }: { id: number; onClose: () => void }) {
             placeholder={cerrado ? 'El caso está cerrado; reábrelo para responder.' : 'Escribe la respuesta para la persona…'}
             disabled={cerrado} maxLength={2000} />
           <Button type="submit" variant="primary" size="sm" loading={responder.isPending} disabled={cerrado || !texto.trim()}>
-            <Send size={13} /> ENVIAR
+            <Send size={13} /> Enviar
           </Button>
         </form>
       </div>

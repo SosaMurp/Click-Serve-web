@@ -22,6 +22,7 @@ const MapaPage = lazy(() => import('@pages/mapa/MapaPage'))
 const FinanzasPage = lazy(() => import('@pages/finanzas/FinanzasPage'))
 const ConfiguracionPage = lazy(() => import('@pages/configuracion/ConfiguracionPage'))
 const PerfilPage = lazy(() => import('@pages/perfil/PerfilPage'))
+const AdministradoresPage = lazy(() => import('@pages/administradores/AdministradoresPage'))
 const SoportePage = lazy(() => import('@pages/soporte/SoportePage'))
 
 /** Registra useNavigate en el helper imperativo para que Axios pueda redirigir */
@@ -64,6 +65,7 @@ export default function App() {
             <Route path="soporte"        element={<Suspense fallback={<Cargando />}><SoportePage /></Suspense>} />
             <Route path="mapa"           element={<Suspense fallback={<Cargando />}><MapaPage /></Suspense>} />
             <Route path="finanzas"       element={<Suspense fallback={<Cargando />}><FinanzasPage /></Suspense>} />
+            <Route path="administradores" element={<Suspense fallback={<Cargando />}><AdministradoresPage /></Suspense>} />
             <Route path="configuracion"  element={<Suspense fallback={<Cargando />}><ConfiguracionPage /></Suspense>} />
             <Route path="perfil"         element={<Suspense fallback={<Cargando />}><PerfilPage /></Suspense>} />
           </Route>

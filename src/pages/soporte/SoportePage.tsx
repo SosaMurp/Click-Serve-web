@@ -95,12 +95,12 @@ export default function SoportePage() {
     <div className="sop-page fade-in">
       <PageHeader title="Soporte" sub="Incidencias de servicios y tickets de clientes y técnicos" />
 
-      <div className="tec-tabs">
-        <button className={`tec-tab ${seccion === 'incidencias' ? 'tec-tab--active' : ''}`} onClick={() => setSeccion('incidencias')}>
-          INCIDENCIAS DE SERVICIOS
+      <div className="tec-tabs" role="tablist" aria-label="Secciones de soporte">
+        <button type="button" role="tab" aria-selected={seccion === 'incidencias'} className={`tec-tab ${seccion === 'incidencias' ? 'tec-tab--active' : ''}`} onClick={() => setSeccion('incidencias')}>
+          Incidencias de servicios
         </button>
-        <button className={`tec-tab ${seccion === 'tickets' ? 'tec-tab--active' : ''}`} onClick={() => setSeccion('tickets')}>
-          TICKETS DE SOPORTE
+        <button type="button" role="tab" aria-selected={seccion === 'tickets'} className={`tec-tab ${seccion === 'tickets' ? 'tec-tab--active' : ''}`} onClick={() => setSeccion('tickets')}>
+          Tickets de soporte
         </button>
       </div>
 
@@ -116,7 +116,7 @@ export default function SoportePage() {
       <div className="val-toolbar">
         <div className="val-search">
           <Search size={14} />
-          <input placeholder="Buscar por folio, orden, cliente, técnico o descripción..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input type="search" aria-label="Buscar incidencias" placeholder="Buscar por folio, orden, cliente, técnico o descripción…" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
       </div>
 
@@ -124,24 +124,24 @@ export default function SoportePage() {
         <div className="table-scroll"><table className="dash-table sop-table">
           <thead>
             <tr>
-              <th>FOLIO / FECHA</th>
-              <th>TIPO</th>
-              <th>CLIENTE / TÉCNICO</th>
-              <th>ORDEN</th>
-              <th>PRIORIDAD</th>
-              <th>ACCIONES</th>
+              <th>Folio / fecha</th>
+              <th>Tipo</th>
+              <th>Cliente / técnico</th>
+              <th>Orden</th>
+              <th>Prioridad</th>
+              <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {actual.isLoading && <tr><td colSpan={6} className="sop-empty">Cargando incidencias…</td></tr>}
+            {actual.isLoading && <tr><td colSpan={6} className="sop-empty table-empty">Cargando incidencias…</td></tr>}
             {actual.isError && (
-              <tr><td colSpan={6} className="sop-empty">
+              <tr><td colSpan={6} className="sop-empty table-empty">
                 No se pudieron cargar las incidencias.{' '}
-                <button className="sop-view-btn" onClick={() => actual.refetch()}>REINTENTAR</button>
+                <button className="sop-view-btn" onClick={() => actual.refetch()}>Reintentar</button>
               </td></tr>
             )}
             {!actual.isLoading && !actual.isError && filtered.length === 0 && (
-              <tr><td colSpan={6} className="sop-empty">{vista === 'resueltas' ? 'Todavía no hay incidencias resueltas.' : vista === 'abiertas' ? 'No hay incidencias abiertas.' : 'Ninguna incidencia abierta coincide con este filtro.'}</td></tr>
+              <tr><td colSpan={6} className="sop-empty table-empty">{vista === 'resueltas' ? 'Todavía no hay incidencias resueltas.' : vista === 'abiertas' ? 'No hay incidencias abiertas.' : 'Ninguna incidencia abierta coincide con este filtro.'}</td></tr>
             )}
             {filtered.map(i => (
               <tr key={i.id_incidencia}>
@@ -232,8 +232,6 @@ function IncidenciaModal({ incidencia: i, onClose }: { incidencia: IncidenciaRow
     }
   }
 
-  const label: React.CSSProperties = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-dark)', display: 'block', marginBottom: 6 }
-  const field: React.CSSProperties = { width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--border-strong, #8B93A1)', fontFamily: 'inherit', fontSize: 13, background: '#fff' }
 
   return (
     <>
@@ -264,22 +262,22 @@ function IncidenciaModal({ incidencia: i, onClose }: { incidencia: IncidenciaRow
 
           {abierta ? (
             <>
-              <div>
-                <label style={label}>Prioridad</label>
-                <select style={field} value={prioridad} onChange={e => setPrioridad(e.target.value as Prioridad)}>
+              <div className="field">
+                <label className="field-label" htmlFor="inc-prioridad">Prioridad</label>
+                <select id="inc-prioridad" className="field-input" value={prioridad} onChange={e => setPrioridad(e.target.value as Prioridad)}>
                   <option value="ALTA">Alta</option>
                   <option value="MEDIA">Media</option>
                   <option value="BAJA">Baja</option>
                 </select>
               </div>
-              <div>
-                <label style={label}>Notas internas</label>
-                <textarea style={{ ...field, minHeight: 64 }} value={notas} onChange={e => setNotas(e.target.value)}
+              <div className="field">
+                <label className="field-label" htmlFor="inc-notas">Notas internas</label>
+                <textarea id="inc-notas" className="field-input" rows={3} value={notas} onChange={e => setNotas(e.target.value)}
                   placeholder="Qué se revisó, con quién se habló…" />
               </div>
-              <div>
-                <label style={label}>Resolver</label>
-                <select style={field} value={accion} onChange={e => setAccion(e.target.value as AccionIncidencia | '')}>
+              <div className="field">
+                <label className="field-label" htmlFor="inc-accion">Resolver</label>
+                <select id="inc-accion" className="field-input" value={accion} onChange={e => setAccion(e.target.value as AccionIncidencia | '')}>
                   <option value="">Solo guardar, sin resolver</option>
                   {acciones.map(a => <option key={a} value={a}>{ACCION_LABEL[a]}</option>)}
                 </select>
@@ -292,7 +290,7 @@ function IncidenciaModal({ incidencia: i, onClose }: { incidencia: IncidenciaRow
               {i.notas_admin && <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}><strong>Notas:</strong> {i.notas_admin}</p>}
             </div>
           )}
-          {error && <p style={{ margin: 0, fontSize: 12, color: 'var(--danger-ink, #A41F15)' }}>{error}</p>}
+          {error && <p role="alert" style={{ margin: 0, fontSize: 13, color: 'var(--danger-ink)' }}>{error}</p>}
         </div>
 
         <div className="modal-footer">

@@ -35,13 +35,13 @@
 
 .dash-table { width: 100%; border-collapse: collapse; }
 .dash-table th {
-  text-align: left; font-size: 12px; font-weight: 500;
-  color: var(--text-muted); padding: 10px; border-bottom: 1px solid var(--border-light);
+  text-align: left; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--text-mid); padding: 10px; border-bottom: 1px solid var(--border-light);
 }
 .dash-table td { padding: 14px 10px; border-bottom: 1px solid var(--bg-sunk); vertical-align: middle; }
 .dash-table tr:last-child td { border-bottom: none; }
 .dash-table-name { font-size: 13px; font-weight: 600; color: var(--text-dark); }
-.dash-table-id   { font-size: 11.5px; color: var(--text-muted); margin-top: 1px; }
+.dash-table-id   { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
 .dash-table-spec { font-size: 13px; color: var(--text-mid); }
 
 .dash-action-btn {
@@ -128,7 +128,7 @@
 .db-delta {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 3px 8px; border-radius: 99px;
-  font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums;
+  font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums;
 }
 .db-delta--up   { background: var(--success-soft); color: var(--success); }
 .db-delta--down { background: var(--danger-soft); color: var(--danger); }
@@ -157,7 +157,7 @@
   pointer-events: none;
 }
 .db-donut-value { font-size: 24px; font-weight: 700; color: var(--text-dark); line-height: 1; }
-.db-donut-label { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.db-donut-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
 
 .db-breakdown { list-style: none; display: flex; flex-direction: column; gap: 9px; }
 .db-breakdown li { display: flex; align-items: center; gap: 10px; font-size: 13px; }
@@ -231,7 +231,7 @@
 .db-feed-body { flex: 1; min-width: 0; }
 .db-feed-text { font-size: 13px; color: var(--text-dark); line-height: 1.45; }
 .db-feed-sub  { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-.db-feed-time { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; margin-top: 2px; }
+.db-feed-time { font-size: 12px; color: var(--text-muted); white-space: nowrap; margin-top: 2px; }
 
 /* ── States ── */
 .db-skeleton {
@@ -282,6 +282,26 @@
 /* Tablas anchas: se desplazan dentro de su tarjeta en lugar de romper la página */
 .table-scroll { overflow-x: auto; }
 .table-scroll > .dash-table { min-width: 720px; }
+/* Sin filas (vacío o cargando) la tabla no se ensancha: el mensaje queda a la vista y no en la zona desplazada */
+.table-scroll:has(.table-empty) > .dash-table { min-width: 0; }
+/* En pantallas angostas los encabezados de una tabla vacía la siguen ensanchando: se ocultan y queda el mensaje */
+@media (max-width: 720px) { .table-scroll:has(.table-empty) thead { display: none; } }
+.table-empty { padding: 28px 16px !important; text-align: center; color: var(--text-mid); font-size: 13px; }
+
+/* Tiras de pestañas que se desplazan en horizontal: sin barra de scroll del sistema y con un
+   desvanecido al final que avisa que hay más pestañas. */
+.tec-tabs, .modal-tabs {
+  overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity;
+}
+.tec-tabs::-webkit-scrollbar, .modal-tabs::-webkit-scrollbar, .cfg-nav::-webkit-scrollbar { display: none; }
+.tec-tab, .modal-tab-btn { scroll-snap-align: start; }
+@media (max-width: 720px) {
+  .tec-tabs, .modal-tabs {
+    padding-right: 32px;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+            mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+  }
+}
 
 /* Con 5 tarjetas de KPI en filas de 3 quedaba un hueco: 3 arriba y 2 abajo repartidas a todo el ancho */
 @media (max-width: 1280px) {
@@ -317,12 +337,12 @@
 .rf-opt--on { background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; }
 .rf-opt:focus-visible, .rf-apply:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .rf-custom { border-top: 1px solid var(--border-light); margin-top: 8px; padding: 10px 6px 4px; display: flex; flex-direction: column; gap: 8px; }
-.rf-custom-title { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin: 0; }
+.rf-custom-title { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin: 0; }
 .rf-custom-title--on { color: var(--accent-ink); }
 .rf-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.rf-dates label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--text-mid); min-width: 0; }
+.rf-dates label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--text-mid); min-width: 0; }
 .rf-dates input {
-  width: 100%; padding: 7px 8px; border: 1px solid #CDD3E0; border-radius: 8px; font-family: inherit; font-size: 12px;
+  width: 100%; padding: 7px 8px; border: 1px solid var(--border-strong); border-radius: 8px; font-family: inherit; font-size: 12px;
   color: var(--text-dark); background: #fff; box-sizing: border-box;
 }
 .rf-dates input:focus { outline: none; border-color: var(--navy); box-shadow: 0 0 0 3px rgba(12, 28, 64, .15); }
@@ -376,7 +396,7 @@
 .db-todo-item:hover { border-color: var(--navy); }
 .db-todo-item span:nth-child(2) { flex: 1; min-width: 0; }
 .db-todo-item svg { color: var(--text-muted); flex-shrink: 0; }
-.db-todo-count { min-width: 26px; font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent); }
+.db-todo-count { min-width: 26px; font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent-ink); }
 .db-todo-item--zero .db-todo-count { color: var(--text-muted); }
 .db-todo-item--zero { color: var(--text-mid); }
 .db-todo-main:focus-visible, .db-todo-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -386,7 +406,7 @@
 .db-metric-label { font-size: 12.5px; font-weight: 500; color: var(--text-mid); }
 .db-metric-body { display: flex; align-items: center; gap: 10px; }
 .db-metric-value { font-size: 24px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; font-variant-numeric: tabular-nums; color: var(--text-dark); }
-.db-metric-note { font-size: 11.5px; color: var(--text-muted); margin: 0; }
+.db-metric-note { font-size: 12px; color: var(--text-muted); margin: 0; }
 
 .db-grid-main { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr); gap: 16px; align-items: stretch; }
 
@@ -446,3 +466,30 @@
 .db-todo-main { padding: 12px 16px; }
 .db-todo-num { font-size: 34px; }
 .db-todo-item { padding: 9px 14px; }
+
+/* ── Actividad reciente: ícono por tipo ── */
+.ca-chip { display: inline-flex; align-items: center; gap: 5px; }
+.ca-ico {
+  width: 32px; height: 32px; border-radius: 10px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.ca-ico--servicio { background: var(--sky-soft); color: var(--sky); }
+.ca-ico--tecnico  { background: var(--teal-soft); color: var(--teal); }
+.ca-ico--alerta   { background: var(--danger-soft); color: var(--danger-ink); }
+.ca-ico--retiro   { background: var(--success-soft); color: var(--success); }
+.ca-ico--ticket   { background: var(--accent-soft); color: var(--accent-ink); }
+.ca .db-feed-btn { align-items: center; padding: 8px; }
+.ca .db-feed-item { padding: 2px 0; border-bottom: none; }
+.ca .db-feed-text { line-height: 1.35; }
+.ca .db-feed-go { margin-top: 0; opacity: .45; }
+.ca .db-feed-btn:hover .db-feed-go, .ca .db-feed-btn:focus-visible .db-feed-go { opacity: 1; }
+
+/* ── Métricas del resumen con ícono de color ── */
+.db-metric-ico {
+  width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.db-metric-ico--teal   { background: var(--teal-soft); color: var(--teal); }
+.db-metric-ico--sky    { background: var(--sky-soft); color: var(--sky); }
+.db-metric-ico--orange { background: var(--accent-soft); color: var(--accent-ink); }
+.db-metric-label { display: inline-flex; align-items: center; gap: 8px; }

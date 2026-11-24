@@ -9,7 +9,7 @@
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 .btn--full { width: 100%; }
 
-.btn--sm  { padding: 8px 16px;  font-size: 11px; }
+.btn--sm  { padding: 8px 16px;  font-size: 12px; }
 .btn--md  { padding: 14px 24px; font-size: 12px; }
 .btn--lg  { padding: 16px 28px; font-size: 13px; }
 
@@ -25,6 +25,15 @@
 .btn--ghost { background: transparent; color: var(--text-mid); }
 .btn--ghost:hover:not(:disabled) { background: var(--bg-input); }
 
+/* Naranja de acción con texto blanco: #C94E00 da 4.6:1 (el #E25900 se queda en 3.7:1) */
+.btn--accent { background: var(--accent-dim); color: var(--text-white); }
+.btn--accent:hover:not(:disabled) { background: var(--accent-ink); }
+
+.btn--danger { background: var(--danger); color: var(--text-white); }
+.btn--danger:hover:not(:disabled) { background: var(--danger-ink); }
+
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 .btn-spinner {
   width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.3);
   border-top-color: #fff; border-radius: 50%;
@@ -33,7 +42,7 @@
 
 /* ━━━━━━━━━━━━━━━━━━ FIELD ━━━━━━━━━━━━━━━━━━ */
 .field { display: flex; flex-direction: column; gap: 6px; }
-.field-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-dark); }
+.field-label { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-dark); }
 .field-wrap { position: relative; }
 .field-input {
   width: 100%; padding: 12px 14px; font-family: inherit; font-size: 14px;
@@ -56,7 +65,7 @@
   background: var(--bg-input); border-left: 1.5px solid var(--border-light);
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
 }
-.field-msg { font-size: 11px; color: var(--text-muted); }
+.field-msg { font-size: 12px; color: var(--text-muted); }
 .field-msg--error { color: var(--danger); }
 
 /* ━━━━━━━━━━━━━━━━━━ BADGE ━━━━━━━━━━━━━━━━━━ */
@@ -86,7 +95,8 @@
   display: flex; align-items: center; justify-content: center;
 }
 .stat-icon--navy   { background: var(--info-soft); color: var(--navy); }
-.stat-icon--blue   { background: var(--info-soft); color: var(--navy); }
+.stat-icon--blue   { background: var(--sky-soft); color: var(--sky); }
+.stat-icon--teal   { background: var(--teal-soft); color: var(--teal); }
 .stat-icon--amber  { background: var(--warning-soft); color: var(--warning); }
 .stat-icon--orange { background: var(--accent-soft); color: var(--accent); }
 .stat-icon--green  { background: var(--success-soft); color: var(--success); }
@@ -107,15 +117,15 @@
 .toast {
   display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px;
   background: #fff; color: var(--text-dark); border: 1px solid var(--border-light, #E6E9EE);
-  border-left-width: 4px; border-radius: var(--radius-sm); box-shadow: 0 10px 24px -8px rgba(12,28,64,.25);
+  border-radius: var(--radius-md); box-shadow: 0 10px 24px -8px rgba(12,28,64,.25);
   font-size: 13px; line-height: 1.4; animation: modalFadeIn .2s ease-out;
 }
-.toast--success { border-left-color: var(--success); }
-.toast--success > svg { color: var(--success); }
-.toast--error { border-left-color: var(--danger); }
-.toast--error > svg { color: var(--danger); }
-.toast--info { border-left-color: var(--navy, #0C1C40); }
+.toast > svg:first-child { flex-shrink: 0; box-sizing: content-box; padding: 5px; border-radius: 50%; margin: -3px 0; }
+.toast--success > svg:first-child { color: var(--success); background: var(--success-soft); }
+.toast--error > svg:first-child { color: var(--danger-ink); background: var(--danger-soft); }
+.toast--info > svg:first-child { color: var(--sky); background: var(--sky-soft); }
 .toast > svg { flex-shrink: 0; margin-top: 1px; }
+.toast-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .toast-text { flex: 1; min-width: 0; }
 .toast-close {
   background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 2px; border-radius: 4px;
@@ -143,7 +153,7 @@ button.field-icon:focus-visible { outline: 2px solid var(--accent); outline-offs
 .ms-item--on { background: var(--navy); color: #fff; }
 .ms-item--on:hover { background: var(--navy); }
 .ms-value { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
-.ms-value--alert { color: var(--accent); }
+.ms-value--alert { color: var(--accent-ink); } /* 5.2:1; el naranja de marca se queda en 3.7:1 */
 .ms-value--ok { color: var(--success); }
 .ms-item--on .ms-value--alert, .ms-item--on .ms-value--ok { color: #fff; }
 .ms-label { font-size: 12.5px; font-weight: 500; color: var(--text-mid); white-space: nowrap; }

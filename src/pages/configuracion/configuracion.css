@@ -8,7 +8,7 @@
 .cfg-save-btn {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 9px 16px; border-radius: 12px;
-  background: var(--accent); border: none; color: #fff;
+  background: var(--accent-dim); border: none; color: #fff;
   font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer;
   transition: background var(--transition), opacity var(--transition);
 }
@@ -34,7 +34,8 @@
 }
 .cfg-icon--orange { background: var(--accent-soft); color: var(--accent); }
 .cfg-icon--navy   { background: var(--info-soft); color: var(--navy); }
-.cfg-icon--blue   { background: var(--info-soft); color: var(--navy); }
+.cfg-icon--blue   { background: var(--sky-soft); color: var(--sky); }
+.cfg-icon--teal   { background: var(--teal-soft); color: var(--teal); }
 .cfg-icon--danger { background: var(--danger-soft); color: var(--danger); }
 
 .cfg-card-title { font-size: 15px; font-weight: 600; color: var(--text-dark); }
@@ -47,7 +48,7 @@
 .cfg-label { font-size: 12.5px; font-weight: 500; color: var(--text-mid); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
 .cfg-badge-pill {
-  padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 500;
+  padding: 2px 8px; border-radius: 99px; font-size: 12px; font-weight: 500;
   background: var(--bg-sunk); color: var(--text-mid);
 }
 
@@ -92,7 +93,7 @@
   background: #fff; border: 2px solid var(--accent); cursor: pointer;
 }
 
-.cfg-slider-ticks { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--text-muted); margin-top: -2px; }
+.cfg-slider-ticks { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-top: -2px; }
 
 /* Toggle */
 .cfg-toggle-field { justify-content: flex-start; }
@@ -100,7 +101,7 @@
 .cfg-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
 .cfg-toggle-track {
   width: 42px; height: 24px; border-radius: 99px;
-  background: #CDD3E0; transition: background var(--transition);
+  background: var(--border-strong); transition: background var(--transition);
   position: relative;
 }
 .cfg-toggle-track::after {
@@ -152,8 +153,8 @@
 .cfg-nav-item > svg { margin-top: 2px; flex-shrink: 0; }
 .cfg-nav-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .cfg-nav-label { font-size: 13.5px; font-weight: 600; color: var(--text-dark); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.cfg-nav-item--on .cfg-nav-label { color: var(--accent-ink); }
-.cfg-nav-sub { font-size: 11.5px; color: var(--text-muted); }
+.cfg-nav-item--on .cfg-nav-label, .cfg-nav-item--on .cfg-nav-sub { color: var(--accent-ink); }
+.cfg-nav-sub { font-size: 12px; color: var(--text-muted); }
 .cfg-nav-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); position: absolute; right: 12px; top: 14px; }
 
 .cfg-panel {
@@ -188,7 +189,11 @@
 
 @media (max-width: 860px) {
   .cfg-layout { grid-template-columns: 1fr; }
-  .cfg-nav { flex-direction: row; overflow-x: auto; }
+  .cfg-nav {
+    flex-direction: row; overflow-x: auto; scrollbar-width: none; padding-right: 32px;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+            mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+  }
   .cfg-nav-item { flex: 0 0 auto; }
   .cfg-nav-sub { display: none; }
 }

@@ -1,15 +1,14 @@
 import { useEffect, useState } from 'react'
-import { Search, Star, Filter, UserPlus } from 'lucide-react'
+import { Search, Star, Filter } from 'lucide-react'
 import { Badge } from '@components/ui'
 import TechProfileModal from '@components/modals/TechProfileModal'
 import PageHeader from '@components/ui/PageHeader'
 import AdvancedFiltersModal from '@components/modals/AdvancedFiltersModal'
-import CoAdminModal from '@components/modals/CoAdminModal'
 import './tecnicos.css'
 
 import { useAdminUsers } from '../../hooks/useAdminQueries'
 import {
-  SIN_FILTROS, CATEGORIAS, CAMPOS_TECNICOS, CAMPOS_CLIENTES, CAMPOS_ADMINS, filtrosActivos, pasaFiltros, type CampoFiltro, type Filtros,
+  SIN_FILTROS, CATEGORIAS, CAMPOS_TECNICOS, CAMPOS_CLIENTES, filtrosActivos, pasaFiltros, type CampoFiltro, type Filtros,
 } from '../../lib/filtros'
 
 // estado_cuenta de la app → etiqueta del filtro. Un técnico sin identidad verificada sigue en revisión
@@ -22,13 +21,13 @@ function estadoLegible(estado?: string | null, sinVerificar = false) {
   return 'EN REVISIÓN'
 }
 
-type Tab = 'tecnicos' | 'clientes' | 'admins'
+// Los administradores tienen su propia sección (/administradores): aquí solo están las cuentas de la app
+type Tab = 'tecnicos' | 'clientes'
 
-// Qué filtros tiene cada pestaña: un cliente no tiene especialidad ni calificación, un administrador tampoco
+// Qué filtros tiene cada pestaña: un cliente no tiene especialidad ni calificación
 const CAMPOS_POR_PESTANA: Record<Tab, CampoFiltro[]> = {
   tecnicos: CAMPOS_TECNICOS,
   clientes: CAMPOS_CLIENTES,
-  admins: CAMPOS_ADMINS,
 }
 
 const fechaCorta = (iso: string | null, conHora = false) =>
@@ -38,7 +37,6 @@ const fechaCorta = (iso: string | null, conHora = false) =>
 
 export default function TecnicosPage() {
   const [tab, setTabState] = useState<Tab>('tecnicos')
-  const [isCoAdminOpen, setIsCoAdminOpen] = useState(false)
   const [search, setSearch] = useState('')
 
   const [filters, setFilters] = useState<Filtros>(SIN_FILTROS)
@@ -52,7 +50,7 @@ export default function TecnicosPage() {
   const [isFilterOpen, setIsFilterOpen] = useState(false)
 
   const { data: usersData, isLoading, isError } = useAdminUsers({
-    role: tab === 'tecnicos' ? '2' : tab === 'clientes' ? '1' : '3',
+    role: tab === 'tecnicos' ? '2' : '1',
   })
 
   // Normalize API data to component structure
@@ -70,8 +68,6 @@ export default function TecnicosPage() {
       rating: u.metricas?.calificacion || null,
       jobs: u.metricas?.trabajos ?? null,
       servicios: u.metricas?.servicios ?? 0,
-      ultimaConexion: u.ultima_conexion ?? null,
-      pendienteActivar: u.debe_cambiar_contrasena === true,
       verificado: !!u.identidad_verificada,
       registro: u.fecha_registro ?? null,
     }
@@ -93,22 +89,15 @@ export default function TecnicosPage() {
 
   return (
     <div className="tec-page fade-in">
-      <PageHeader title="Técnicos y usuarios" sub="Cuentas de técnicos, clientes y administradores">
-        <button className="fin-approve-batch" onClick={() => setIsCoAdminOpen(true)}>
-          <UserPlus size={14} /> Nuevo coadministrador
-        </button>
-      </PageHeader>
+      <PageHeader title="Técnicos y clientes" sub="Cuentas de quienes usan la app. Los administradores están en su propia sección." />
 
       {/* Tabs (RF-37) */}
-      <div className="tec-tabs">
-        <button className={`tec-tab ${tab === 'tecnicos' ? 'tec-tab--active' : ''}`} onClick={() => setTab('tecnicos')}>
-          PRESTADORES DE SERVICIO
+      <div className="tec-tabs" role="tablist" aria-label="Tipo de cuenta">
+        <button type="button" role="tab" aria-selected={tab === 'tecnicos'} className={`tec-tab ${tab === 'tecnicos' ? 'tec-tab--active' : ''}`} onClick={() => setTab('tecnicos')}>
+          Técnicos
         </button>
-        <button className={`tec-tab ${tab === 'clientes' ? 'tec-tab--active' : ''}`} onClick={() => setTab('clientes')}>
-          CLIENTES (USUARIOS)
-        </button>
-        <button className={`tec-tab ${tab === 'admins' ? 'tec-tab--active' : ''}`} onClick={() => setTab('admins')}>
-          ADMINISTRADORES
+        <button type="button" role="tab" aria-selected={tab === 'clientes'} className={`tec-tab ${tab === 'clientes' ? 'tec-tab--active' : ''}`} onClick={() => setTab('clientes')}>
+          Clientes
         </button>
       </div>
 
@@ -116,7 +105,7 @@ export default function TecnicosPage() {
       <div className="val-toolbar">
         <div className="val-search">
           <Search size={14} />
-          <input placeholder="Buscar por ID, nombre o correo..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input type="search" aria-label="Buscar cuentas" placeholder="Buscar por ID, nombre o correo…" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <select className="tec-select" aria-label="Filtrar por estado" value={filters.status} onChange={e => setFiltro('status', e.target.value)}>
           <option value="ALL">Estado: Todo</option>
@@ -132,7 +121,7 @@ export default function TecnicosPage() {
           </select>
         )}
         <button className="dash-export-btn" onClick={() => setIsFilterOpen(true)}>
-          <Filter size={13} /> FILTROS AVANZADOS{filtrosActivos(filters, campos) > 0 ? ` (${filtrosActivos(filters, campos)})` : ''}
+          <Filter size={13} aria-hidden /> Más filtros{filtrosActivos(filters, campos) > 0 ? ` (${filtrosActivos(filters, campos)})` : ''}
         </button>
       </div>
 
@@ -141,21 +130,21 @@ export default function TecnicosPage() {
         {isLoading ? (
           <div style={{ padding: '2rem', textAlign: 'center' }}>Cargando datos...</div>
         ) : isError ? (
-          <div style={{ padding: '2rem', textAlign: 'center', color: 'red' }}>Error al cargar los datos</div>
+          <div role="alert" style={{ padding: '2rem', textAlign: 'center', color: 'var(--danger-ink)' }}>No se pudieron cargar las cuentas. Revisa tu conexión y vuelve a abrir la sección.</div>
         ) : (
           <div className="table-scroll"><table className="dash-table tec-table">
             <thead>
               <tr>
-                <th>{tab === 'tecnicos' ? 'TÉCNICO / CONTACTO' : tab === 'clientes' ? 'CLIENTE / CONTACTO' : 'ADMINISTRADOR / CONTACTO'}</th>
-                <th>{tab === 'tecnicos' ? 'ESPECIALIDAD PRINCIPAL' : 'REGISTRO'}</th>
-                <th>ESTADO DE CUENTA</th>
-                <th>{tab === 'tecnicos' ? 'MÉTRICAS' : tab === 'clientes' ? 'SERVICIOS' : 'ÚLTIMA CONEXIÓN'}</th>
-                <th>ACCIONES</th>
+                <th>{tab === 'tecnicos' ? 'Técnico / contacto' : 'Cliente / contacto'}</th>
+                <th>{tab === 'tecnicos' ? 'Especialidad principal' : 'Registro'}</th>
+                <th>Estado de cuenta</th>
+                <th>{tab === 'tecnicos' ? 'Métricas' : 'Servicios'}</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 && (
-                <tr><td colSpan={5} style={{textAlign: 'center', padding: '1rem'}}>No hay registros</td></tr>
+                <tr><td colSpan={5} className="table-empty">No hay registros</td></tr>
               )}
               {filtered.map(row => (
                 <tr key={row.id}>
@@ -178,10 +167,7 @@ export default function TecnicosPage() {
                       : <span className="dash-table-id">{fechaCorta(row.registro)}</span>}
                   </td>
                   <td>
-                    <Badge variant={row.statusV}>▲ {row.status}</Badge>
-                    {tab === 'admins' && row.pendienteActivar && (
-                      <p className="dash-table-id" style={{ marginTop: 4 }}>Aún no cambia su contraseña temporal</p>
-                    )}
+                    <Badge variant={row.statusV}>{row.status}</Badge>
                   </td>
                   <td>
                     {tab === 'tecnicos' ? (
@@ -192,17 +178,15 @@ export default function TecnicosPage() {
                           <span>{row.jobs} {row.jobs === 1 ? 'trabajo' : 'trabajos'}</span>
                         </div>
                       ) : <span className="dash-table-id">Sin historial</span>
-                    ) : tab === 'clientes' ? (
+                    ) : (
                       row.servicios > 0
                         ? <span className="dash-table-spec">{row.servicios} {row.servicios === 1 ? 'servicio' : 'servicios'}</span>
                         : <span className="dash-table-id">Sin servicios</span>
-                    ) : (
-                      <span className="dash-table-id">{row.ultimaConexion ? fechaCorta(row.ultimaConexion, true) : 'Nunca'}</span>
                     )}
                   </td>
                   <td>
                     <button className="tec-action-btn" onClick={() => handleOpenProfile(row)}>
-                      VER PERFIL
+                      Ver perfil
                     </button>
                   </td>
                 </tr>
@@ -213,7 +197,7 @@ export default function TecnicosPage() {
 
         {/* El servidor entrega hasta 1000 cuentas por pestaña y la lista se filtra aquí: no hay páginas */}
         <div className="tec-pagination">
-          <p className="tec-page-info">MOSTRANDO {filtered.length} DE {data.length} REGISTROS</p>
+          <p className="tec-page-info">{filtered.length} de {data.length} {tab === 'tecnicos' ? 'técnicos' : 'clientes'}</p>
         </div>
       </div>
 
@@ -224,15 +208,13 @@ export default function TecnicosPage() {
         userId={selectedItem?.realId ?? null}
       />
 
-      <CoAdminModal isOpen={isCoAdminOpen} onClose={() => setIsCoAdminOpen(false)} />
-
       <AdvancedFiltersModal
         isOpen={isFilterOpen}
         onClose={() => setIsFilterOpen(false)}
         value={filters}
         onApply={setFilters}
         campos={campos}
-        contexto={tab === 'tecnicos' ? 'prestadores de servicio' : tab === 'clientes' ? 'clientes' : 'administradores'}
+        contexto={tab === 'tecnicos' ? 'técnicos' : 'clientes'}
         verificationLabel="identidad verificada"
       />
     </div>

@@ -21,7 +21,6 @@ export const SIN_FILTROS: Filtros = { status: 'ALL', specialty: 'ALL', minRating
 // Campos que ofrece cada sección
 export const CAMPOS_TECNICOS: CampoFiltro[] = ['status', 'specialty', 'minRating', 'verification', 'dateRange']
 export const CAMPOS_CLIENTES: CampoFiltro[] = ['status', 'activity', 'dateRange']
-export const CAMPOS_ADMINS: CampoFiltro[] = ['status', 'dateRange']
 export const CAMPOS_VALIDACION: CampoFiltro[] = ['specialty', 'minRating', 'verification', 'dateRange']
 
 // Categorías de servicio de la app (tabla categorias_servicio)

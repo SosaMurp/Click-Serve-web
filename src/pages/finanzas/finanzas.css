@@ -3,11 +3,13 @@
 
 .fin-approve-batch {
   padding: 9px 16px; border-radius: var(--radius-md);
-  background: var(--accent); border: none; color: #fff;
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--accent-dim); border: none; color: #fff;
   font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer;
   transition: background var(--transition);
 }
-.fin-approve-batch:hover { background: var(--accent-dim); }
+.fin-approve-batch:hover:not(:disabled) { background: var(--accent-ink); }
+.fin-approve-batch:focus-visible, .fin-filter-tab:focus-visible, .fin-btn-deny:focus-visible, .fin-btn-approve:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* Queue */
 .fin-queue-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 12px; }
@@ -33,7 +35,7 @@
 .fin-bank-logo {
   width: 34px; height: 34px; border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 10px; font-weight: 800; color: #fff; flex-shrink: 0; background: var(--navy, #0C1C40);
+  font-size: 12px; font-weight: 800; color: #fff; flex-shrink: 0; background: var(--navy, #0C1C40);
 }
 
 .fin-amount { font-size: 15px; font-weight: 700; color: var(--text-dark); }
@@ -42,7 +44,7 @@
   display: inline-flex; align-items: center; gap: 4px;
   padding: 7px 12px; border-radius: var(--radius-sm);
   background: none; border: 1px solid var(--border-light);
-  font-family: inherit; font-size: 10px; font-weight: 700;
+  font-family: inherit; font-size: 12px; font-weight: 700;
   letter-spacing: .04em; text-transform: uppercase; cursor: pointer;
   color: var(--text-mid); transition: all var(--transition);
 }
@@ -52,11 +54,11 @@
   display: inline-flex; align-items: center; gap: 4px;
   padding: 7px 12px; border-radius: var(--radius-sm);
   background: var(--accent-dim); border: none;
-  font-family: inherit; font-size: 10px; font-weight: 700;
+  font-family: inherit; font-size: 12px; font-weight: 700;
   letter-spacing: .04em; text-transform: uppercase; cursor: pointer;
   color: #fff; transition: all var(--transition);
 }
-.fin-btn-approve:hover { opacity: .85; transform: translateY(-1px); }
+.fin-btn-approve:hover { background: var(--accent-ink); }
 
 .fin-approve-batch:disabled { background: #fff; color: var(--text-muted); border: 1px solid var(--border-light); cursor: default; }
 .fin-queue-header { flex-wrap: wrap; gap: 8px; }

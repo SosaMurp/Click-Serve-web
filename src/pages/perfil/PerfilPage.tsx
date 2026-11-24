@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react'
-import { LogOut, Shield, Key, Monitor, Smartphone, Globe, X, Lock, CheckCircle, AlertCircle } from 'lucide-react'
-import { Badge, Button } from '@components/ui'
+import { Shield, Key, Monitor, Smartphone, Globe, X, Lock, CheckCircle, AlertCircle } from 'lucide-react'
+import { Badge, Button, Input } from '@components/ui'
 import { getActiveSessions, revokeSession, revokeAllSessions, updatePassword } from '@api/auth'
 import { useAuthStore } from '@store/authStore'
 import { toast } from '@components/ui/Toaster'
-import { cerrarSesion } from '@/lib/sesion'
 import { contrasenaFuerte } from '@/lib/formatos'
 import { mensajeDeError } from '@/lib/errores'
 import '@components/modals/modals.css'
@@ -90,8 +89,6 @@ export default function PerfilPage() {
     }
   }
 
-  const handleLogout = () => { void cerrarSesion() }
-
   // Manejador del cambio de contraseña
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -141,12 +138,9 @@ export default function PerfilPage() {
       {/* Header */}
       <div className="dash-page-header">
         <div>
-          <h1 className="dash-page-title">Perfil Administrativo</h1>
-          <p className="dash-page-sub">GESTIÓN DE CUENTA Y SEGURIDAD</p>
+          <h1 className="dash-page-title">Perfil administrativo</h1>
+          <p className="dash-page-sub">Gestión de cuenta y seguridad</p>
         </div>
-        <button className="perfil-logout" onClick={handleLogout}>
-          <LogOut size={13} /> CERRAR SESIÓN SEGURA
-        </button>
       </div>
 
       <div className="perfil-grid">
@@ -156,7 +150,7 @@ export default function PerfilPage() {
           <div className="dash-card">
             <div className="perfil-section-head">
               <Shield size={14} />
-              <p className="perfil-section-title">IDENTIDAD DEL OPERADOR</p>
+              <p className="perfil-section-title">Identidad del operador</p>
             </div>
 
             <div className="perfil-identity-row">
@@ -173,24 +167,17 @@ export default function PerfilPage() {
               </div>
             </div>
 
-            <div className="perfil-fields-row">
-              <div className="perfil-field">
-                <label className="cfg-label">ID</label>
-                <input
-                  className="perfil-input"
-                  value={user?.id_usuario ? `ADM-LZC-${String(user.id_usuario).padStart(3, '0')}` : ''}
-                  readOnly
-                />
+            {/* Datos de solo lectura: se muestran como texto, no como campos que parecen editables */}
+            <dl className="perfil-facts">
+              <div>
+                <dt>ID de administrador</dt>
+                <dd>{user?.id_usuario ? `ADM-LZC-${String(user.id_usuario).padStart(3, '0')}` : '—'}</dd>
               </div>
-              <div className="perfil-field">
-                <label className="cfg-label">CORREO DE ACCESO</label>
-                <input
-                  className="perfil-input"
-                  value={user?.correo ?? ''}
-                  readOnly
-                />
+              <div>
+                <dt>Correo de acceso</dt>
+                <dd>{user?.correo ?? '—'}</dd>
               </div>
-            </div>
+            </dl>
 
           </div>
 
@@ -198,22 +185,22 @@ export default function PerfilPage() {
           <div className="dash-card">
             <div className="perfil-section-head">
               <Key size={14} />
-              <p className="perfil-section-title">SEGURIDAD DE LA CUENTA</p>
+              <p className="perfil-section-title">Seguridad de la cuenta</p>
             </div>
 
             <div className="perfil-security-row perfil-security-row--active">
               <div className="perfil-security-left">
                 <Shield size={18} className="perfil-shield-icon" />
                 <div>
-                  <p className="perfil-security-title">Autenticación en 2 Pasos (Activa)</p>
-                  <p className="perfil-security-sub">Protegido mediante Verificación por Correo</p>
+                  <p className="perfil-security-title">Autenticación en dos pasos (activa)</p>
+                  <p className="perfil-security-sub">Protegida con un código enviado a tu correo</p>
                 </div>
               </div>
             </div>
 
             <div className="perfil-security-row">
               <div>
-                <p className="perfil-security-title">CONTRASEÑA PRINCIPAL</p>
+                <p className="perfil-security-title">Contraseña principal</p>
                 <p className="perfil-security-sub">Actualiza tu clave de acceso de forma segura</p>
               </div>
               <button 
@@ -224,7 +211,7 @@ export default function PerfilPage() {
                   setIsPasswordModalOpen(true)
                 }}
               >
-                ACTUALIZAR CLAVE
+                Actualizar clave
               </button>
             </div>
           </div>
@@ -234,14 +221,14 @@ export default function PerfilPage() {
         <div className="dash-card perfil-devices-card">
           <div className="perfil-section-head">
             <Monitor size={14} />
-            <p className="perfil-section-title">DISPOSITIVOS ACTIVOS</p>
+            <p className="perfil-section-title">Dispositivos activos</p>
           </div>
           <p className="cfg-hint" style={{ marginTop: -6, marginBottom: 16 }}>
             Monitorea tus conexiones recientes y revoca accesos sospechosos.
           </p>
 
           {loading ? (
-            <p className="cfg-hint" style={{ textAlign: 'center', padding: '20px' }}>Cargando sesiones...</p>
+            <p className="cfg-hint" style={{ textAlign: 'center', padding: '20px' }}>Cargando sesiones…</p>
           ) : (
             sessions.map((sesion) => {
               // Parseamos los datos del backend para la UI
@@ -260,7 +247,7 @@ export default function PerfilPage() {
                     <p className="perfil-device-name" title={sesion.dispositivo}>
                       {name}
                     </p>
-                    <p className="perfil-device-meta" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>
+                    <p className="perfil-device-meta perfil-device-ua">
                       {sesion.dispositivo}
                     </p>
                     <p className="perfil-device-meta">Iniciada: {fecha}</p>
@@ -268,14 +255,14 @@ export default function PerfilPage() {
                   
                   <div className="perfil-device-right">
                     {sesion.es_sesion_actual ? (
-                      <Badge variant="success">ACTUAL</Badge>
+                      <Badge variant="success">Actual</Badge>
                     ) : (
                       <button 
                         className="perfil-revoke" 
                         onClick={() => handleRevoke(sesion.id_sesion)}
                         title="Cerrar esta sesión remotamente"
                       >
-                        <X size={10} /> Desconectar
+                        <X size={12} aria-hidden="true" /> Desconectar
                       </button>
                     )}
                   </div>
@@ -289,21 +276,20 @@ export default function PerfilPage() {
               className="perfil-revoke-all" 
               onClick={handleRevokeAll}
             >
-              CERRAR TODAS LAS DEMÁS SESIONES
+              Cerrar todas las demás sesiones
             </button>
           )}
-          {/* 👆 -------------------------- 👆 */}
         </div>
       </div>
 
       {/* MODAL PARA CAMBIO DE CONTRASEÑA */}
       {isPasswordModalOpen && (
         <div className="modal-backdrop">
-          <div className="modal-container modal-container--sm fade-in" style={{ maxWidth: 420 }}>
+          <div className="modal-container modal-container--sm fade-in" style={{ maxWidth: 440 }}>
             <div className="modal-header">
               <div className="modal-title-wrap">
-                <h3 className="modal-title">Cambio de Contraseña Maestra</h3>
-                <p className="modal-subtitle">ACTUALIZACIÓN DE SEGURIDAD</p>
+                <h3 className="modal-title">Cambio de contraseña</h3>
+                <p className="modal-subtitle">Actualización de seguridad</p>
               </div>
               <button className="modal-close-btn" onClick={() => setIsPasswordModalOpen(false)}>
                 <X size={18} />
@@ -313,60 +299,27 @@ export default function PerfilPage() {
             <form onSubmit={handleUpdatePassword}>
               <div className="modal-body" style={{ gap: 14 }}>
                 {passwordError && (
-                  <div style={{ background: '#FDE8E6', border: '1px solid #F4C7C2', padding: '10px 12px', borderRadius: 6, fontSize: 13, color: '#D92D20', display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                  <div className="perfil-msg perfil-msg--error" role="alert">
+                    <AlertCircle size={16} aria-hidden="true" />
                     <span>{passwordError}</span>
                   </div>
                 )}
 
                 {passwordSuccess && (
-                  <div style={{ background: '#E3F4EA', border: '1px solid #BFE3CD', padding: '10px 12px', borderRadius: 6, fontSize: 13, color: '#0E7A42', display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <CheckCircle size={16} style={{ flexShrink: 0 }} />
+                  <div className="perfil-msg perfil-msg--ok" role="status">
+                    <CheckCircle size={16} aria-hidden="true" />
                     <span>{passwordSuccess}</span>
                   </div>
                 )}
 
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-mid)', display: 'block', marginBottom: 6 }}>
-                    Contraseña Actual *
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="••••••••"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #CDD3E0', fontSize: 13 }}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-mid)', display: 'block', marginBottom: 6 }}>
-                    Nueva Contraseña *
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="Mínimo 8 caracteres"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #CDD3E0', fontSize: 13 }}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-mid)', display: 'block', marginBottom: 6 }}>
-                    Confirmar Nueva Contraseña *
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="Repite la nueva contraseña"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #CDD3E0', fontSize: 13 }}
-                    required
-                  />
-                </div>
+                <Input id="pass-actual" label="Contraseña actual *" type="password" autoComplete="current-password"
+                  value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required />
+                <Input id="pass-nueva" label="Nueva contraseña *" type="password" autoComplete="new-password"
+                  placeholder="Mínimo 8 caracteres" hint="Con mayúscula, minúscula y número."
+                  value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required />
+                <Input id="pass-confirmar" label="Confirmar nueva contraseña *" type="password" autoComplete="new-password"
+                  placeholder="Repite la nueva contraseña"
+                  value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
               </div>
 
               <div className="modal-footer" style={{ justifyContent: 'flex-end', gap: 8 }}>
@@ -377,15 +330,15 @@ export default function PerfilPage() {
                   onClick={() => setIsPasswordModalOpen(false)}
                   disabled={isSubmitting}
                 >
-                  CANCELAR
+                  Cancelar
                 </Button>
                 <Button 
                   type="submit" 
                   variant="primary" 
                   size="sm"
-                  disabled={isSubmitting}
+                  loading={isSubmitting}
                 >
-                  {isSubmitting ? 'GUARDANDO...' : 'GUARDAR NUEVA CLAVE'}
+                  Guardar nueva clave
                 </Button>
               </div>
             </form>

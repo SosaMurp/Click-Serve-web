@@ -74,7 +74,7 @@ export default function ReportGeneratorModal({ isOpen, onClose }: ReportGenerato
         <div className="modal-body" style={{ gap: 16 }}>
           {/* Alcance Temporal (RF-95) */}
           <div>
-            <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-mid)', display: 'block', marginBottom: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-mid)', display: 'block', marginBottom: 6 }}>
               Alcance Temporal del Archivo
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
@@ -89,7 +89,7 @@ export default function ReportGeneratorModal({ isOpen, onClose }: ReportGenerato
                   onClick={() => setTimeframe(t.id)}
                   style={{
                     padding: '8px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                    border: '1px solid', borderColor: timeframe === t.id ? 'var(--accent-dim)' : '#CDD3E0',
+                    border: '1px solid', borderColor: timeframe === t.id ? 'var(--accent-dim)' : 'var(--border-strong)',
                     background: timeframe === t.id ? '#E8EBF2' : '#fff',
                     color: timeframe === t.id ? '#0C1C40' : '#4B5563', cursor: 'pointer'
                   }}
@@ -109,7 +109,7 @@ export default function ReportGeneratorModal({ isOpen, onClose }: ReportGenerato
 
           {/* Dimensiones de Datos (RF-95) */}
           <div>
-            <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-mid)', display: 'block', marginBottom: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-mid)', display: 'block', marginBottom: 6 }}>
               Dimensiones de Datos a Incluir
             </label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -142,7 +142,7 @@ export default function ReportGeneratorModal({ isOpen, onClose }: ReportGenerato
 
           {/* Formato de Descarga (RF-96) */}
           <div>
-            <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-mid)', display: 'block', marginBottom: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-mid)', display: 'block', marginBottom: 6 }}>
               Formato de Entrega
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
@@ -152,7 +152,7 @@ export default function ReportGeneratorModal({ isOpen, onClose }: ReportGenerato
                   onClick={() => setFormat(fmt)}
                   style={{
                     padding: '8px', borderRadius: 6, fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
-                    border: '1px solid', borderColor: format === fmt ? 'var(--text-dark)' : '#CDD3E0',
+                    border: '1px solid', borderColor: format === fmt ? 'var(--text-dark)' : 'var(--border-strong)',
                     background: format === fmt ? 'var(--text-dark)' : '#fff',
                     color: format === fmt ? '#fff' : '#4B5563', cursor: 'pointer'
                   }}
@@ -167,7 +167,7 @@ export default function ReportGeneratorModal({ isOpen, onClose }: ReportGenerato
         <div className="modal-footer">
           {error && <p style={{ margin: 0, fontSize: 12, color: 'var(--danger-ink)', flex: 1 }}>{error}</p>}
           <Button variant="outline" onClick={onClose}>
-            CANCELAR
+            Cancelar
           </Button>
           <Button variant="primary" loading={loading} onClick={handleGenerate}>
             <Download size={13} /> GENERAR Y DESCARGAR

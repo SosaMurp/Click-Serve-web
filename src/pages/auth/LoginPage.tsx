@@ -103,7 +103,7 @@ export default function LoginPage() {
               id="login-password"
               className="field-input pr-icon"
               type={showPass ? 'text' : 'password'}
-              placeholder="••••••••••••"
+              placeholder="Tu contraseña"
               value={password}
               onChange={e => { setPassword(e.target.value); setError('') }}
               required

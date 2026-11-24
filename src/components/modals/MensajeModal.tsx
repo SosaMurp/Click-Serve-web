@@ -102,9 +102,9 @@ export default function MensajeModal({ userId, nombre, onClose }: { userId: numb
         </div>
 
         <div className="modal-footer">
-          <Button variant="ghost" size="sm" onClick={onClose}>CERRAR</Button>
+          <Button variant="ghost" size="sm" onClick={onClose}>Cerrar</Button>
           <Button variant="primary" size="sm" loading={enviar.isPending} disabled={!listo} onClick={mandar}>
-            <Send size={13} /> ENVIAR
+            <Send size={13} /> Enviar
           </Button>
         </div>
       </div>

@@ -83,9 +83,10 @@ export default function TechProfileModal({ isOpen, onClose, userId }: TechProfil
           <button className="modal-close-btn" onClick={onClose}><X size={18} /></button>
         </div>
 
-        <div className="modal-tabs">
-          {([['perfil', 'PERFIL E IDENTIDAD'], ['documentos', 'DOCUMENTOS'], ['acciones', 'ADMINISTRACIÓN Y BAJA']] as const).map(([k, label]) => (
-            <button key={k} className={`modal-tab-btn ${activeTab === k ? 'modal-tab-btn--active' : ''}`} onClick={() => setActiveTab(k)}>
+        <div className="modal-tabs" role="tablist" aria-label="Secciones del expediente">
+          {([['perfil', 'Perfil e identidad'], ['documentos', 'Documentos'], ['acciones', 'Administración y baja']] as const).map(([k, label]) => (
+            <button key={k} type="button" role="tab" aria-selected={activeTab === k}
+              className={`modal-tab-btn ${activeTab === k ? 'modal-tab-btn--active' : ''}`} onClick={() => setActiveTab(k)}>
               {label}
             </button>
           ))}
@@ -95,7 +96,7 @@ export default function TechProfileModal({ isOpen, onClose, userId }: TechProfil
           {isLoading && <p style={{ color: 'var(--text-mid)' }}>Cargando expediente…</p>}
           {isError && (
             <p style={{ color: 'var(--danger)' }}>
-              No se pudo cargar el expediente. <button className="sop-view-btn" onClick={() => refetch()}>REINTENTAR</button>
+              No se pudo cargar el expediente. <button className="sop-view-btn" onClick={() => refetch()}>Reintentar</button>
             </p>
           )}
 
@@ -124,15 +125,15 @@ export default function TechProfileModal({ isOpen, onClose, userId }: TechProfil
               </div>
 
               {esTecnico && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                <div className="tp-stats">
                   {[
                     ['Calificación', exp.calificacion ? `${exp.calificacion} ★` : 'Sin reseñas'],
                     ['Trabajos finalizados', String(exp.trabajos)],
                     ['Cancelados', String(exp.cancelados)],
                   ].map(([l, v]) => (
-                    <div key={l} style={{ border: '1px solid var(--border-light)', borderRadius: 12, padding: 14 }}>
-                      <p style={{ margin: 0, fontSize: 12, color: 'var(--text-mid)' }}>{l}</p>
-                      <p style={{ margin: '4px 0 0', fontSize: 20, fontWeight: 700 }}>{v}</p>
+                    <div key={l} className="tp-stat">
+                      <p className="tp-stat-label">{l}</p>
+                      <p className="tp-stat-value">{v}</p>
                     </div>
                   ))}
                 </div>
@@ -177,7 +178,7 @@ export default function TechProfileModal({ isOpen, onClose, userId }: TechProfil
                   <Badge variant={DOC_VARIANT[d.estado] ?? 'neutral'}>{d.estado.replace('_', ' ')}</Badge>
                   {d.url && (
                     <Button size="sm" variant="outline" onClick={() => setPreview({ nombre: DOC_LABEL[d.tipo] ?? d.tipo, url: fileUrl(d.url!) })}>
-                      <Eye size={13} /> VER
+                      <Eye size={13} /> Ver
                     </Button>
                   )}
                 </div>
@@ -213,7 +214,7 @@ export default function TechProfileModal({ isOpen, onClose, userId }: TechProfil
                   <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '2px 0 0' }}>Datos, documentos, especialidades, servicios y calificaciones (sin contraseña).</p>
                 </div>
                 <Button variant="secondary" size="sm" onClick={() => userId && accion(() => descargarExpediente(userId), 'Expediente descargado.')}>
-                  <Download size={13} /> DESCARGAR
+                  <Download size={13} /> Descargar
                 </Button>
               </div>
 
@@ -259,19 +260,20 @@ export default function TechProfileModal({ isOpen, onClose, userId }: TechProfil
                     </p>
                   </div>
                   {!showDeleteConfirm && (
-                    <Button size="sm" style={{ background: 'var(--danger)', color: '#fff' }} onClick={() => setShowDeleteConfirm(true)}>
-                      <Trash2 size={13} /> DAR DE BAJA
+                    <Button size="sm" variant="danger" onClick={() => setShowDeleteConfirm(true)}>
+                      <Trash2 size={13} /> Dar de baja
                     </Button>
                   )}
                 </div>
                 {showDeleteConfirm && (
-                  <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center' }}>
-                    <input type="password" className="field-input" placeholder="Tu contraseña de administrador"
-                      value={password} onChange={e => setPassword(e.target.value)} style={{ flex: 1 }} />
-                    <Button size="sm" style={{ background: 'var(--danger)', color: '#fff' }} loading={remove.isPending} disabled={!password} onClick={eliminar}>
-                      CONFIRMAR BAJA
+                  <div className="baja-confirm">
+                    <label className="sr-only" htmlFor="baja-pass">Tu contraseña de administrador</label>
+                    <input id="baja-pass" type="password" autoComplete="current-password" className="field-input" placeholder="Tu contraseña de administrador"
+                      value={password} onChange={e => setPassword(e.target.value)} />
+                    <Button size="sm" variant="danger" loading={remove.isPending} disabled={!password} onClick={eliminar}>
+                      Confirmar baja
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => { setShowDeleteConfirm(false); setPassword('') }}>CANCELAR</Button>
+                    <Button size="sm" variant="ghost" onClick={() => { setShowDeleteConfirm(false); setPassword('') }}>Cancelar</Button>
                   </div>
                 )}
               </div>

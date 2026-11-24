@@ -67,7 +67,7 @@ export default function CoAdminModal({ isOpen, onClose }: { isOpen: boolean; onC
                 En su primer acceso usará esa contraseña temporal, recibirá un código de verificación en el mismo correo y deberá crear su propia contraseña.
               </p>
             </div>
-            <div className="modal-footer"><Button variant="primary" size="sm" onClick={cerrar}>LISTO</Button></div>
+            <div className="modal-footer"><Button variant="primary" size="sm" onClick={cerrar}>Listo</Button></div>
           </>
         ) : (
           <form onSubmit={guardar}>
@@ -85,7 +85,7 @@ export default function CoAdminModal({ isOpen, onClose }: { isOpen: boolean; onC
               {error && <p role="alert" style={{ margin: 0, fontSize: 12, color: 'var(--danger-ink)' }}>{error}</p>}
             </div>
             <div className="modal-footer">
-              <Button type="button" variant="ghost" size="sm" onClick={cerrar}>CANCELAR</Button>
+              <Button type="button" variant="ghost" size="sm" onClick={cerrar}>Cancelar</Button>
               <Button type="submit" variant="primary" size="sm" loading={crear.isPending}>
                 <UserPlus size={13} /> REGISTRAR Y ENVIAR ACCESO
               </Button>

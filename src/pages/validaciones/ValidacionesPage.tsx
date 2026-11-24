@@ -106,7 +106,7 @@ export default function ValidacionesPage() {
       <div className="val-toolbar">
         <div className="val-search">
           <Search size={14} />
-          <input placeholder="Buscar técnico o ID..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input type="search" aria-label="Buscar técnicos por validar" placeholder="Buscar técnico o ID…" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <button className="dash-export-btn" onClick={() => setIsFilterOpen(true)}>
           <Filter size={13} /> FILTRAR{filtrosActivos(filters, CAMPOS_VALIDACION) > 0 ? ` (${filtrosActivos(filters, CAMPOS_VALIDACION)})` : ''}
@@ -118,22 +118,22 @@ export default function ValidacionesPage() {
         {isLoading ? (
           <div style={{ padding: '2rem', textAlign: 'center' }}>Cargando expedientes...</div>
         ) : isError ? (
-          <div style={{ padding: '2rem', textAlign: 'center', color: 'red' }}>Error al cargar los expedientes</div>
+          <div role="alert" style={{ padding: '2rem', textAlign: 'center', color: 'var(--danger-ink)' }}>No se pudieron cargar los expedientes. Revisa tu conexión y vuelve a abrir la sección.</div>
         ) : (
           <div className="table-scroll"><table className="dash-table val-table">
             <thead>
               <tr>
-                <th>FECHA</th>
-                <th>TÉCNICO / CONTACTO</th>
-                <th>ESPECIALIDAD A VALIDAR</th>
-                <th>DOCUMENTOS</th>
-                <th>ESTADO CÉDULA</th>
-                <th>ACCIÓN DE AUDITORÍA</th>
+                <th>Fecha</th>
+                <th>Técnico / contacto</th>
+                <th>Especialidad a validar</th>
+                <th>Documentos</th>
+                <th>Estado de cédula</th>
+                <th>Acción de auditoría</th>
               </tr>
             </thead>
             <tbody>
               {visibles.length === 0 && (
-                <tr><td colSpan={6} style={{textAlign: 'center', padding: '1rem'}}>
+                <tr><td colSpan={6} className="table-empty">
                   {QUEUE.length > 0 ? 'Ningún técnico coincide con la búsqueda o los filtros'
                     : vista === 'pendientes' ? 'No hay técnicos pendientes de revisión' : 'Todavía no hay técnicos registrados'}
                 </td></tr>
@@ -163,10 +163,10 @@ export default function ValidacionesPage() {
                   <td>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button className={`val-action-btn val-action-btn--${row.actionColor}`} onClick={() => handleOpenProfile(row)}>
-                        <Eye size={11} /> EXPEDIENTE
+                        <Eye size={11} /> Expediente
                       </button>
                       <button className="val-action-btn val-action-btn--dark" onClick={() => handleOpenDecision(row)}>
-                        <FileText size={11} /> RESOLVER
+                        <FileText size={11} /> Resolver
                       </button>
                     </div>
                   </td>
@@ -184,13 +184,14 @@ export default function ValidacionesPage() {
         userId={selectedTech?.realId ?? null}
       />
 
-      <ValidationDecisionModal
-        isOpen={isDecisionOpen}
+      {/* Se monta al abrir: cada resolución empieza sin decisión elegida */}
+      {isDecisionOpen && <ValidationDecisionModal
+        isOpen
         onClose={() => setIsDecisionOpen(false)}
         techId={selectedTech?.id}
         techName={selectedTech?.name}
         onResolve={handleResolve}
-      />
+      />}
 
       <AdvancedFiltersModal
         isOpen={isFilterOpen}

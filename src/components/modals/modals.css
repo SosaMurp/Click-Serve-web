@@ -14,7 +14,6 @@
   border-radius: var(--radius-lg, 12px);
   box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
   width: 100%;
-  max-width: 640px;
   max-width: 680px;
   max-height: 90vh;
   display: flex;
@@ -23,9 +22,6 @@
   border: 1px solid var(--border-light, var(--border-light));
 }
 
-.modal-container--lg { max-width: 820px; }
-.modal-container--xl { max-width: 1000px; }
-.modal-container--sm { max-width: 440px; }
 .modal-container--lg { max-width: 900px; }
 .modal-container--xl { max-width: 1040px; }
 .modal-container--sm { max-width: 580px; }
@@ -43,7 +39,7 @@
 
 .modal-title-wrap { display: flex; flex-direction: column; gap: 2px; }
 .modal-title { font-size: 16px; font-weight: 700; color: var(--text-dark, var(--text-dark)); margin: 0; }
-.modal-subtitle { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: var(--text-mid, var(--text-muted)); text-transform: uppercase; margin: 0; }
+.modal-subtitle { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; color: var(--text-mid, var(--text-muted)); text-transform: uppercase; margin: 0; }
 
 .modal-close-btn {
   background: transparent; border: none; cursor: pointer;
@@ -65,17 +61,45 @@
 .modal-body textarea {
   background-color: #ffffff !important;
   color: var(--text-dark) !important;
-  border: 1px solid #CDD3E0 !important;
+  border: 1px solid var(--border-strong) !important; /* 3.2:1 sobre blanco (WCAG 1.4.11) */
   font-family: inherit;
   box-sizing: border-box;
 }
+.modal-body input[type="checkbox"], .modal-body input[type="radio"] { accent-color: var(--accent-dim); }
 .modal-body input:focus,
 .modal-body select:focus,
 .modal-body textarea:focus {
-  border-color: var(--navy) !important;
+  border-color: var(--accent) !important;
   outline: none;
-  box-shadow: 0 0 0 3px rgba(12,28,64, 0.15) !important;
+  box-shadow: 0 0 0 3px var(--accent-glow) !important;
 }
+.modal-body textarea { resize: vertical; }
+
+.modal-error { margin: 0 24px 12px; font-size: 13px; color: var(--danger-ink); }
+
+/* Decisión de dos opciones (aprobar / rechazar) */
+.decision-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.decision-choice {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 14px; min-height: 88px; border-radius: var(--radius-sm);
+  border: 2px solid var(--border-light); background: #fff; cursor: pointer;
+  font-family: inherit; font-size: 13px; font-weight: 700; color: var(--text-mid);
+  transition: border-color var(--transition), background var(--transition), color var(--transition);
+}
+.decision-choice:hover { border-color: var(--border-strong); }
+.decision-choice:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.decision-choice--approve.decision-choice--on { border-color: var(--success); background: var(--success-soft); color: var(--success); }
+.decision-choice--reject.decision-choice--on { border-color: var(--danger); background: var(--danger-soft); color: var(--danger-ink); }
+.decision-hint { font-size: 13px; color: var(--text-mid); margin: 0; }
+.decision-form { display: flex; flex-direction: column; gap: 14px; }
+
+/* Avisos dentro de un modal */
+.callout { padding: 12px 14px; border-radius: var(--radius-sm); font-size: 13px; border: 1px solid transparent; }
+.callout-title { margin: 0; font-weight: 600; }
+.callout-text { margin: 4px 0 0; font-size: 12.5px; }
+.callout--success { background: var(--success-soft); border-color: #BFE3CD; color: var(--success); }
+.callout--danger  { background: var(--danger-soft); border-color: #F6C9C4; color: var(--danger-ink); font-weight: 600; }
+.callout--check { display: flex; align-items: center; gap: 10px; cursor: pointer; }
 
 .modal-footer {
   padding: 16px 24px;
@@ -106,13 +130,34 @@
   white-space: nowrap;
 }
 .modal-tab-btn--active {
-  color: var(--accent-dim, var(--navy)); border-bottom-color: var(--accent-dim, var(--navy));
+  color: var(--accent-ink); border-bottom-color: var(--accent-dim);
 }
+.modal-tab-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 /* Document Viewer & Image Gallery */
 .doc-preview-box {
-  background: var(--bg-sunk); border: 1px dashed #CDD3E0; border-radius: 8px;
+  background: var(--bg-sunk); border: 1px dashed var(--border-strong); border-radius: 8px;
   padding: 16px; display: flex; flex-direction: column; gap: 12px; align-items: center; text-align: center;
 }
 .doc-img { max-width: 100%; max-height: 260px; object-fit: contain; border-radius: 6px; border: 1px solid var(--border-light); }
 
+
+.baja-confirm { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+.baja-confirm .field-input { flex: 1 1 200px; }
+
+/* Cifras del expediente: tres columnas que se apilan cuando el modal es angosto */
+.tp-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.tp-stat { border: 1px solid var(--border-light); border-radius: 12px; padding: 14px; min-width: 0; }
+.tp-stat-label { margin: 0; font-size: 12px; color: var(--text-mid); }
+.tp-stat-value { margin: 4px 0 0; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+/* Pestañas: el texto va en minúsculas en el código (los lectores de pantalla no lo deletrean) */
+.modal-tab-btn { text-transform: uppercase; letter-spacing: .04em; }
+
+@media (max-width: 560px) {
+  .modal-backdrop { padding: 12px; }
+  .modal-header, .modal-body, .modal-footer { padding-left: 16px; padding-right: 16px; }
+  .modal-tabs { padding-left: 16px; }
+  .modal-container--fixed { height: min(720px, 94vh); }
+  .modal-footer .btn { flex: 1 1 auto; }
+}

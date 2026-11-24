@@ -17,7 +17,7 @@ interface AdvancedFiltersModalProps {
   verificationLabel?: string
 }
 
-const labelStyle = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-mid)', display: 'block', marginBottom: 6 } as const
+const labelStyle = { fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-mid)', display: 'block', marginBottom: 6 } as const
 const selectStyle = { width: '100%', padding: '10px 12px' } as const
 
 export default function AdvancedFiltersModal({
@@ -121,7 +121,7 @@ export default function AdvancedFiltersModal({
             <RotateCcw size={13} /> RESTABLECER
           </Button>
           <Button variant="primary" onClick={() => { onApply(draft); onClose() }}>
-            <Filter size={13} /> APLICAR FILTROS
+            <Filter size={13} /> Aplicar filtros
           </Button>
         </div>
       </div>

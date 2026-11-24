@@ -154,7 +154,7 @@ export default function LiquidacionModal({ incidencia: i, onClose }: { incidenci
         </div>
 
         <div className="modal-footer">
-          <Button variant="ghost" size="sm" onClick={onClose}>{info && !info.liquidada && !hecho ? 'CANCELAR' : 'CERRAR'}</Button>
+          <Button variant="ghost" size="sm" onClick={onClose}>{info && !info.liquidada && !hecho ? 'Cancelar' : 'Cerrar'}</Button>
           {info && !info.liquidada && !hecho && (
             <Button variant="primary" size="sm" loading={liquidar.isPending} disabled={!!problema} onClick={confirmar}>
               <Check size={14} /> LIQUIDAR CASO

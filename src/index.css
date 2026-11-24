@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -43,6 +41,13 @@
   --info:         #0C1C40;
   --info-soft:    #E8EBF2;
 
+  /* Colores de apoyo: dan variedad a íconos, categorías y gráficas. No se usan en botones
+     principales ni para estados. Ambos dan 4.8:1 como texto sobre blanco. */
+  --teal:       #0E7C86;
+  --teal-soft:  #E1F3F4;
+  --sky:        #2F6FD0;
+  --sky-soft:   #E7EFFC;
+
   --text-dark:  #0C1C40;
   --text-mid:   #4B5563;
   --text-muted: #667085;
@@ -51,6 +56,7 @@
 
   --border-light:  #E6E9EE;
   --border-strong: #8B93A1;
+  --border-control: #B3BAC5; /* contorno de botones secundarios: se distinguen del fondo sin pesar tanto */
   --border-dark:   rgba(255,255,255,.08);
 
   --radius-sm: 8px;
@@ -76,6 +82,23 @@ body {
 
 a { color: inherit; text-decoration: none; }
 
+/* Pantallas táctiles: los controles llegan a 44px de alto (WCAG 2.5.5) sin cambiar el aspecto con ratón */
+@media (pointer: coarse) {
+  .btn--sm, .ca-chip, .tec-tab, .modal-tab-btn, .fin-filter-tab, .ms-item--btn,
+  .val-action-btn, .tec-action-btn, .sop-view-btn, .fin-btn-deny, .fin-btn-approve,
+  .db-retry-btn, .dash-export-btn, .fin-approve-batch, .perfil-action-btn, .perfil-revoke,
+  .sop-filter-pill, .tec-select, .cfg-nav-item, .dash-account-btn, .dash-notif-btn { min-height: 44px; }
+  .tec-page-btn { min-width: 44px; height: 44px; }
+  .dash-rail-link { min-height: 48px; }
+  .modal-close-btn { min-width: 44px; min-height: 44px; }
+}
+
+/* Texto solo para lectores de pantalla */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -88,8 +111,32 @@ a { color: inherit; text-decoration: none; }
 @keyframes slideIn  { from { transform: translateX(-12px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes dotBlink { 0%,100% { opacity: 1; } 50% { opacity: .2; } }
 
+
 /* `backwards` (no `both`): al terminar no deja un transform aplicado. Un transform
    residual convierte la página en el contenedor de los modales (position: fixed)
    y el fondo oscuro deja de cubrir la barra superior y el menú lateral. */
 .fade-in  { animation: fadeIn .35s ease backwards; }
 .slide-in { animation: slideIn .3s ease backwards; }
+
+/* Movimiento reducido: las entradas se vuelven un fundido corto (el cambio de estado se sigue notando)
+   y desaparecen los desplazamientos, levantamientos y parpadeos. Los spinners siguen girando: indican carga. */
+@media (prefers-reduced-motion: reduce) {
+  .fade-in, .slide-in { animation-name: fadeOnly; animation-duration: .15s; }
+  .modal-backdrop, .toast { animation-name: fadeOnly !important; }
+  .btn:hover:not(:disabled), .fin-btn-approve:hover { transform: none !important; }
+  .db-skeleton { animation: none !important; }
+  * { scroll-behavior: auto !important; }
+}
+@keyframes fadeOnly { from { opacity: 0; } to { opacity: 1; } }
+
+/* Botones secundarios: contorno visible y fondo blanco, para que se lean como botones y no como texto suelto */
+.btn--secondary, .btn--outline, .db-btn-outline, .db-kpi-link, .tec-action-btn, .sop-view-btn,
+.perfil-action-btn, .perfil-revoke, .tec-page-btn:not(.tec-page-btn--active), .fin-filter-tab:not(.active), .cfg-discard-btn, .tec-select,
+.mapa-recenter, .db-range--btn, .ca-chip:not(.ca-chip--on) {
+  border-color: var(--border-control) !important;
+  background-color: #fff;
+}
+.db-btn-outline:hover:not(:disabled), .tec-page-btn:hover:not(:disabled), .cfg-discard-btn:hover:not(:disabled),
+.perfil-action-btn:hover, .sop-view-btn:hover, .db-kpi-link:hover, .ca-chip:not(.ca-chip--on):hover {
+  border-color: var(--text-mid) !important; background-color: var(--bg-page);
+}

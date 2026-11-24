@@ -7,7 +7,8 @@ import {
 } from "recharts"
 import {
   Download, ShieldCheck, RefreshCw, AlertTriangle, WifiOff, ArrowUpRight,
-  TrendingUp, TrendingDown, Activity, PieChart as PieIcon, Award,
+  TrendingUp, TrendingDown, Activity, PieChart as PieIcon, Award, Users, Wrench, DollarSign,
+  type LucideIcon,
 } from "lucide-react"
 import PageHeader from "@components/ui/PageHeader"
 import RangoFechas from "@components/ui/RangoFechas"
@@ -27,17 +28,20 @@ import { esErrorDeRed, mensajeDeError } from "@/lib/errores"
 import CentroActividad from "./CentroActividad"
 import "./dashboard.css"
 
-// ── Paleta (azul marino + naranja de la app móvil, sin neón) ────────────────
+// ── Paleta: azul marino + naranja de la app móvil, con turquesa y cielo de apoyo ──
 const C = {
   orange: "#E25900",
   navy:   "#0C1C40",
+  teal:   "#0E7C86",
+  sky:    "#2F6FD0",
+  skyBar: "#B9CEF3",
   slate:  "#667085",
   peach:  "#FF6B00",
   mist:   "#CDD3E0",
   track:  "#E6E9EE",
 }
-const PIE_COLORS = [C.navy, C.orange, C.slate, C.peach, C.mist, "#4B5563"]
-const RANK_COLORS = [C.orange, C.navy, C.slate, C.peach]
+const PIE_COLORS = [C.navy, C.orange, C.teal, C.sky, C.slate, C.mist]
+const RANK_COLORS = [C.orange, C.teal, C.sky, C.navy]
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function parseNum(val: number | string | null | undefined): number {
@@ -148,14 +152,20 @@ function SuccessGauge({ completed, cancelled }: { completed: number; cancelled: 
 }
 
 // ── Métrica del resumen ──────────────────────────────────────────────────────
-function Metric({ label, value, note, delta, to }: { label: string; value: string | number; note?: string; delta?: number | string | null; to?: string }) {
+function Metric({ label, value, note, delta, to, icon: Icon, tono }: {
+  label: string; value: string | number; note?: string; delta?: number | string | null; to?: string
+  icon?: LucideIcon; tono?: "teal" | "sky" | "orange"
+}) {
   const navigate = useNavigate()
   const hasDelta = delta != null && delta !== "" && !isNaN(parseNum(delta))
   const d = parseNum(delta)
   return (
     <div className="db-metric">
       <div className="db-metric-head">
-        <span className="db-metric-label">{label}</span>
+        <span className="db-metric-label">
+          {Icon && <span className={`db-metric-ico db-metric-ico--${tono ?? "sky"}`} aria-hidden><Icon size={15} /></span>}
+          {label}
+        </span>
         {to && (
           <button type="button" className="db-kpi-link" title={`Ir a ${label.toLowerCase()}`} aria-label={`Ir a ${label.toLowerCase()}`} onClick={() => navigate(to)}>
             <ArrowUpRight size={14} />
@@ -290,9 +300,9 @@ export default function DashboardPage() {
             <PanelEmpty icon={<AlertTriangle size={18} />} text="Métricas no disponibles" height={110} />
           ) : (
             <>
-              <Metric label="Técnicos en línea" value={parseNum(stats.data?.tecnicos_online)} note="Conectados ahora" to="/tecnicos" />
-              <Metric label="Servicios en curso" value={parseNum(stats.data?.servicios_en_curso)} note="En toda la ciudad" to="/servicios" />
-              <Metric label={esHoy ? "Ingresos de hoy" : "Ingresos del periodo"} value={fmtCurrency(stats.data?.ingresos_periodo)}
+              <Metric label="Técnicos en línea" icon={Users} tono="teal" value={parseNum(stats.data?.tecnicos_online)} note="Conectados ahora" to="/tecnicos" />
+              <Metric label="Servicios en curso" icon={Wrench} tono="sky" value={parseNum(stats.data?.servicios_en_curso)} note="En toda la ciudad" to="/mapa" />
+              <Metric label={esHoy ? "Ingresos de hoy" : "Ingresos del periodo"} icon={DollarSign} tono="orange" value={fmtCurrency(stats.data?.ingresos_periodo)}
                 delta={stats.data?.variacion_ingresos_pct} note={esHoy ? "vs ayer" : `vs periodo anterior · ${etiqueta}`} to="/finanzas" />
             </>
           )}
@@ -306,7 +316,7 @@ export default function DashboardPage() {
             <div className="db-legend">
               <span className="db-legend-item"><span className="db-dot" style={{ background: C.orange }} />Completados</span>
               <span className="db-legend-item"><span className="db-dot" style={{ background: C.navy }} />Cancelados</span>
-              <span className="db-legend-item"><span className="db-dot db-dot--sq" style={{ background: C.mist }} />En curso</span>
+              <span className="db-legend-item"><span className="db-dot db-dot--sq" style={{ background: C.skyBar }} />En curso</span>
             </div>
           </PanelHead>
 
@@ -320,10 +330,10 @@ export default function DashboardPage() {
             <ResponsiveContainer width="100%" height={290}>
               <ComposedChart data={mes.data.puntos} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}>
                 <CartesianGrid vertical={false} stroke="#E6E9EE" />
-                <XAxis dataKey="fecha" tickFormatter={fmtDia} tick={{ fontSize: 11, fill: "#667085" }} axisLine={false} tickLine={false} minTickGap={24} />
-                <YAxis tick={{ fontSize: 11, fill: "#667085" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <XAxis dataKey="fecha" tickFormatter={fmtDia} tick={{ fontSize: 12, fill: "#667085" }} axisLine={false} tickLine={false} minTickGap={24} />
+                <YAxis tick={{ fontSize: 12, fill: "#667085" }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(10,25,47,.03)" }} />
-                <Bar dataKey="en_curso" name="En curso" fill={C.track} radius={[4, 4, 0, 0]} maxBarSize={10} />
+                <Bar dataKey="en_curso" name="En curso" fill={C.skyBar} radius={[4, 4, 0, 0]} maxBarSize={10} />
                 <Line type="monotone" dataKey="completados" name="Completados" stroke={C.orange} strokeWidth={2.5} dot={false} activeDot={{ r: 5, stroke: "#fff", strokeWidth: 2 }} />
                 <Line type="monotone" dataKey="cancelados" name="Cancelados" stroke={C.navy} strokeWidth={2} dot={false} activeDot={{ r: 4, stroke: "#fff", strokeWidth: 2 }} />
               </ComposedChart>

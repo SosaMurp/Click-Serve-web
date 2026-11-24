@@ -82,7 +82,7 @@ export default function ServiciosPage() {
               </thead>
               <tbody>
                 {filas.length === 0 && (
-                  <tr><td colSpan={6} className="srv-empty">
+                  <tr><td colSpan={6} className="srv-empty table-empty">
                     {q || estado !== 'todos' ? 'Ningún servicio coincide con la búsqueda o el filtro.' : 'Todavía no hay servicios registrados.'}
                   </td></tr>
                 )}

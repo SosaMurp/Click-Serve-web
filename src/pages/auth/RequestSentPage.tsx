@@ -89,7 +89,7 @@ export default function RequestSentPage() {
           {resent && <div className="auth-success-msg">✓ Nuevo código enviado a tu correo.</div>}
 
           <Button type="submit" fullWidth loading={loading} size="lg">
-            ACTIVAR CUENTA
+            Activar cuenta
           </Button>
         </form>
 

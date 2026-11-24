@@ -98,7 +98,7 @@ export default function CancelServiceModal({ isOpen, onClose, serviceId, service
           </div>
 
           <div className="modal-footer">
-            <Button type="button" variant="secondary" onClick={cerrar} disabled={cancelar.isPending}>VOLVER</Button>
+            <Button type="button" variant="secondary" onClick={cerrar} disabled={cancelar.isPending}>Volver</Button>
             <Button type="submit" variant="primary" loading={cancelar.isPending} style={{ background: 'var(--danger)', borderColor: 'var(--danger)' }}>
               <XCircle size={14} /> CANCELAR SERVICIO
             </Button>

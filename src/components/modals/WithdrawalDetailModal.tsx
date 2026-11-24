@@ -70,7 +70,7 @@ export default function WithdrawalDetailModal({ isOpen, onClose, withdrawalData:
 
         <div className="modal-body" style={{ gap: 16 }}>
           <div style={{ background: 'var(--bg-sunk, #F7F8F9)', padding: 16, borderRadius: 8, border: '1px solid var(--border-light, #E6E9EE)', textAlign: 'center' }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', margin: 0 }}>MONTO SOLICITADO</p>
+            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', margin: 0 }}>MONTO SOLICITADO</p>
             <h2 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-dark)', margin: '4px 0' }}>{data.amount} MXN</h2>
             <Badge variant={badge.variant}>{badge.label}</Badge>
           </div>
@@ -114,10 +114,10 @@ export default function WithdrawalDetailModal({ isOpen, onClose, withdrawalData:
 
         <div className="modal-footer">
           {estado !== 'Pendiente' ? (
-            <Button variant="primary" onClick={onClose}>CERRAR</Button>
+            <Button variant="primary" onClick={onClose}>Cerrar</Button>
           ) : rechazando ? (
             <>
-              <Button variant="ghost" onClick={() => setRechazando(false)} disabled={saving}>VOLVER</Button>
+              <Button variant="ghost" onClick={() => setRechazando(false)} disabled={saving}>Volver</Button>
               <Button
                 variant="outline" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
                 loading={saving} disabled={!onReject || motivo.trim().length < 5}

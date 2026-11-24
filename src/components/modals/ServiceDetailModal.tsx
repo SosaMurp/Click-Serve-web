@@ -31,7 +31,7 @@ const dinero = (v?: string | number | null) =>
 const nombre = (n?: string | null, a?: string | null) => `${n ?? ''} ${a ?? ''}`.trim() || null
 
 const caja = { padding: 14, border: '1px solid var(--border-light)', borderRadius: 8 } as const
-const etiqueta = { fontSize: 11, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', margin: '0 0 6px' } as const
+const etiqueta = { fontSize: 12, fontWeight: 700, color: 'var(--text-mid)', textTransform: 'uppercase', margin: '0 0 6px' } as const
 
 function Estrellas({ valor }: { valor: number | null }) {
   if (valor == null) return <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Sin calificar</span>
@@ -64,8 +64,8 @@ export default function ServiceDetailModal({ isOpen, onClose, serviceId, onStatu
           <button type="button" className="modal-close-btn" onClick={onClose}><X size={18} /></button>
         </div>
 
-        <div className="modal-tabs" role="tablist">
-          {([['detalles', 'RESUMEN Y TAREAS'], ['evidencias', `EVIDENCIAS (${s?.evidencias.length ?? 0})`], ['calificaciones', 'CALIFICACIONES']] as const).map(([id, label]) => (
+        <div className="modal-tabs" role="tablist" aria-label="Secciones del servicio">
+          {([['detalles', 'Resumen y tareas'], ['evidencias', `Evidencias (${s?.evidencias.length ?? 0})`], ['calificaciones', 'Calificaciones']] as const).map(([id, label]) => (
             <button key={id} type="button" role="tab" aria-selected={tab === id}
               className={`modal-tab-btn ${tab === id ? 'modal-tab-btn--active' : ''}`} onClick={() => setTab(id)}>
               {label}
@@ -97,7 +97,7 @@ export default function ServiceDetailModal({ isOpen, onClose, serviceId, onStatu
                         style={{ display: 'block', width: '100%', padding: 0, border: 'none', cursor: 'zoom-in', background: 'none' }}>
                         <img src={fileUrl(e.url)} alt={e.descripcion || `Evidencia ${EVIDENCIA[e.tipo_evidencia] ?? ''}`} style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }} />
                       </button>
-                      <figcaption style={{ padding: '6px 8px', fontSize: 11, color: 'var(--text-mid)' }}>
+                      <figcaption style={{ padding: '6px 8px', fontSize: 12, color: 'var(--text-mid)' }}>
                         <strong>{EVIDENCIA[e.tipo_evidencia] ?? e.tipo_evidencia}</strong> · {fechaHora(e.fecha_subida)}
                         {e.descripcion && <><br />{e.descripcion}</>}
                       </figcaption>
@@ -147,7 +147,7 @@ export default function ServiceDetailModal({ isOpen, onClose, serviceId, onStatu
               <XCircle size={14} /> Cancelar sin cargo
             </Button>
           )}
-          <Button variant="secondary" onClick={onClose}>CERRAR</Button>
+          <Button variant="secondary" onClick={onClose}>Cerrar</Button>
         </div>
       </div>
 

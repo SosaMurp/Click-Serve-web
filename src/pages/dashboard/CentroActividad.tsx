@@ -1,33 +1,29 @@
 import { useState } from "react"
-import { Activity, AlertTriangle, ChevronRight, RefreshCw } from "lucide-react"
+import {
+  Activity, AlertTriangle, ChevronRight, RefreshCw, Wrench, UserPlus, Wallet, MessageSquare, LayoutList,
+  type LucideIcon,
+} from "lucide-react"
 import { useActividadFeed } from "@hooks/useDashboard"
 import type { ActividadGrupo, ActividadItem } from "@/types/dashboard"
 import { esErrorDeRed, mensajeDeError } from "@/lib/errores"
 
-const GRUPOS: { id: ActividadGrupo; label: string }[] = [
-  { id: "todos", label: "Todo" },
-  { id: "servicios", label: "Servicios" },
-  { id: "tecnicos", label: "Técnicos" },
-  { id: "alertas", label: "Alertas" },
-  { id: "finanzas", label: "Finanzas" },
-  { id: "soporte", label: "Soporte" },
+// Cada tipo tiene su ícono y su color: se reconoce de qué se trata sin leer la frase completa
+const TIPO: Record<ActividadItem["tipo"], { icon: LucideIcon; nombre: string; accion: string }> = {
+  servicio: { icon: Wrench,        nombre: "Servicio",  accion: "Ver el servicio" },
+  tecnico:  { icon: UserPlus,      nombre: "Técnico",   accion: "Ver el expediente del técnico" },
+  alerta:   { icon: AlertTriangle, nombre: "Alerta",    accion: "Ir a la incidencia en Soporte" },
+  retiro:   { icon: Wallet,        nombre: "Pago",      accion: "Ir a Finanzas" },
+  ticket:   { icon: MessageSquare, nombre: "Soporte",   accion: "Ir al ticket en Soporte" },
+}
+
+const GRUPOS: { id: ActividadGrupo; label: string; icon: LucideIcon }[] = [
+  { id: "todos",     label: "Todo",      icon: LayoutList },
+  { id: "servicios", label: "Servicios", icon: Wrench },
+  { id: "tecnicos",  label: "Técnicos",  icon: UserPlus },
+  { id: "alertas",   label: "Alertas",   icon: AlertTriangle },
+  { id: "finanzas",  label: "Pagos",     icon: Wallet },
+  { id: "soporte",   label: "Soporte",   icon: MessageSquare },
 ]
-
-const COLOR: Record<ActividadItem["tipo"], string> = {
-  servicio: "#0C1C40",
-  tecnico: "#E25900",
-  alerta: "#B91C1C",
-  retiro: "#15803D",
-  ticket: "#667085",
-}
-
-const ACCION: Record<ActividadItem["tipo"], string> = {
-  servicio: "Ver el servicio",
-  tecnico: "Ver el expediente del técnico",
-  alerta: "Ir a la incidencia en Soporte",
-  retiro: "Ir a Finanzas",
-  ticket: "Ir al ticket en Soporte",
-}
 
 function relativo(iso: string) {
   const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000)
@@ -53,11 +49,11 @@ export default function CentroActividad({ onAbrir }: { onAbrir: (item: Actividad
   }
 
   return (
-    <section className="db-panel ca" aria-label="Centro de actividad">
+    <section className="db-panel ca" aria-label="Actividad reciente">
       <header className="db-panel-head">
         <div>
-          <h2 className="db-panel-title">Centro de actividad</h2>
-          <p className="db-panel-sub">Lo reciente y lo que espera tu atención · toca una fila para abrirla</p>
+          <h2 className="db-panel-title">Actividad reciente</h2>
+          <p className="db-panel-sub">Lo último que pasó en la plataforma</p>
         </div>
       </header>
 
@@ -65,14 +61,14 @@ export default function CentroActividad({ onAbrir }: { onAbrir: (item: Actividad
         {GRUPOS.map(g => (
           <button key={g.id} type="button" role="tab" aria-selected={grupo === g.id}
             className={`ca-chip ${grupo === g.id ? "ca-chip--on" : ""}`} onClick={() => setGrupo(g.id)}>
-            {g.label}
+            <g.icon size={13} aria-hidden /> {g.label}
           </button>
         ))}
       </div>
 
       <div className="ca-scroll" onScroll={alScroll} tabIndex={0} aria-label="Lista de actividad">
         {feed.isLoading ? (
-          <div className="db-list-skeleton">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="db-skeleton" style={{ height: 34, borderRadius: 8 }} />)}</div>
+          <div className="db-list-skeleton">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="db-skeleton" style={{ height: 40, borderRadius: 10 }} />)}</div>
         ) : feed.isError ? (
           <div className="db-empty" style={{ height: 180 }}>
             <AlertTriangle size={18} />
@@ -83,20 +79,24 @@ export default function CentroActividad({ onAbrir }: { onAbrir: (item: Actividad
           <div className="db-empty" style={{ height: 180 }}><Activity size={18} /><p>Sin actividad en esta categoría</p></div>
         ) : (
           <ul className="db-feed">
-            {items.map(item => (
-              <li key={`${item.tipo}-${item.id}`} className="db-feed-item">
-                <button type="button" className="db-feed-btn" onClick={() => onAbrir(item)}
-                  title={ACCION[item.tipo]} aria-label={`${ACCION[item.tipo]}: ${item.descripcion}`}>
-                  <span className="db-feed-dot" style={{ background: COLOR[item.tipo] }} />
-                  <div className="db-feed-body">
-                    <p className={`db-feed-text ${item.urgente ? "db-feed-text--urgent" : ""}`}>{item.descripcion}</p>
-                    {item.sub && <p className="db-feed-sub">{item.sub}</p>}
-                  </div>
-                  <span className="db-feed-time">{relativo(item.creado_en)}</span>
-                  <ChevronRight size={14} className="db-feed-go" aria-hidden />
-                </button>
-              </li>
-            ))}
+            {items.map(item => {
+              const t = TIPO[item.tipo]
+              return (
+                <li key={`${item.tipo}-${item.id}`} className="db-feed-item">
+                  <button type="button" className="db-feed-btn" onClick={() => onAbrir(item)}
+                    title={t.accion} aria-label={`${t.nombre}: ${item.descripcion}. ${t.accion}`}>
+                    <span className={`ca-ico ca-ico--${item.tipo}`} aria-hidden><t.icon size={15} /></span>
+                    <div className="db-feed-body">
+                      <p className={`db-feed-text ${item.urgente ? "db-feed-text--urgent" : ""}`}>{item.descripcion}</p>
+                      <p className="db-feed-sub">
+                        {item.sub ? `${item.sub} · ` : ""}{relativo(item.creado_en)}
+                      </p>
+                    </div>
+                    <ChevronRight size={14} className="db-feed-go" aria-hidden />
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         )}
         {feed.isFetchingNextPage && <p className="ca-more">Cargando más…</p>}

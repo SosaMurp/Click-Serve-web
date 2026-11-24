@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@store/authStore'
 import {
   LayoutDashboard, ShieldCheck, Users, ClipboardList, Map, DollarSign,
-  Settings, Bell, ChevronDown, LogOut, MessageSquare,
+  Settings, Bell, LogOut, MessageSquare, UserCog, UserRound,
 } from 'lucide-react'
 import { NetworkStatusBanner } from '@components/ui/NetworkStatusBanner'
 import { usePendientes } from '@hooks/useDashboard'
@@ -22,15 +22,22 @@ import '@pages/finanzas/finanzas.css'
 import '@pages/configuracion/configuracion.css'
 import '@pages/soporte/soporte.css'
 
-const NAV_ITEMS = [
-  { to: '/dashboard',     icon: LayoutDashboard, label: 'Dashboard',           badge: null },
-  { to: '/validaciones',  icon: ShieldCheck,     label: 'Validaciones',        badge: 'validaciones' },
-  { to: '/tecnicos',      icon: Users,           label: 'Técnicos y usuarios', badge: null },
-  { to: '/servicios',     icon: ClipboardList,   label: 'Servicios',           badge: null },
-  { to: '/soporte',       icon: MessageSquare,   label: 'Soporte',             badge: null },
-  { to: '/mapa',          icon: Map,             label: 'Mapa en vivo',        badge: null },
-  { to: '/finanzas',      icon: DollarSign,      label: 'Finanzas',            badge: null },
-  { to: '/configuracion', icon: Settings,        label: 'Configuración',       badge: null },
+// `corto` es lo que se lee bajo el ícono; `label` es el nombre completo (lector de pantalla y aviso flotante)
+type NavItem = { to: string; icon: typeof LayoutDashboard; label: string; corto: string; badge?: 'validaciones' }
+
+// La operación diaria arriba; lo que solo toca la administración del panel, en un grupo aparte
+const NAV_OPERACION: NavItem[] = [
+  { to: '/dashboard',    icon: LayoutDashboard, label: 'Inicio',              corto: 'Inicio' },
+  { to: '/validaciones', icon: ShieldCheck,     label: 'Validaciones',        corto: 'Validar', badge: 'validaciones' },
+  { to: '/servicios',    icon: ClipboardList,   label: 'Servicios',           corto: 'Servicios' },
+  { to: '/mapa',         icon: Map,             label: 'Mapa en vivo',        corto: 'Mapa' },
+  { to: '/tecnicos',     icon: Users,           label: 'Técnicos y clientes', corto: 'Usuarios' },
+  { to: '/soporte',      icon: MessageSquare,   label: 'Soporte',             corto: 'Soporte' },
+  { to: '/finanzas',     icon: DollarSign,      label: 'Finanzas',            corto: 'Finanzas' },
+]
+const NAV_ADMIN: NavItem[] = [
+  { to: '/administradores', icon: UserCog,  label: 'Administradores', corto: 'Admins' },
+  { to: '/configuracion',   icon: Settings, label: 'Configuración',   corto: 'Ajustes' },
 ]
 
 export default function DashboardLayout() {
@@ -50,6 +57,18 @@ export default function DashboardLayout() {
   ]
   const totalPorAtender = porAtender.reduce((s, p) => s + p.n, 0)
 
+  // ── Menú de la cuenta (abajo del menú lateral): perfil y la única salida del panel ──
+  const [userOpen, setUserOpen] = useState(false)
+  const userRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!userOpen) return
+    const fuera = (e: MouseEvent) => { if (!userRef.current?.contains(e.target as Node)) setUserOpen(false) }
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setUserOpen(false) }
+    document.addEventListener('mousedown', fuera)
+    document.addEventListener('keydown', esc)
+    return () => { document.removeEventListener('mousedown', fuera); document.removeEventListener('keydown', esc) }
+  }, [userOpen])
+
   useEffect(() => {
     if (!bellOpen) return
     const fuera = (e: MouseEvent) => { if (!bellRef.current?.contains(e.target as Node)) setBellOpen(false) }
@@ -59,11 +78,7 @@ export default function DashboardLayout() {
     return () => { document.removeEventListener('mousedown', fuera); document.removeEventListener('keydown', esc) }
   }, [bellOpen])
 
-  const handleLogout = (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    void cerrarSesion()
-  }
+  const handleLogout = () => { setUserOpen(false); void cerrarSesion() }
 
   // Cierre automático tras VITE_SESSION_TIMEOUT minutos sin actividad (RNF-05)
   const porInactividad = useCallback(() => {
@@ -72,6 +87,19 @@ export default function DashboardLayout() {
   useInactividad(env.VITE_SESSION_TIMEOUT, porInactividad)
 
   const fullName = user ? `${user.nombre} ${user.apellido}` : 'Administrador'
+  const iniciales = user ? `${user.nombre?.[0] ?? ''}${user.apellido?.[0] ?? ''}`.toUpperCase() || 'A' : 'A'
+
+  const enlace = ({ to, icon: Icon, label, corto, badge }: NavItem) => (
+    <NavLink key={to} to={to} end aria-label={label}
+      className={({ isActive }) => `dash-rail-link ${isActive ? 'dash-rail-link--active' : ''}`}>
+      <span className="dash-rail-icon">
+        <Icon size={18} aria-hidden />
+        {badge === 'validaciones' && pendientes > 0 && <span className="dash-rail-badge">{pendientes > 99 ? '99+' : pendientes}</span>}
+      </span>
+      <span className="dash-rail-label" aria-hidden>{corto}</span>
+      {corto !== label && <span className="dash-rail-tip" aria-hidden>{label}</span>}
+    </NavLink>
+  )
 
   return (
     <div className="dash-root">
@@ -89,11 +117,12 @@ export default function DashboardLayout() {
 
         <div className="dash-topbar-right">
           <div className="dash-notif-wrap" ref={bellRef}>
-            <button className="dash-notif-btn" title="Pendientes" aria-haspopup="true" aria-expanded={bellOpen}
+            <button type="button" className={`dash-notif-btn ${totalPorAtender > 0 ? 'dash-notif-btn--on' : ''}`} aria-haspopup="menu" aria-expanded={bellOpen}
               aria-label={totalPorAtender > 0 ? `Pendientes: ${totalPorAtender} por atender` : 'Pendientes: todo al día'}
               onClick={() => setBellOpen(o => !o)}>
-              <Bell size={16} />
-              {totalPorAtender > 0 && <span className="dash-notif-dot" />}
+              <Bell size={16} aria-hidden />
+              <span className="dash-notif-text" aria-hidden>Pendientes</span>
+              <span className="dash-notif-n" aria-hidden>{totalPorAtender > 99 ? '99+' : totalPorAtender}</span>
             </button>
             {bellOpen && (
               <div className="dash-notif-menu" role="menu">
@@ -108,43 +137,44 @@ export default function DashboardLayout() {
               </div>
             )}
           </div>
-          <div className="dash-topbar-user" role="button" tabIndex={0} aria-label="Mi perfil" onClick={() => navigate('/perfil')}
-            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/perfil') } }}>
-            <div className="dash-avatar">{user?.nombre ? user.nombre[0] : 'A'}</div>
-            <div className="dash-user-info">
-              <p className="dash-user-name">{fullName}</p>
-              <p className="dash-user-role">Administrador</p>
-            </div>
-            <ChevronDown size={14} />
-          </div>
         </div>
       </header>
 
       <div className="dash-body">
         {/* ── RAIL DE NAVEGACIÓN ── */}
         <aside className="dash-rail">
-          <nav className="dash-rail-group" aria-label="Secciones">
-            {NAV_ITEMS.map(({ to, icon: Icon, label, badge }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end
-                aria-label={label}
-                className={({ isActive }) => `dash-rail-link ${isActive ? 'dash-rail-link--active' : ''}`}
-              >
-                <Icon size={18} />
-                {badge === 'validaciones' && pendientes > 0 && <span className="dash-rail-badge">{pendientes > 99 ? '99+' : pendientes}</span>}
-                <span className="dash-rail-tip">{label}</span>
-              </NavLink>
-            ))}
+          <nav className="dash-rail-nav" aria-label="Secciones">
+            <div className="dash-rail-group">{NAV_OPERACION.map(enlace)}</div>
+            <div className="dash-rail-group" role="group" aria-label="Administración del panel">
+              <p className="dash-rail-heading" aria-hidden>Panel</p>
+              {NAV_ADMIN.map(enlace)}
+            </div>
           </nav>
 
-          {/* Logout Transversal (RF-01) */}
-          <div className="dash-rail-group">
-            <button className="dash-rail-link" aria-label="Cerrar sesión" onClick={handleLogout}>
-              <LogOut size={18} />
-              <span className="dash-rail-tip">Cerrar sesión</span>
+          {/* Cuenta: perfil y cierre de sesión en un solo lugar */}
+          <div className="dash-account" ref={userRef}>
+            <button type="button" className="dash-account-btn" aria-haspopup="menu" aria-expanded={userOpen}
+              aria-label={`Mi cuenta: ${fullName}`} onClick={() => setUserOpen(o => !o)}>
+              <span className="dash-avatar">{iniciales}</span>
+              <span className="dash-rail-label" aria-hidden>Cuenta</span>
             </button>
+            {userOpen && (
+              <div className="dash-account-menu" role="menu">
+                <div className="dash-account-who">
+                  <span className="dash-avatar dash-avatar--lg">{iniciales}</span>
+                  <div className="dash-user-info">
+                    <p className="dash-user-name">{fullName}</p>
+                    <p className="dash-user-role">{user?.correo ?? 'Administrador'}</p>
+                  </div>
+                </div>
+                <button type="button" role="menuitem" className="dash-account-item" onClick={() => { setUserOpen(false); navigate('/perfil') }}>
+                  <UserRound size={16} aria-hidden /> Mi perfil y seguridad
+                </button>
+                <button type="button" role="menuitem" className="dash-account-item dash-account-item--out" onClick={handleLogout}>
+                  <LogOut size={16} aria-hidden /> Cerrar sesión
+                </button>
+              </div>
+            )}
           </div>
         </aside>
 

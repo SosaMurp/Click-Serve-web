@@ -111,27 +111,31 @@ export default function FinanzasPage() {
         </button>
       </PageHeader>
 
+      {/* Si una consulta falla se muestra "No disponible", nunca $0: un cero se leería como dato real */}
       <MetricStrip label="Resumen financiero" items={[
-        { id: 'pend', label: pendientes.isLoading ? 'Retiros por autorizar' : `Retiros por autorizar (${pendientes.data?.length ?? 0})`,
-          value: pendientes.isLoading ? '—' : fmtMXN(totalPendiente), tone: totalPendiente > 0 ? 'alert' : 'default' },
-        { id: 'hoy', label: 'Ingresos de hoy', value: stats.isLoading ? '—' : fmtMXN(ingresosHoy), tone: 'ok' },
-        { id: 'com', label: `Comisión de hoy (${comisionPct}%)`, value: stats.isLoading || settings.isLoading ? '—' : fmtMXN(ingresosHoy * comisionPct / 100) },
+        { id: 'pend', label: pendientes.isSuccess ? `Retiros por autorizar (${pendientes.data.length})` : 'Retiros por autorizar',
+          value: pendientes.isLoading ? '—' : pendientes.isError ? 'No disponible' : fmtMXN(totalPendiente),
+          tone: pendientes.isSuccess && totalPendiente > 0 ? 'alert' : 'default' },
+        { id: 'hoy', label: 'Ingresos de hoy',
+          value: stats.isLoading ? '—' : stats.isError ? 'No disponible' : fmtMXN(ingresosHoy), tone: stats.isSuccess ? 'ok' : 'default' },
+        { id: 'com', label: settings.isSuccess ? `Comisión de hoy (${comisionPct}%)` : 'Comisión de hoy',
+          value: stats.isLoading || settings.isLoading ? '—' : stats.isError || settings.isError ? 'No disponible' : fmtMXN(ingresosHoy * comisionPct / 100) },
       ]} />
 
       {/* Queue */}
       <div className="dash-card" style={{ padding: 0, overflow: 'hidden' }}>
         <div className="fin-queue-header">
           <h2 className="dash-card-title" style={{ padding: '16px 20px 0' }}>Solicitudes de retiro</h2>
-          <div className="fin-filter-tabs">
-            <button className={`fin-filter-tab ${filter === 'todos' ? 'active' : ''}`} onClick={() => setFilter('todos')}>Todos</button>
-            <button className={`fin-filter-tab ${filter === 'pendientes' ? 'active' : ''}`} onClick={() => setFilter('pendientes')}>Pendientes</button>
+          <div className="fin-filter-tabs" role="tablist" aria-label="Filtrar retiros">
+            <button type="button" role="tab" aria-selected={filter === 'todos'} className={`fin-filter-tab ${filter === 'todos' ? 'active' : ''}`} onClick={() => setFilter('todos')}>Todos</button>
+            <button type="button" role="tab" aria-selected={filter === 'pendientes'} className={`fin-filter-tab ${filter === 'pendientes' ? 'active' : ''}`} onClick={() => setFilter('pendientes')}>Pendientes</button>
           </div>
         </div>
 
         {isLoading ? (
-           <div style={{ padding: '2rem', textAlign: 'center' }}>Cargando solicitudes...</div>
+           <div role="status" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-mid)' }}>Cargando solicitudes…</div>
         ) : isError ? (
-           <div style={{ padding: '2rem', textAlign: 'center', color: 'red' }}>Error al cargar los retiros</div>
+           <div role="alert" style={{ padding: '2rem', textAlign: 'center', color: 'var(--danger-ink)' }}>No se pudieron cargar los retiros. Revisa tu conexión y vuelve a abrir la sección.</div>
         ) : (
           <div className="table-scroll"><table className="dash-table fin-table">
             <thead>
@@ -142,16 +146,16 @@ export default function FinanzasPage() {
                       checked={todosMarcados} onChange={toggleAll} />
                   )}
                 </th>
-                <th>SOLICITUD / FECHA</th>
-                <th>TÉCNICO</th>
-                <th>DESTINO BANCARIO</th>
-                <th>MONTO A TRANSFERIR</th>
-                <th>ACCIÓN</th>
+                <th>Solicitud / fecha</th>
+                <th>Técnico</th>
+                <th>Destino bancario</th>
+                <th>Monto a transferir</th>
+                <th>Acción</th>
               </tr>
             </thead>
             <tbody>
               {WITHDRAWALS.length === 0 && (
-                <tr><td colSpan={6} style={{textAlign: 'center', padding: '1rem'}}>{filter === 'pendientes' ? 'No hay retiros pendientes' : 'Todavía no hay retiros'}</td></tr>
+                <tr><td colSpan={6} className="table-empty">{filter === 'pendientes' ? 'No hay retiros pendientes' : 'Todavía no hay retiros'}</td></tr>
               )}
               {WITHDRAWALS.map(row => (
                 <tr key={row.realId} className={selected.has(row.realId) ? 'fin-row--selected' : ''}>
@@ -186,10 +190,10 @@ export default function FinanzasPage() {
                     {row.estado === 'Pendiente' ? (
                       <div style={{ display: 'flex', gap: 6 }}>
                         <button className="fin-btn-deny" onClick={() => handleOpenDetail(row)}>
-                          <X size={11} /> DENEGAR
+                          <X size={11} /> Denegar
                         </button>
                         <button className="fin-btn-approve" onClick={() => handleOpenDetail(row)}>
-                          <Check size={11} /> AUTORIZAR
+                          <Check size={11} /> Autorizar
                         </button>
                       </div>
                     ) : (
