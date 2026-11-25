@@ -128,6 +128,8 @@
   background: none; border: 1px solid transparent; cursor: pointer; font-family: inherit; color: var(--text-mid);
 }
 .dash-account-btn:hover, .dash-account-btn[aria-expanded="true"] { background: #fff; border-color: var(--border-light); color: var(--text-dark); }
+.dash-account-btn--on { background: var(--accent-soft); color: var(--accent-ink); font-weight: 700; }
+.dash-account-btn--on .dash-avatar { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--accent); }
 .dash-account-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .dash-account-menu {
   position: absolute; left: calc(100% + 8px); bottom: 0; width: 260px; z-index: 40;

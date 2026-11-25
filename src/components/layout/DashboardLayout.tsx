@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@store/authStore'
 import {
   LayoutDashboard, ShieldCheck, Users, ClipboardList, Map, DollarSign,
@@ -42,6 +42,7 @@ const NAV_ADMIN: NavItem[] = [
 
 export default function DashboardLayout() {
   const navigate = useNavigate()
+  const enPerfil = useLocation().pathname === '/perfil'
   const user = useAuthStore(s => s.user)
   const pend = usePendientes().data
   const pendientes = pend?.validaciones ?? 0
@@ -153,7 +154,7 @@ export default function DashboardLayout() {
 
           {/* Cuenta: perfil y cierre de sesión en un solo lugar */}
           <div className="dash-account" ref={userRef}>
-            <button type="button" className="dash-account-btn" aria-haspopup="menu" aria-expanded={userOpen}
+            <button type="button" className={`dash-account-btn ${enPerfil ? 'dash-account-btn--on' : ''}`} aria-haspopup="menu" aria-expanded={userOpen}
               aria-label={`Mi cuenta: ${fullName}`} onClick={() => setUserOpen(o => !o)}>
               <span className="dash-avatar">{iniciales}</span>
               <span className="dash-rail-label" aria-hidden>Cuenta</span>
