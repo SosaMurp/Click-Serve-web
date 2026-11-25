@@ -27,21 +27,30 @@ import { etiquetaRango, guardarRango, leerRango, type Rango } from "@/lib/rango"
 import { esErrorDeRed, mensajeDeError } from "@/lib/errores"
 import CentroActividad from "./CentroActividad"
 import "./dashboard.css"
+import { useTema } from "@/lib/tema"
 
 // ── Paleta: azul marino + naranja de la app móvil, con turquesa y cielo de apoyo ──
-const C = {
-  orange: "#E25900",
-  navy:   "#0C1C40",
-  teal:   "#0E7C86",
-  sky:    "#2F6FD0",
-  skyBar: "#B9CEF3",
-  slate:  "#667085",
-  peach:  "#FF6B00",
-  mist:   "#CDD3E0",
-  track:  "#E6E9EE",
+// Cada modo tiene la suya: en el oscuro, el azul marino se cambia por un azul claro que se distingue del fondo.
+const PALETAS = {
+  claro: {
+    orange: "#E25900", navy: "#0C1C40", teal: "#0E7C86", sky: "#2F6FD0", skyBar: "#B9CEF3",
+    slate: "#667085", mist: "#CDD3E0", track: "#E6E9EE",
+    grid: "#E6E9EE", tick: "#667085", cursor: "rgba(10,25,47,.04)", punto: "#FFFFFF",
+  },
+  oscuro: {
+    orange: "#FF7A1A", navy: "#8FA6D8", teal: "#2CC5CF", sky: "#7AA7F7", skyBar: "#3A5490",
+    slate: "#8E9AB8", mist: "#5B6B92", track: "#24345F",
+    grid: "rgba(255,255,255,.07)", tick: "#8E9AB8", cursor: "rgba(255,255,255,.04)", punto: "#111E44",
+  },
 }
-const PIE_COLORS = [C.navy, C.orange, C.teal, C.sky, C.slate, C.mist]
-const RANK_COLORS = [C.orange, C.teal, C.sky, C.navy]
+function usePaleta() {
+  const C = PALETAS[useTema()]
+  return {
+    C,
+    PIE_COLORS: [C.navy, C.orange, C.teal, C.sky, C.slate, C.mist],
+    RANK_COLORS: [C.orange, C.teal, C.sky, C.navy],
+  }
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function parseNum(val: number | string | null | undefined): number {
@@ -109,6 +118,7 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
 
 // ── Medidor semicircular de tasa de éxito ───────────────────────────────────
 function SuccessGauge({ completed, cancelled }: { completed: number; cancelled: number }) {
+  const { C } = usePaleta()
   const total = completed + cancelled
   const rate = total ? completed / total : 0
   const TICKS = 44
@@ -159,20 +169,15 @@ function Metric({ label, value, note, delta, to, icon: Icon, tono }: {
   const navigate = useNavigate()
   const hasDelta = delta != null && delta !== "" && !isNaN(parseNum(delta))
   const d = parseNum(delta)
-  return (
-    <div className="db-metric">
-      <div className="db-metric-head">
+  const contenido = (
+    <>
+      <span className="db-metric-head">
         <span className="db-metric-label">
           {Icon && <span className={`db-metric-ico db-metric-ico--${tono ?? "sky"}`} aria-hidden><Icon size={15} /></span>}
           {label}
         </span>
-        {to && (
-          <button type="button" className="db-kpi-link" title={`Ir a ${label.toLowerCase()}`} aria-label={`Ir a ${label.toLowerCase()}`} onClick={() => navigate(to)}>
-            <ArrowUpRight size={14} />
-          </button>
-        )}
-      </div>
-      <div className="db-metric-body">
+      </span>
+      <span className="db-metric-body">
         <span className="db-metric-value">{value}</span>
         {hasDelta && (
           <span className={`db-delta ${d >= 0 ? "db-delta--up" : "db-delta--down"}`}>
@@ -180,9 +185,18 @@ function Metric({ label, value, note, delta, to, icon: Icon, tono }: {
             {d > 0 ? "+" : ""}{d.toFixed(1)}%
           </span>
         )}
-      </div>
-      {note && <p className="db-metric-note">{note}</p>}
-    </div>
+      </span>
+      {note && <span className="db-metric-note">{note}</span>}
+    </>
+  )
+  // Con destino, toda la caja es el botón (antes era una flecha pequeña junto al título)
+  return to ? (
+    <button type="button" className="db-metric db-metric--link" onClick={() => navigate(to)} title={`Ir a ${label.toLowerCase()}`}>
+      {contenido}
+      <ArrowUpRight size={16} className="db-metric-go" aria-hidden />
+    </button>
+  ) : (
+    <div className="db-metric">{contenido}</div>
   )
 }
 
@@ -190,6 +204,7 @@ type Vista = "especialidades" | "tecnicos" | "exito"
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function DashboardPage() {
+  const { C, PIE_COLORS, RANK_COLORS } = usePaleta()
   const navigate = useNavigate()
   const [rango, setRangoState] = useState<Rango>(leerRango)
   const [isReportOpen, setIsReportOpen] = useState(false)
@@ -329,13 +344,13 @@ export default function DashboardPage() {
           ) : (
             <ResponsiveContainer width="100%" height={290}>
               <ComposedChart data={mes.data.puntos} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}>
-                <CartesianGrid vertical={false} stroke="#E6E9EE" />
-                <XAxis dataKey="fecha" tickFormatter={fmtDia} tick={{ fontSize: 12, fill: "#667085" }} axisLine={false} tickLine={false} minTickGap={24} />
-                <YAxis tick={{ fontSize: 12, fill: "#667085" }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(10,25,47,.03)" }} />
+                <CartesianGrid vertical={false} stroke={C.grid} />
+                <XAxis dataKey="fecha" tickFormatter={fmtDia} tick={{ fontSize: 12, fill: C.tick }} axisLine={false} tickLine={false} minTickGap={24} />
+                <YAxis tick={{ fontSize: 12, fill: C.tick }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: C.cursor }} />
                 <Bar dataKey="en_curso" name="En curso" fill={C.skyBar} radius={[4, 4, 0, 0]} maxBarSize={10} />
-                <Line type="monotone" dataKey="completados" name="Completados" stroke={C.orange} strokeWidth={2.5} dot={false} activeDot={{ r: 5, stroke: "#fff", strokeWidth: 2 }} />
-                <Line type="monotone" dataKey="cancelados" name="Cancelados" stroke={C.navy} strokeWidth={2} dot={false} activeDot={{ r: 4, stroke: "#fff", strokeWidth: 2 }} />
+                <Line type="monotone" dataKey="completados" name="Completados" stroke={C.orange} strokeWidth={2.5} dot={false} activeDot={{ r: 5, stroke: C.punto, strokeWidth: 2 }} />
+                <Line type="monotone" dataKey="cancelados" name="Cancelados" stroke={C.navy} strokeWidth={2} dot={false} activeDot={{ r: 4, stroke: C.punto, strokeWidth: 2 }} />
               </ComposedChart>
             </ResponsiveContainer>
           )}

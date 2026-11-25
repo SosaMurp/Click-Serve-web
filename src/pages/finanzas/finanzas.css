@@ -16,7 +16,7 @@
 .fin-filter-tabs  { display: flex; gap: 0; padding: 0 16px; }
 .fin-filter-tab {
   padding: 7px 14px; font-family: inherit; font-size: 12.5px; font-weight: 500;
-  background: #fff; border: 1px solid var(--border-light);
+  background: var(--surface, #fff); border: 1px solid var(--border-light);
   color: var(--text-mid); cursor: pointer;
 }
 .fin-filter-tab:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
@@ -60,5 +60,5 @@
 }
 .fin-btn-approve:hover { background: var(--accent-ink); }
 
-.fin-approve-batch:disabled { background: #fff; color: var(--text-muted); border: 1px solid var(--border-light); cursor: default; }
+.fin-approve-batch:disabled { background: var(--surface, #fff); color: var(--text-muted); border: 1px solid var(--border-light); cursor: default; }
 .fin-queue-header { flex-wrap: wrap; gap: 8px; }

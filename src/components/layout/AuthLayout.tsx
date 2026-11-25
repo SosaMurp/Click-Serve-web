@@ -1,5 +1,6 @@
 import React from 'react'
 import { LogoMark } from '@components/ui/Logo'
+import TemaToggle from '@components/ui/TemaToggle'
 import './auth-layout.css'
 
 interface AuthLayoutProps {
@@ -42,6 +43,7 @@ export default function AuthLayout({
 
       {/* ── RIGHT PANEL ── */}
       <div className="auth-right">
+        <TemaToggle className="mx-tema--auth" />
         <div className="auth-right-inner fade-in">
           {children}
         </div>

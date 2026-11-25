@@ -50,7 +50,7 @@
   color: var(--text-mid); cursor: pointer; white-space: nowrap;
   transition: all var(--transition);
 }
-.perfil-action-btn:hover { background: var(--text-dark); color: #fff; border-color: var(--text-dark); }
+.perfil-action-btn:hover { background: var(--fill-dark, var(--text-dark)); color: #fff; border-color: var(--fill-dark, var(--text-dark)); }
 
 /* Devices */
 .perfil-devices-card { display: flex; flex-direction: column; }
@@ -100,8 +100,8 @@
 /* Avisos del modal de contraseña */
 .perfil-msg { display: flex; gap: 8px; align-items: center; padding: 10px 12px; border-radius: var(--radius-sm); font-size: 13px; }
 .perfil-msg svg { flex-shrink: 0; }
-.perfil-msg--error { background: var(--danger-soft); border: 1px solid #F4C7C2; color: var(--danger-ink); }
-.perfil-msg--ok { background: var(--success-soft); border: 1px solid #BFE3CD; color: var(--success); }
+.perfil-msg--error { background: var(--danger-soft); border: 1px solid var(--danger-line, #F4C7C2); color: var(--danger-ink); }
+.perfil-msg--ok { background: var(--success-soft); border: 1px solid var(--success-line, #BFE3CD); color: var(--success); }
 
 
 @media (max-width: 1000px) {

@@ -17,7 +17,7 @@
 
 .dash-logo {
   width: 40px; height: 40px; flex-shrink: 0;
-  background: #fff;
+  background: var(--surface, #fff);
   border: 1px solid var(--border-light);
   border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
@@ -32,7 +32,7 @@
 
 .dash-notif-btn {
   display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 8px 0 14px;
-  background: #fff; border: 1px solid var(--border-strong); border-radius: 99px;
+  background: var(--surface, #fff); border: 1px solid var(--border-strong); border-radius: 99px;
   font-family: inherit; font-size: 13px; font-weight: 600; color: var(--text-dark);
   cursor: pointer; transition: background var(--transition), border-color var(--transition);
 }
@@ -75,7 +75,7 @@
 .dash-rail-nav::-webkit-scrollbar { display: none; }
 .dash-rail-group {
   display: flex; flex-direction: column; align-items: stretch; gap: 2px;
-  background: #fff; border: 1px solid var(--border-light);
+  background: var(--surface, #fff); border: 1px solid var(--border-light);
   border-radius: 18px; padding: 6px; width: 88px;
 }
 .dash-rail-heading {
@@ -127,13 +127,13 @@
   display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 10px; border-radius: 14px;
   background: none; border: 1px solid transparent; cursor: pointer; font-family: inherit; color: var(--text-mid);
 }
-.dash-account-btn:hover, .dash-account-btn[aria-expanded="true"] { background: #fff; border-color: var(--border-light); color: var(--text-dark); }
+.dash-account-btn:hover, .dash-account-btn[aria-expanded="true"] { background: var(--surface, #fff); border-color: var(--border-light); color: var(--text-dark); }
 .dash-account-btn--on { background: var(--accent-soft); color: var(--accent-ink); font-weight: 700; }
 .dash-account-btn--on .dash-avatar { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--accent); }
 .dash-account-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .dash-account-menu {
   position: absolute; left: calc(100% + 8px); bottom: 0; width: 260px; z-index: 40;
-  background: #fff; border: 1px solid var(--border-light); border-radius: 14px;
+  background: var(--surface, #fff); border: 1px solid var(--border-light); border-radius: 14px;
   box-shadow: var(--shadow-md); padding: 8px; display: flex; flex-direction: column; gap: 2px;
 }
 .dash-account-who { display: flex; align-items: center; gap: 10px; padding: 8px 8px 12px; margin-bottom: 4px; border-bottom: 1px solid var(--border-light); }
@@ -174,7 +174,7 @@
 .dash-notif-wrap { position: relative; }
 .dash-notif-menu {
   position: absolute; right: 0; top: calc(100% + 8px); width: 300px; z-index: 40;
-  background: #fff; border: 1px solid var(--border-light); border-radius: 14px;
+  background: var(--surface, #fff); border: 1px solid var(--border-light); border-radius: 14px;
   box-shadow: var(--shadow-md); padding: 8px; display: flex; flex-direction: column; gap: 2px;
 }
 .dash-notif-title { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); padding: 8px 10px 6px; }

@@ -162,7 +162,7 @@ function TicketChat({ id, onClose }: { id: number; onClose: () => void }) {
           {data?.mensajes.map(m => (
             <div key={m.id_mensaje} style={{ alignSelf: m.es_asesor ? 'flex-end' : 'flex-start', maxWidth: '75%' }}>
               <div style={{
-                background: m.es_asesor ? 'var(--navy)' : '#fff', color: m.es_asesor ? '#fff' : 'var(--text-dark)',
+                background: m.es_asesor ? 'var(--navy)' : 'var(--surface, #fff)', color: m.es_asesor ? '#fff' : 'var(--text-dark)',
                 border: m.es_asesor ? 'none' : '1px solid var(--border-light)', borderRadius: 12, padding: '10px 12px', fontSize: 14, whiteSpace: 'pre-wrap',
               }}>
                 {m.mensaje}

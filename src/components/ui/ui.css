@@ -13,7 +13,7 @@
 .btn--md  { padding: 14px 24px; font-size: 12px; }
 .btn--lg  { padding: 16px 28px; font-size: 13px; }
 
-.btn--primary  { background: var(--text-dark); color: var(--text-white); }
+.btn--primary  { background: var(--fill-dark, var(--text-dark)); color: var(--text-white); }
 .btn--primary:hover:not(:disabled) { background: var(--navy-soft); transform: translateY(-1px); box-shadow: var(--shadow-md); }
 
 .btn--secondary { background: var(--bg-input); color: var(--text-dark); border: 1px solid var(--border-light); }
@@ -86,7 +86,7 @@
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
 
 .stat-card {
-  background: #fff; border: 1px solid var(--border-light); border-radius: 18px;
+  background: var(--surface, #fff); border: 1px solid var(--border-light); border-radius: 18px;
   padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0;
 }
 .stat-head { display: flex; align-items: center; gap: 10px; }
@@ -116,7 +116,7 @@
 }
 .toast {
   display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px;
-  background: #fff; color: var(--text-dark); border: 1px solid var(--border-light, #E6E9EE);
+  background: var(--surface, #fff); color: var(--text-dark); border: 1px solid var(--border-light, #E6E9EE);
   border-radius: var(--radius-md); box-shadow: 0 10px 24px -8px rgba(12,28,64,.25);
   font-size: 13px; line-height: 1.4; animation: modalFadeIn .2s ease-out;
 }
@@ -140,7 +140,7 @@ button.field-icon:focus-visible { outline: 2px solid var(--accent); outline-offs
 /* ── Franja de métricas (reemplaza la fila de tarjetas) ── */
 .ms {
   display: flex; flex-wrap: wrap; gap: 4px; padding: 4px;
-  background: #fff; border: 1px solid var(--border-light); border-radius: var(--radius-md);
+  background: var(--surface, #fff); border: 1px solid var(--border-light); border-radius: var(--radius-md);
   width: fit-content; max-width: 100%;
 }
 .ms-item {

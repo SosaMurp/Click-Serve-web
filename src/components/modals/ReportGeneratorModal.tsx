@@ -90,8 +90,8 @@ export default function ReportGeneratorModal({ isOpen, onClose }: ReportGenerato
                   style={{
                     padding: '8px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600,
                     border: '1px solid', borderColor: timeframe === t.id ? 'var(--accent-dim)' : 'var(--border-strong)',
-                    background: timeframe === t.id ? '#E8EBF2' : '#fff',
-                    color: timeframe === t.id ? '#0C1C40' : '#4B5563', cursor: 'pointer'
+                    background: timeframe === t.id ? 'var(--info-soft)' : 'var(--surface, #fff)',
+                    color: timeframe === t.id ? 'var(--text-dark)' : 'var(--text-mid)', cursor: 'pointer'
                   }}
                 >
                   {t.label}
@@ -113,7 +113,7 @@ export default function ReportGeneratorModal({ isOpen, onClose }: ReportGenerato
               Dimensiones de Datos a Incluir
             </label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, background: '#F7F8F9', padding: 8, borderRadius: 6, cursor: 'pointer' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, background: 'var(--bg-sunk)', padding: 8, borderRadius: 6, cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   checked={dimensions.servicios}
@@ -121,7 +121,7 @@ export default function ReportGeneratorModal({ isOpen, onClose }: ReportGenerato
                 />
                 Dimensiones de Servicios y Operaciones
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, background: '#F7F8F9', padding: 8, borderRadius: 6, cursor: 'pointer' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, background: 'var(--bg-sunk)', padding: 8, borderRadius: 6, cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   checked={dimensions.finanzas}
@@ -129,7 +129,7 @@ export default function ReportGeneratorModal({ isOpen, onClose }: ReportGenerato
                 />
                 Dimensiones Financieras y Retiros
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, background: '#F7F8F9', padding: 8, borderRadius: 6, cursor: 'pointer' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, background: 'var(--bg-sunk)', padding: 8, borderRadius: 6, cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   checked={dimensions.identidad}
@@ -153,8 +153,8 @@ export default function ReportGeneratorModal({ isOpen, onClose }: ReportGenerato
                   style={{
                     padding: '8px', borderRadius: 6, fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
                     border: '1px solid', borderColor: format === fmt ? 'var(--text-dark)' : 'var(--border-strong)',
-                    background: format === fmt ? 'var(--text-dark)' : '#fff',
-                    color: format === fmt ? '#fff' : '#4B5563', cursor: 'pointer'
+                    background: format === fmt ? 'var(--fill-dark, var(--text-dark))' : 'var(--surface, #fff)',
+                    color: format === fmt ? '#fff' : 'var(--text-mid)', cursor: 'pointer'
                   }}
                 >
                   .{fmt}

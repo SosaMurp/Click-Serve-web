@@ -50,7 +50,7 @@ export default function LiquidacionModal({ incidencia: i, onClose }: { incidenci
     }
   }
 
-  const aviso: React.CSSProperties = { background: '#FFF3D6', border: '1px solid #FFE3A3', padding: 12, borderRadius: 8, fontSize: 12, color: 'var(--warning)', display: 'flex', gap: 8, alignItems: 'flex-start' }
+  const aviso: React.CSSProperties = { background: 'var(--warning-soft)', border: '1px solid var(--warning-line, #FFE3A3)', padding: 12, borderRadius: 8, fontSize: 12, color: 'var(--warning)', display: 'flex', gap: 8, alignItems: 'flex-start' }
   const resumen: React.CSSProperties = { background: 'var(--bg-sunk)', border: '1px solid var(--border-light)', borderRadius: 8, padding: 12, fontSize: 13, display: 'grid', gap: 4 }
 
   return (

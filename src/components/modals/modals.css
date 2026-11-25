@@ -10,7 +10,7 @@
 }
 
 .modal-container {
-  background: #ffffff;
+  background: var(--surface, #fff);
   border-radius: var(--radius-lg, 12px);
   box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
   width: 100%;
@@ -52,14 +52,14 @@
   padding: 24px;
   overflow-y: auto;
   display: flex; flex-direction: column; gap: 20px;
-  background: #ffffff;
+  background: var(--surface, #fff);
 }
 
 /* Forzar temas de input limpios y claros en los modales */
 .modal-body input,
 .modal-body select,
 .modal-body textarea {
-  background-color: #ffffff !important;
+  background-color: var(--surface, #fff) !important;
   color: var(--text-dark) !important;
   border: 1px solid var(--border-strong) !important; /* 3.2:1 sobre blanco (WCAG 1.4.11) */
   font-family: inherit;
@@ -82,7 +82,7 @@
 .decision-choice {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   padding: 14px; min-height: 88px; border-radius: var(--radius-sm);
-  border: 2px solid var(--border-light); background: #fff; cursor: pointer;
+  border: 2px solid var(--border-light); background: var(--surface, #fff); cursor: pointer;
   font-family: inherit; font-size: 13px; font-weight: 700; color: var(--text-mid);
   transition: border-color var(--transition), background var(--transition), color var(--transition);
 }
@@ -97,8 +97,8 @@
 .callout { padding: 12px 14px; border-radius: var(--radius-sm); font-size: 13px; border: 1px solid transparent; }
 .callout-title { margin: 0; font-weight: 600; }
 .callout-text { margin: 4px 0 0; font-size: 12.5px; }
-.callout--success { background: var(--success-soft); border-color: #BFE3CD; color: var(--success); }
-.callout--danger  { background: var(--danger-soft); border-color: #F6C9C4; color: var(--danger-ink); font-weight: 600; }
+.callout--success { background: var(--success-soft); border-color: var(--success-line, #BFE3CD); color: var(--success); }
+.callout--danger  { background: var(--danger-soft); border-color: var(--danger-line, #F6C9C4); color: var(--danger-ink); font-weight: 600; }
 .callout--check { display: flex; align-items: center; gap: 10px; cursor: pointer; }
 
 .modal-footer {

@@ -9,7 +9,7 @@
 .mapa-panel {
   position: absolute; left: 12px; top: 12px; bottom: 12px; z-index: 500; width: 330px;
   display: flex; flex-direction: column; gap: 10px; padding: 14px;
-  background: #fff; border: 1px solid var(--border-light); border-radius: 16px;
+  background: var(--surface, #fff); border: 1px solid var(--border-light); border-radius: 16px;
   box-shadow: 0 12px 32px -12px rgba(12, 28, 64, .35);
 }
 .mapa-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
@@ -18,19 +18,19 @@
 .mapa-icon-btn {
   width: 32px; height: 32px; border-radius: 10px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  background: #fff; border: 1px solid var(--border-control); color: var(--text-mid); cursor: pointer;
+  background: var(--surface, #fff); border: 1px solid var(--border-control); color: var(--text-mid); cursor: pointer;
 }
 .mapa-icon-btn:hover { background: var(--bg-page); color: var(--text-dark); }
 
 .mapa-search {
   display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 40px;
-  border: 1px solid var(--border-strong); border-radius: 12px; color: var(--text-muted); background: #fff;
+  border: 1px solid var(--border-strong); border-radius: 12px; color: var(--text-muted); background: var(--surface, #fff);
 }
 .mapa-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
 .mapa-search input { flex: 1; min-width: 0; border: none; outline: none; background: none; font-family: inherit; font-size: 13.5px; color: var(--text-dark); }
 .mapa-search input::placeholder { color: var(--text-muted); }
 .mapa-select {
-  height: 40px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: 12px; background: #fff;
+  height: 40px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface, #fff);
   font-family: inherit; font-size: 13px; color: var(--text-dark); cursor: pointer;
 }
 .mapa-select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
@@ -39,7 +39,7 @@
 .mapa-legend { display: flex; flex-wrap: wrap; gap: 6px; }
 .mapa-chip {
   display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px 5px 8px; border-radius: 99px;
-  border: 1px solid var(--border-control); background: #fff; cursor: pointer; font-family: inherit; font-size: 12.5px; font-weight: 500;
+  border: 1px solid var(--border-control); background: var(--surface, #fff); cursor: pointer; font-family: inherit; font-size: 12.5px; font-weight: 500;
   color: var(--text-muted); transition: background var(--transition), border-color var(--transition);
 }
 .mapa-chip:hover { border-color: var(--text-mid); }
@@ -79,7 +79,7 @@
 
 .mapa-panel-open {
   position: absolute; left: 14px; top: 14px; z-index: 500; display: inline-flex; align-items: center; gap: 8px;
-  height: 40px; padding: 0 10px 0 13px; background: #fff; border: 1px solid var(--border-control); border-radius: 12px;
+  height: 40px; padding: 0 10px 0 13px; background: var(--surface, #fff); border: 1px solid var(--border-control); border-radius: 12px;
   font-family: inherit; font-size: 13px; font-weight: 600; color: var(--text-dark); cursor: pointer;
   box-shadow: 0 8px 24px -10px rgba(12, 28, 64, .35);
 }
@@ -88,7 +88,7 @@
 
 .mapa-recenter {
   position: absolute; right: 14px; top: 14px; z-index: 500; display: inline-flex; align-items: center; gap: 7px;
-  padding: 9px 13px; background: #fff; border: 1px solid var(--border-light); border-radius: 12px;
+  padding: 9px 13px; background: var(--surface, #fff); border: 1px solid var(--border-light); border-radius: 12px;
   font-family: inherit; font-size: 12.5px; font-weight: 600; color: var(--text-dark); cursor: pointer;
   box-shadow: 0 8px 24px -10px rgba(12, 28, 64, .35);
 }
@@ -102,7 +102,7 @@
   box-shadow: 0 8px 24px -10px rgba(12, 28, 64, .35);
 }
 .mapa-page--panel .mapa-aviso { left: calc(50% + 171px); }
-.mapa-aviso[role="alert"] { color: var(--danger-ink); border-color: #F4C7C2; }
+.mapa-aviso[role="alert"] { color: var(--danger-ink); border-color: var(--danger-line, #F4C7C2); }
 
 /* ── Puntos ── */
 .mapa-dot-marker { background: none; border: none; }

@@ -73,7 +73,7 @@
   font-family: 'Inter', monospace;
 }
 .otp-cell:focus       { border-color: var(--accent-dim); box-shadow: 0 0 0 3px var(--accent-glow); }
-.otp-cell--filled     { border-color: var(--text-dark); background: #fff; }
+.otp-cell--filled     { border-color: var(--fill-dark, var(--text-dark)); background: var(--surface, #fff); }
 
 .auth-backup-link {
   background: none; border: none; font-family: inherit;
