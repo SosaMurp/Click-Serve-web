@@ -12,13 +12,14 @@ import './mapa.css'
 const LZC_CENTER: [number, number] = [17.9750, -102.2050]
 const DEFAULT_ZOOM = 13
 
-// Un punto por servicio, coloreado por estado. El SOS es un punto rojo que parpadea.
+// Un punto por servicio, coloreado por estado. El SOS es un punto rojo que parpadea; ningún otro estado usa
+// rojo ni naranja, para que no se confunda con él (en curso es azul y pendiente es ámbar).
 type Grupo = 'pendiente' | 'en_curso' | 'completado' | 'cancelado' | 'sos'
 
 const GRUPOS: { id: Grupo; label: string; color: string }[] = [
-  { id: 'en_curso', label: 'En curso', color: '#E25900' },
+  { id: 'en_curso', label: 'En curso', color: '#2F6FD0' },
   { id: 'sos', label: 'SOS', color: '#D92D20' },
-  { id: 'pendiente', label: 'Pendientes', color: '#2F6FD0' },
+  { id: 'pendiente', label: 'Pendientes', color: '#E0A100' },
   { id: 'completado', label: 'Completados', color: '#0E7A42' },
   { id: 'cancelado', label: 'Cancelados', color: '#98A2B3' },
 ]
